@@ -1,42 +1,47 @@
 # Version Control Guide — Axiom of the Broken Sun
 
-This project uses **two version control systems in parallel**. This document explains why, what each system owns, and exactly what to do every day.
+This project uses two version control systems with clearly separated roles. **All collaborative development happens in UVCS.** Git exists for one reason only: so each team member accumulates GitHub activity.
 
 ---
 
-## Why Two Systems?
+## Roles at a Glance
 
-| | UVCS | GitHub (Git) |
-|---|---|---|
-| **Purpose** | Full project history — every file, every change | Code visibility, GitHub activity, team portfolio |
-| **Tracks** | Everything: scripts, scenes, art, audio, Vosk model, DLLs | Scripts, docs, and config only — no binary files |
-| **Team use** | Primary — always check in here first | Secondary — push after every code check-in |
-| **Binary files** | Yes — handles them natively | No — binary files are excluded via `.gitignore` |
-| **Scene merge conflicts** | Handled (file locking available) | N/A — scene files are excluded |
+|                      | UVCS                                                       | Git → GitHub                                              |
+| -------------------- | ---------------------------------------------------------- | --------------------------------------------------------- |
+| **Purpose**          | Collaborative development — source of truth for everything | GitHub activity tracking only                             |
+| **Tracks**           | Everything: scripts, scenes, art, audio, Vosk model, DLLs  | Scripts, docs, and config only — no binary files          |
+| **Workflow**         | Check in here for all changes — this is how the team syncs | One-way push only — mirrors your UVCS check-ins to GitHub |
+| **Binary files**     | Yes — handles them natively                                | No — excluded via `.gitignore`                            |
+| **Conflict merging** | Yes — use UVCS for all merge decisions                     | Never pull from GitHub — UVCS is your sync mechanism      |
+
+### Why not use GitHub for collaboration?
+
+Unity projects have binary assets (scenes, prefabs, art, audio) that git cannot merge. UVCS understands Unity's file formats, supports file locking for scenes, and keeps all three developers in sync including assets. Git is text-only and not suitable for Unity collaboration.
 
 ### Why not Git LFS for binaries?
 
-We tried it. The Vosk model alone (~50 MB) burns Git LFS bandwidth every time someone clones or pulls. With three developers and a monthly reset, we hit the free-tier cap quickly. The solution: **UVCS owns all binary files, git never touches them.**
+The Vosk model alone (~50 MB) burns Git LFS bandwidth on every clone and pull. With three developers and a monthly reset, the free-tier cap runs out quickly. The solution: **UVCS owns all binary files, git never touches them.**
 
 ---
 
 ## What Lives Where
 
 ### Tracked by UVCS (everything)
+
 UVCS is the source of truth. It tracks the full project.
 
 ### Tracked by Git → GitHub (text files only)
 
-| Included | Excluded |
-|---|---|
-| `Assets/Scripts/` — all C# source | `Assets/Art/` — textures, sprites |
-| `Assets/Data/` metadata (if text) | `Assets/Audio/` — music, SFX |
-| `docs/` — design docs, guides | `Assets/Scenes/` — scene files |
-| `CLAUDE.md`, `.claude/` | `Assets/Prefabs/` — prefab files |
-| `Packages/manifest.json` | `StreamingAssets/` — Vosk model |
-| `Packages/packages-lock.json` | `ThirdParty/` — Vosk DLLs |
-| `ProjectSettings/` — project config | `Library/`, `Temp/`, `Logs/` |
-| `.gitignore`, `.gitattributes` | All binary file types (`.png`, `.wav`, `.dll`, etc.) |
+| Included                            | Excluded                                             |
+| ----------------------------------- | ---------------------------------------------------- |
+| `Assets/Scripts/` — all C# source   | `Assets/Art/` — textures, sprites                    |
+| `Assets/Data/` metadata (if text)   | `Assets/Audio/` — music, SFX                         |
+| `docs/` — design docs, guides       | `Assets/Scenes/` — scene files                       |
+| `CLAUDE.md`, `.claude/`             | `Assets/Prefabs/` — prefab files                     |
+| `Packages/manifest.json`            | `StreamingAssets/` — Vosk model                      |
+| `Packages/packages-lock.json`       | `ThirdParty/` — Vosk DLLs                            |
+| `ProjectSettings/` — project config | `Library/`, `Temp/`, `Logs/`                         |
+| `.gitignore`, `.gitattributes`      | All binary file types (`.png`, `.wav`, `.dll`, etc.) |
 
 The `.gitignore` file enforces these rules automatically — you don't need to think about it. `git add -A` is safe to run; it will only stage what should be staged.
 
@@ -44,9 +49,10 @@ The `.gitignore` file enforces these rules automatically — you don't need to t
 
 ## One-Time Setup (New Developer)
 
-Do this once when you join the project. After this, your daily workflow is just two commands.
+Do this once when you join the project.
 
 ### Prerequisites
+
 - Git installed: https://git-scm.com/downloads
 - GitHub account created and shared with the project lead (to be added as a collaborator)
 - UVCS workspace already synced (you should have the full project locally)
@@ -66,7 +72,7 @@ git config --global user.name "Your Name"
 git config --global user.email "your.github@email.com"
 ```
 
-> Use the same email address that is registered on your GitHub account — this is what makes commits count toward your GitHub contribution graph.
+> Use the same email address registered on your GitHub account — this is what makes commits count toward your GitHub contribution graph.
 
 **3. Initialize git in the workspace**
 
@@ -80,37 +86,36 @@ git checkout -b main
 Ask the project lead for the GitHub repository URL, then:
 
 ```bash
-git remote add origin https://github.com/OWNER/axiom-broken-sun.git
+git remote add origin https://github.com/[OWNER]/axiom-broken-sun-refined.git
 ```
 
-**5. Pull the existing history**
+**5. Push your first commit**
 
 ```bash
-git pull origin main
+git add -A
+git commit -m "chore: initial mirror setup for [your name]"
+git push -u origin main
 ```
 
-You now have the full git history locally. Your workspace is ready.
+Do **not** run `git pull`. Your UVCS workspace already has the latest files — pulling from GitHub is unnecessary and risks conflicts.
+
+Your workspace is ready.
 
 ---
 
 ## Daily Workflow
 
-Every day, every developer follows this pattern:
+### Step 1 — Sync UVCS at the start of each session
 
-### Step 1 — Check in via UVCS (always, for everything)
+Always sync your UVCS workspace first. This gives you all teammates' latest changes — scripts, scenes, art, everything. Do not run `git pull`; UVCS sync already covers the files git tracks.
+
+### Step 2 — Do all your work and check in via UVCS
 
 Unity Version Control → **Pending Changes** → select all relevant files → **Check in**
 
-Write a clear message:
-```
-feat(voice): SpellCastController polls result queue and dispatches matched spells
-fix(battle): guard PlayerTurn check before dispatching spell action
-chore: update SpellData asset for hydrogen blast
-```
+UVCS is where collaboration happens. All changes — code, scenes, art, audio — go here first.
 
-This is your primary commit. It captures the full change including any scene edits, asset changes, and code.
-
-### Step 2 — Push to GitHub (for code changes)
+### Step 3 — Mirror code changes to GitHub
 
 After a UVCS check-in that includes any `.cs`, `.asmdef`, doc, or config changes:
 
@@ -120,11 +125,12 @@ git commit -m "same message you used in UVCS"
 git push
 ```
 
-That's it. `git add -A` is safe — `.gitignore` blocks all binary and generated files automatically.
+`git add -A` is safe — `.gitignore` blocks all binary and generated files automatically.
 
 ### When to skip the git push
 
 Skip the GitHub push if your UVCS check-in contained **only**:
+
 - Scene edits (`.unity`)
 - Art or audio changes
 - Prefab-only changes
@@ -136,27 +142,34 @@ If there's no code or text file change, there's nothing meaningful to push to Gi
 
 ## Commit Message Format
 
-Use the same message in both UVCS and git. Follow this format:
+Use the same message in both UVCS and git. Always include the Jira ticket ID:
 
 ```
-<type>(<scope>): <short description>
+<type>(DEV-###): <short description>
 ```
 
-| Type | When to use |
-|---|---|
-| `feat` | New feature or system |
-| `fix` | Bug fix |
-| `chore` | Config, build, tooling, non-code changes |
-| `docs` | Documentation only |
-| `refactor` | Code restructure, no behaviour change |
-| `test` | Adding or fixing tests |
+| Type       | When to use                              |
+| ---------- | ---------------------------------------- |
+| `feat`     | New feature or system                    |
+| `fix`      | Bug fix                                  |
+| `chore`    | Config, build, tooling, non-code changes |
+| `docs`     | Documentation only                       |
+| `refactor` | Code restructure, no behaviour change    |
+| `test`     | Adding or fixing tests                   |
 
 Examples:
+
 ```
-feat(voice): add SpellResultMatcher for Vosk JSON parsing
-fix(battle): resolve NullReferenceException when BattleController not injected
-chore: update Packages/manifest.json for Cinemachine 2.9
-docs: add voice architecture notes to GAME_PLAN.md
+feat(DEV-20): add SpellResultMatcher for Vosk JSON parsing
+fix(DEV-34): resolve NullReferenceException when BattleController not injected
+chore(DEV-12): update Packages/manifest.json for Cinemachine 2.9
+docs(DEV-5): add voice architecture notes to GAME_PLAN.md
+```
+
+For changes that span no specific ticket (rare):
+
+```
+chore: update .gitignore to exclude ProjectSettings private files
 ```
 
 ---
@@ -164,14 +177,18 @@ docs: add voice architecture notes to GAME_PLAN.md
 ## Conflict Resolution
 
 ### UVCS conflicts
+
 Handle these as normal in the UVCS panel. Scene and prefab conflicts are manageable here — use file locking if two developers need to edit the same scene simultaneously.
 
 ### Git conflicts
+
 Git conflicts should almost never happen because:
+
 1. Git only tracks text files (scripts, docs, config)
 2. Binary files that would cause unresolvable conflicts are excluded
 
 If a conflict does occur on a `.cs` file:
+
 ```bash
 git status          # see which files conflict
 # open the file, resolve the conflict markers
@@ -200,6 +217,7 @@ Do not use `git add <specific-file>` for routine pushes — `git add -A` is corr
 ### "UVCS shows `.git/` or `.gitignore` as pending changes"
 
 The UVCS ignore config needs updating. Open the UVCS panel → Preferences → Ignored files and add:
+
 ```
 .git
 ```
@@ -211,11 +229,13 @@ Your `.gitignore` may be missing an entry. Check that the file extension is list
 ### "My commits aren't showing on my GitHub contribution graph"
 
 Verify your git email matches your GitHub account email:
+
 ```bash
 git config user.email
 ```
 
 If it's wrong:
+
 ```bash
 git config --global user.email "your.github@email.com"
 ```
@@ -225,6 +245,7 @@ Future commits will count. Past commits authored under the wrong email won't app
 ### "I forgot to push after a UVCS check-in"
 
 No problem — just push now. All unpushed commits will go up at once:
+
 ```bash
 git add -A
 git commit -m "catch-up: sync recent UVCS check-ins to GitHub"
