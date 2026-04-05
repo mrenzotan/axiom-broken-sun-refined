@@ -10,6 +10,15 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Full game design doc and lore reference: `docs/GAME_PLAN.md`
 
+### Contextual Reference Documents
+
+Only attach these when the task specifically requires them — they're large and not needed for most coding tasks:
+
+| Document | When to use |
+| -------- | ----------- |
+| `docs/LORE_AND_MECHANICS.md` | Designing new gameplay systems or spells (lore justification, chemistry concepts, enemy behaviors) |
+| `docs/GAME_DESIGN_DOCUMENT.md` | Writing Jira tickets or planning development phases (feature scope, asset lists, UI/UX specs) |
+
 ## Unity & Build
 
 This is a Unity project — there are no CLI build or test commands. All development happens through the Unity Editor and VS Code.
