@@ -1,0 +1,47 @@
+# Auto-detect text/binary for unspecified files
+* text=auto
+
+# ── C# source ─────────────────────────────────────────────────────────────────
+*.cs        text diff=csharp eol=lf
+*.cs.meta   text eol=lf
+
+# ── Assembly definitions ──────────────────────────────────────────────────────
+*.asmdef        text eol=lf
+*.asmdef.meta   text eol=lf
+
+# ── Unity Input System ────────────────────────────────────────────────────────
+*.inputactions        text eol=lf
+*.inputactions.meta   text eol=lf
+
+# ── Package manifests ─────────────────────────────────────────────────────────
+*.json  text eol=lf
+*.yaml  text eol=lf
+*.yml   text eol=lf
+
+# ── Docs & config ────────────────────────────────────────────────────────────
+*.md    text eol=lf
+*.txt   text eol=lf
+*.xml   text eol=lf
+
+# ── Shader source (text, not compiled) ───────────────────────────────────────
+*.shader        text eol=lf
+*.shader.meta   text eol=lf
+*.hlsl          text eol=lf
+*.cginc         text eol=lf
+
+# ── Explicitly binary — git must never diff or merge these ───────────────────
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.tga    binary
+*.tiff   binary
+*.wav    binary
+*.mp3    binary
+*.ogg    binary
+*.dll    binary
+*.so     binary
+*.dylib  binary
+*.ttf    binary
+*.otf    binary
+*.fbx    binary
+*.blend  binary

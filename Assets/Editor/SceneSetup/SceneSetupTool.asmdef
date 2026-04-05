@@ -1,0 +1,16 @@
+{
+    "name": "SceneSetupTool",
+    "references": [
+        "Unity.RenderPipelines.Universal.2D.Runtime",
+        "Axiom.Platformer"
+    ],
+    "includePlatforms": ["Editor"],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

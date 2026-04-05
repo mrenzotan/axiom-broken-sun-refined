@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "skills": {
+    "unity-developer": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "computedHash": "c2c65c8964696f62786e3ff131f0eddd29d5f2f20c5102a68e30748cb1b8aa55"
+    }
+  }
+}

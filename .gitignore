@@ -1,0 +1,125 @@
+# ── Unity generated — never commit these ──────────────────────────────────────
+[Ll]ibrary/
+[Tt]emp/
+[Ll]ogs/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Uu]ser[Ss]ettings/
+*.pidb
+*.pdb
+*.mdb
+sysinfo.txt
+*.apk
+*.aab
+
+# ── Binary & large assets — UVCS only ─────────────────────────────────────────
+# All art, audio, and large third-party files live exclusively in UVCS.
+# Git never touches these — this is how we avoid Git LFS bandwidth limits.
+Assets/Art/
+Assets/Art.meta
+Assets/Audio/
+Assets/Audio.meta
+Assets/Prefabs/
+Assets/Prefabs.meta
+Assets/Scenes/
+Assets/Scenes.meta
+Assets/Tilemaps/
+Assets/Tilemaps.meta
+Assets/TextMesh Pro/
+Assets/TextMesh Pro.meta
+ThirdParty/
+ThirdParty.meta
+StreamingAssets/
+StreamingAssets.meta
+
+# ── Unity binary file types — UVCS only ───────────────────────────────────────
+# These extensions are excluded globally even if the folder above is renamed.
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.tga
+*.tiff
+*.psd
+*.mp3
+*.wav
+*.ogg
+*.aif
+*.fbx
+*.obj
+*.blend
+*.dll
+*.so
+*.dylib
+*.ttf
+*.otf
+
+# ── Unity scene & asset serialization — UVCS only ────────────────────────────
+# .unity and .prefab files are technically YAML text but contain complex
+# scene graphs that produce unreadable diffs and risk merge conflicts for
+# the team. UVCS handles these; git does not.
+*.unity
+*.prefab
+*.asset
+*.mat
+*.anim
+*.controller
+*.overrideController
+*.physicMaterial
+*.physicsMaterial2D
+*.playable
+*.renderTexture
+*.mixer
+*.shadervariants
+*.flare
+*.fontsettings
+*.guiskin
+*.mask
+*.spriteatlas
+*.terrainlayer
+*.brush
+*.scenetemplate
+
+# ── Orphaned .meta files for excluded asset types ─────────────────────────────
+# When an asset file is excluded, its sibling .meta file is not automatically
+# excluded — these must be listed explicitly.
+*.unity.meta
+*.asset.meta
+*.anim.meta
+*.controller.meta
+*.overrideController.meta
+*.mat.meta
+*.prefab.meta
+*.scenetemplate.meta
+
+# ── UVCS / Plastic SCM internals — git must not track these ───────────────────
+.plastic/
+plastic.ignore
+hidden_changes.conf
+*.private.*
+
+# ── Animations — UVCS only ───────────────────────────────────────────────────
+Assets/Animations/
+Assets/Animations.meta
+Assets/Settings/
+Assets/Settings.meta
+
+# ── IDE & OS ──────────────────────────────────────────────────────────────────
+.vs/
+.vscode/
+*.csproj
+*.sln
+*.slnx
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── NuGet ────────────────────────────────────────────────────────────────────
+[Pp]ackages/
+!Packages/manifest.json
+!Packages/packages-lock.json
