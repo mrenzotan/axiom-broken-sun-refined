@@ -236,7 +236,7 @@ namespace Axiom.Voice
 
 ### Step 1.5 — Check in Task 1
 
-> **Unity Version Control task (user):** Open Unity Version Control → Pending Changes. Stage the following files and check in with message `feat(voice): add MicrophoneCapture PCM16 conversion service with Edit Mode tests`:
+> **Unity Version Control task (user):** Open Unity Version Control → Pending Changes. Stage the following files and check in with message `feat(DEV-21): add MicrophoneCapture PCM16 conversion service with Edit Mode tests`:
 > - `Assets/Scripts/Voice/MicrophoneCapture.cs`
 > - `Assets/Scripts/Voice/MicrophoneCapture.cs.meta`
 > - `Assets/Tests/Editor/Voice/MicrophoneCaptureTests.cs`
@@ -408,7 +408,7 @@ namespace Axiom.Voice
 
 ### Step 2.5 — Check in Task 2
 
-> **Unity Version Control task (user):** Open Unity Version Control → Pending Changes. Stage the following files and check in with message `feat(voice): add MicrophoneInputHandler push-to-talk MonoBehaviour`:
+> **Unity Version Control task (user):** Open Unity Version Control → Pending Changes. Stage the following files and check in with message `feat(DEV-21): add MicrophoneInputHandler push-to-talk MonoBehaviour`:
 > - `Assets/Scripts/Voice/MicrophoneInputHandler.cs`
 > - `Assets/Scripts/Voice/MicrophoneInputHandler.cs.meta`
 > - `Assets/InputSystem_Actions.inputactions`

@@ -106,3 +106,13 @@ Project uses Jira Free with auto-assigned `DEV-#` ticket IDs. Labels organize by
 `phase-1-platformer`, `phase-2-combat`, `phase-3-voice`, `phase-4-bridge`, `phase-5-data`, `phase-6-world`, `phase-7-polish`, `unity`, `vosk`, `architecture`, `bug`, `content`
 
 When generating Jira tickets: each feature area bullet in `docs/GAME_PLAN.md` → one Story; sub-steps → Subtasks; bugs → separate Bug tickets.
+
+## Commit / Check-in Message Format
+
+All UVCS check-ins and git commits must follow this format:
+
+```
+<type>(DEV-##): <short description>
+```
+
+Types: `feat`, `fix`, `chore`, `docs`, `refactor`, `test`. See `docs/VERSION_CONTROL.md` for the full reference and examples.

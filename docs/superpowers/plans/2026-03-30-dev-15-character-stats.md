@@ -110,7 +110,7 @@ public void Heal(int amount)
 > - `Assets/Scripts/Battle/CharacterStats.cs`
 > - `Assets/Tests/Editor/Battle/CharacterStatsTests.cs`
 >
-> Check in with message: `feat(battle): add Heal method to CharacterStats`
+> Check in with message: `feat(DEV-15): add Heal method to CharacterStats`
 
 ---
 
@@ -199,7 +199,7 @@ public bool SpendMP(int amount)
 > - `Assets/Scripts/Battle/CharacterStats.cs`
 > - `Assets/Tests/Editor/Battle/CharacterStatsTests.cs`
 >
-> Check in with message: `feat(battle): add SpendMP method to CharacterStats`
+> Check in with message: `feat(DEV-15): add SpendMP method to CharacterStats`
 
 ---
 
@@ -275,7 +275,7 @@ public void RestoreMP(int amount)
 > - `Assets/Scripts/Battle/CharacterStats.cs`
 > - `Assets/Tests/Editor/Battle/CharacterStatsTests.cs`
 >
-> Check in with message: `feat(battle): add RestoreMP method to CharacterStats`
+> Check in with message: `feat(DEV-15): add RestoreMP method to CharacterStats`
 
 ---
 

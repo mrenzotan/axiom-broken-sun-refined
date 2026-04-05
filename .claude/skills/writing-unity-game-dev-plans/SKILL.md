@@ -84,10 +84,12 @@ For plain C# game logic classes (BattleManager, stats systems, AI strategies) �
 Every commit step in the plan must use this exact format:
 ```markdown
 - [ ] **Check in via UVCS:**
-  Unity Version Control → Pending Changes → stage the files listed below → Check in with message: "feat: ..."
+  Unity Version Control → Pending Changes → stage the files listed below → Check in with message: `<type>(DEV-##): <short description>`
   - `Assets/Scripts/Voice/Foo.cs`
   - `Assets/Scripts/Voice/Foo.cs.meta`
 ```
+
+Where `DEV-##` is the Jira ticket number for the plan. Examples: `feat(DEV-22): add SpellCastController`, `fix(DEV-34): resolve null ref in BattleController`. See `docs/VERSION_CONTROL.md` for the full type list (`feat`, `fix`, `chore`, `docs`, `refactor`, `test`).
 
 **Never write** `git add`, `git commit`, or any other git command in a plan for this project.
 

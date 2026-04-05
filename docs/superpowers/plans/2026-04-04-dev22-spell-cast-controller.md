@@ -354,7 +354,7 @@ Expected: **all 13 tests FAIL** (class `SpellResultMatcher` doesn't exist yet).
 Expected: **13 tests PASS**.
 
 - [ ] **Check in via UVCS:**
-  Unity Version Control → Pending Changes → stage the files below → Check in with message: `feat(voice): SpellResultMatcher — parse Vosk JSON and match to SpellData`
+  Unity Version Control → Pending Changes → stage the files below → Check in with message: `feat(DEV-22): SpellResultMatcher — parse Vosk JSON and match to SpellData`
   - `Assets/Scripts/Voice/Axiom.Voice.asmdef`
   - `Assets/Scripts/Voice/SpellResultMatcher.cs`
   - `Assets/Scripts/Voice/SpellResultMatcher.cs.meta`
@@ -398,7 +398,7 @@ using Axiom.Data;
 - [ ] **Check compile errors** — Unity Editor recompiles with no errors.
 
 - [ ] **Check in via UVCS:**
-  Unity Version Control → Pending Changes → stage the files below → Check in with message: `feat(battle): add OnSpellCast(SpellData) voice-spell entry point`
+  Unity Version Control → Pending Changes → stage the files below → Check in with message: `feat(DEV-22): add OnSpellCast(SpellData) voice-spell entry point`
   - `Assets/Scripts/Battle/BattleController.cs`
 
 ---
@@ -504,7 +504,7 @@ namespace Axiom.Voice
 - [ ] **Check compile errors** — Unity Editor recompiles with no errors.
 
 - [ ] **Check in via UVCS:**
-  Unity Version Control → Pending Changes → stage the files below → Check in with message: `feat(voice): SpellCastController polls result queue and dispatches matched spells`
+  Unity Version Control → Pending Changes → stage the files below → Check in with message: `feat(DEV-22): SpellCastController polls result queue and dispatches matched spells`
   - `Assets/Scripts/Voice/SpellCastController.cs`
   - `Assets/Scripts/Voice/SpellCastController.cs.meta`
 
@@ -528,7 +528,7 @@ namespace Axiom.Voice
 - [ ] **Check** the Unity Console — no errors after entering Play Mode.
 
 - [ ] **Check in via UVCS:**
-  Unity Version Control → Pending Changes → stage the files below → Check in with message: `feat(battle): add SpellCastController to Battle scene and assign BattleController`
+  Unity Version Control → Pending Changes → stage the files below → Check in with message: `feat(DEV-22): add SpellCastController to Battle scene and assign BattleController`
   - `Assets/Scenes/Battle.unity`
 
 ---
