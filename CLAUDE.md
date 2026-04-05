@@ -16,6 +16,7 @@ Only attach these when the task specifically requires them — they're large and
 
 | Document | When to use |
 | -------- | ----------- |
+| `docs/game-mechanics/chemistry-spell-combat-system.md` | Implementing or modifying any spell, enemy, or combat interaction that involves the chemistry condition system — authoritative field reference, resolver order, invariants, and examples |
 | `docs/LORE_AND_MECHANICS.md` | Designing new gameplay systems or spells (lore justification, chemistry concepts, enemy behaviors) |
 | `docs/GAME_DESIGN_DOCUMENT.md` | Writing Jira tickets or planning development phases (feature scope, asset lists, UI/UX specs) |
 

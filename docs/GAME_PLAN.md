@@ -297,6 +297,18 @@ via a save file. Spells unlock and become available to the voice recognizer dyna
 - Enemy Roster — create ScriptableObject data + battle behaviors for all enemies
 - Spell Roster — define all 30–100 Chemical Spells with names, elements,
   effects, MP cost, and unlock conditions
+
+  > **Data model change required before expanding the spell roster:**
+  > `SpellData` currently has a single `reactsWith: ChemicalCondition` field, supporting
+  > only one reaction target per spell. This is sufficient for Phase 2 test assets but
+  > breaks for any spell that reacts with multiple conditions (e.g. Combust reacts with
+  > both `Flammable` and `Pressurized` on the Gas Bloater — different bonus damage for
+  > each). Before creating the full spell roster, replace the four single-reaction fields
+  > (`reactsWith`, `reactionBonusDamage`, `transformsTo`, `transformationDuration`) with
+  > a `List<ReactionEntry>` where `ReactionEntry` is a `[Serializable]` class holding
+  > those same four fields. The resolver iterates the list and fires on the first matching
+  > condition. Do this **before** authoring more than a handful of spell assets — migrating
+  > 5 assets is trivial; migrating 50 is not.
 - NPC & Narrative — dialogue system, story cutscenes, key narrative moments
   that unlock spells
 - Boss Encounters — unique boss battle logic extending BattleManager
