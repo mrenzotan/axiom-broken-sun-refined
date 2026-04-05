@@ -1,7 +1,8 @@
 {
     "name": "UITests",
     "references": [
-        "Axiom.Battle"
+        "Axiom.Battle",
+        "Axiom.Data"
     ],
     "testReferences": [
         "UnityEngine.TestRunner",
