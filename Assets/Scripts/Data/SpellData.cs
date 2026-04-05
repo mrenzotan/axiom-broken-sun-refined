@@ -7,5 +7,31 @@ namespace Axiom.Data
     {
         [Tooltip("The spoken trigger word or phrase the player says to cast this spell.")]
         public string spellName;
+
+        [Tooltip("The type of effect this spell applies: Damage (targets enemy), Heal (targets caster), or Shield (targets caster).")]
+        public SpellEffectType effectType;
+
+        [Tooltip("Base magnitude: damage dealt, HP restored, or shield HP added. Stat-based modifiers are not applied in Phase 2.")]
+        public int power;
+
+        [Tooltip("MP cost to cast this spell.")]
+        public int mpCost;
+
+        [Header("Chemistry Condition System")]
+
+        [Tooltip("Status condition applied to the spell's primary target after it resolves. None if no condition is inflicted. Spells can never directly apply a material condition via this field.")]
+        public ChemicalCondition inflictsCondition;
+
+        [Tooltip("The condition (material or status) this spell reacts with if already present on the target. None if the spell has no reaction.")]
+        public ChemicalCondition reactsWith;
+
+        [Tooltip("Flat bonus added to the spell's primary effect when a reaction triggers. For Damage: bonus damage. For Heal: bonus HP restored. For Shield: bonus shield HP.")]
+        public int reactionBonusDamage;
+
+        [Tooltip("Material condition temporarily applied to the target when a phase-change reaction fires. None if this reaction causes no material transformation.")]
+        public ChemicalCondition transformsTo;
+
+        [Tooltip("How many turns the transformed material condition lasts before the innate condition is restored. Only meaningful when transformsTo != None.")]
+        public int transformationDuration;
     }
 }
