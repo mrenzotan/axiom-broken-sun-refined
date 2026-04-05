@@ -49,6 +49,10 @@ namespace Axiom.Battle
         private EnemyBattleAnimator _enemyAnimator;
 
         [SerializeField]
+        [Tooltip("EnemyData ScriptableObject for the enemy in this battle. Provides innateConditions for the enemy's CharacterStats. Optional — leave unassigned for standalone testing without conditions.")]
+        private Axiom.Data.EnemyData _enemyData;
+
+        [SerializeField]
         [Tooltip("Seconds to pause after an action so the message log is readable before the next turn begins.")]
         private float _actionDelay = 1f;
 
@@ -89,6 +93,32 @@ namespace Axiom.Battle
         /// </summary>
         public event Action OnSpellNotRecognized;
 
+        /// <summary>
+        /// Fires when a spell cast is rejected because the caster has insufficient MP.
+        /// Parameter: the rejection reason message string.
+        /// SpellInputUI subscribes to show the rejection message.
+        /// </summary>
+        public event Action<string> OnSpellCastRejected;
+
+        /// <summary>
+        /// Fires when a Heal spell resolves. Parameters: target CharacterStats, HP amount healed.
+        /// BattleHUD subscribes to update the HP bar.
+        /// </summary>
+        public event Action<CharacterStats, int> OnSpellHealed;
+
+        /// <summary>
+        /// Fires when a Shield spell resolves. Parameters: target CharacterStats, shield HP amount.
+        /// BattleHUD subscribes to display a blue shield number.
+        /// </summary>
+        public event Action<CharacterStats, int> OnShieldApplied;
+
+        /// <summary>
+        /// Fires when a condition DoT ticks at the start of a character's turn.
+        /// Parameters: afflicted CharacterStats, damage dealt, the condition that dealt it.
+        /// BattleHUD subscribes to show a floating DoT number.
+        /// </summary>
+        public event Action<CharacterStats, int, Axiom.Data.ChemicalCondition> OnConditionDamageTick;
+
         // ── Private fields ───────────────────────────────────────────────────
         private BattleManager _battleManager;
         private PlayerActionHandler _actionHandler;
@@ -102,6 +132,7 @@ namespace Axiom.Battle
         private bool _playerSequenceComplete;
         private bool _enemySequenceComplete;
         private bool _isAwaitingVoiceSpell;
+        private SpellEffectResolver _resolver;
 
         private void Start()
         {
@@ -130,11 +161,25 @@ namespace Axiom.Battle
             if (_battleManager != null)
                 _battleManager.OnStateChanged -= HandleStateChanged;
 
+            if (_enemyData != null)
+            {
+                _enemyStats.Name  = _enemyData.enemyName;
+                _enemyStats.MaxHP = _enemyData.maxHP;
+                _enemyStats.MaxMP = _enemyData.maxMP;
+                _enemyStats.ATK   = _enemyData.atk;
+                _enemyStats.DEF   = _enemyData.def;
+                _enemyStats.SPD   = _enemyData.spd;
+            }
+
             _playerStats.Initialize();
-            _enemyStats.Initialize();
+            _enemyStats.Initialize(_enemyData != null ? _enemyData.innateConditions : null);
+
+            _isProcessingAction   = false;
+            _isAwaitingVoiceSpell = false;
 
             _actionHandler      = new PlayerActionHandler(_playerStats, _enemyStats);
             _enemyActionHandler = new EnemyActionHandler(_enemyStats, _playerStats);
+            _resolver           = new SpellEffectResolver();
             _battleManager      = new BattleManager();
             _battleManager.OnStateChanged += HandleStateChanged;
 
@@ -159,7 +204,6 @@ namespace Axiom.Battle
             }
 
             _battleManager.StartBattle(startState);
-            _isAwaitingVoiceSpell = false;
         }
 
         // ── Player action methods — wired via ActionMenuUI.OnAttack etc. ─────
@@ -216,19 +260,54 @@ namespace Axiom.Battle
         }
 
         /// <summary>
-        /// Called by <see cref="Axiom.Voice.SpellCastController"/> when a recognized spell
-        /// name matches an unlocked spell during the voice spell phase.
+        /// Called by Axiom.Voice.SpellCastController when a recognized spell name
+        /// matches an unlocked spell during the voice spell phase.
         /// Guards against calls outside the voice spell phase or outside PlayerTurn.
+        /// Deducts MP first — if insufficient, fires OnSpellCastRejected and lets
+        /// the player choose again without advancing the turn.
         /// </summary>
         public void OnSpellCast(SpellData spell)
         {
             if (_battleManager.CurrentState != BattleState.PlayerTurn) return;
             if (!_isAwaitingVoiceSpell) return;
+
+            if (!_playerStats.SpendMP(spell.mpCost))
+            {
+                _isAwaitingVoiceSpell = false;
+                _isProcessingAction   = false;
+                OnSpellCastRejected?.Invoke($"Not enough MP to cast {spell.spellName}.");
+                Debug.Log($"[Battle] Spell rejected — insufficient MP for {spell.spellName}.");
+                return;
+            }
+
             _isAwaitingVoiceSpell     = false;
-            _playerDamageVisualsFired = true; // No damage visuals for spells in Phase 3
+            _playerDamageVisualsFired = true;
             OnSpellRecognized?.Invoke(spell);
-            Debug.Log($"[Battle] Voice spell cast: {spell.spellName}");
-            StartCoroutine(CompletePlayerAction(targetDefeated: false));
+
+            SpellResult result = _resolver.Resolve(spell, _playerStats, _enemyStats);
+
+            switch (result.EffectType)
+            {
+                case SpellEffectType.Damage:
+                    OnDamageDealt?.Invoke(_enemyStats, result.Amount, false);
+                    if (result.TargetDefeated)
+                        OnCharacterDefeated?.Invoke(_enemyStats);
+                    break;
+                case SpellEffectType.Heal:
+                    OnSpellHealed?.Invoke(_playerStats, result.Amount);
+                    break;
+                case SpellEffectType.Shield:
+                    OnShieldApplied?.Invoke(_playerStats, result.Amount);
+                    break;
+            }
+
+            // Zero-damage ping so BattleHUD refreshes MP bar after the spend.
+            OnDamageDealt?.Invoke(_playerStats, 0, false);
+
+            Debug.Log($"[Battle] Spell cast: {spell.spellName} → {result.EffectType} {result.Amount}" +
+                      $"{(result.ReactionTriggered ? " [REACTION]" : string.Empty)}");
+
+            StartCoroutine(CompletePlayerAction(result.TargetDefeated));
         }
 
         /// <summary>
@@ -270,11 +349,43 @@ namespace Axiom.Battle
             Debug.Log($"[Battle] → {state}");
             OnBattleStateChanged?.Invoke(state);
 
-            if (state == BattleState.EnemyTurn)
-                ExecuteEnemyTurn();
-
-            if (state == BattleState.Fled)
+            if (state == BattleState.PlayerTurn)
+                ProcessPlayerTurnStart();
+            else if (state == BattleState.EnemyTurn)
+                ProcessEnemyTurnStart();
+            else if (state == BattleState.Fled)
                 SceneManager.LoadScene("Platformer");
+        }
+
+        private void ProcessPlayerTurnStart()
+        {
+            ConditionTurnResult result = _playerStats.ProcessConditionTurn();
+            if (result.TotalDamageDealt > 0)
+                OnConditionDamageTick?.Invoke(_playerStats, result.TotalDamageDealt, Axiom.Data.ChemicalCondition.None);
+
+            if (result.ActionSkipped)
+            {
+                Debug.Log("[Battle] Player is Frozen — turn skipped.");
+                _isProcessingAction = true;
+                _playerDamageVisualsFired = true;
+                StartCoroutine(CompletePlayerAction(targetDefeated: false));
+            }
+        }
+
+        private void ProcessEnemyTurnStart()
+        {
+            ConditionTurnResult result = _enemyStats.ProcessConditionTurn();
+            if (result.TotalDamageDealt > 0)
+                OnConditionDamageTick?.Invoke(_enemyStats, result.TotalDamageDealt, Axiom.Data.ChemicalCondition.None);
+
+            if (result.ActionSkipped)
+            {
+                Debug.Log("[Battle] Enemy is Frozen — turn skipped.");
+                _battleManager.OnEnemyActionComplete(false);
+                return;
+            }
+
+            ExecuteEnemyTurn();
         }
 
         private void ExecuteEnemyTurn()
