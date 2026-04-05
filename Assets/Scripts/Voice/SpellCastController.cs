@@ -25,9 +25,9 @@ namespace Axiom.Voice
         [Tooltip("Assign the BattleController component from this scene.")]
         private BattleController _battleController;
 
-        private ConcurrentQueue<string>  _resultQueue;
+        private ConcurrentQueue<string> _resultQueue;
         private IReadOnlyList<SpellData> _unlockedSpells;
-        private bool                     _battleControllerWarningLogged;
+        private bool _battleControllerWarningLogged;
 
         // ── Injection ─────────────────────────────────────────────────────────────
 
@@ -36,10 +36,10 @@ namespace Axiom.Voice
         /// Call this before or after Start() — the queue is replaced if already stubbed.
         /// </summary>
         public void Inject(
-            ConcurrentQueue<string>  resultQueue,
+            ConcurrentQueue<string> resultQueue,
             IReadOnlyList<SpellData> unlockedSpells)
         {
-            _resultQueue    = resultQueue;
+            _resultQueue = resultQueue;
             _unlockedSpells = unlockedSpells;
         }
 
@@ -49,7 +49,7 @@ namespace Axiom.Voice
         {
             // Stub queue and empty spell list keep Update() safe when Inject() has not been
             // called yet — allows the Battle scene to run in isolation without a Vosk service.
-            _resultQueue    = _resultQueue    ?? new ConcurrentQueue<string>();
+            _resultQueue = _resultQueue ?? new ConcurrentQueue<string>();
             _unlockedSpells = _unlockedSpells ?? Array.Empty<SpellData>();
         }
 
