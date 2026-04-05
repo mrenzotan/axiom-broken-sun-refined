@@ -141,4 +141,28 @@ public class SpellInputUILogicTests
         Assert.That(_logic.CurrentState,        Is.EqualTo(SpellInputUILogic.State.NotRecognized));
         Assert.That(_logic.RecognizedSpellName, Is.Null);
     }
+
+    // ── ShowRejection ─────────────────────────────────────────────────────────
+
+    [Test]
+    public void ShowRejection_SetsRejectedState()
+    {
+        _logic.ShowRejection("Not enough MP.");
+        Assert.That(_logic.CurrentState, Is.EqualTo(SpellInputUILogic.State.Rejected));
+    }
+
+    [Test]
+    public void ShowRejection_StoresRejectionMessage()
+    {
+        _logic.ShowRejection("Not enough MP to cast Freeze.");
+        Assert.That(_logic.RejectionMessage, Is.EqualTo("Not enough MP to cast Freeze."));
+    }
+
+    [Test]
+    public void ShowPrompt_ClearsRejectionMessage()
+    {
+        _logic.ShowRejection("Not enough MP.");
+        _logic.ShowPrompt();
+        Assert.That(_logic.RejectionMessage, Is.Null);
+    }
 }
