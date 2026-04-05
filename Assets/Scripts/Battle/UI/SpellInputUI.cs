@@ -53,6 +53,7 @@ namespace Axiom.Battle
             _battleController.OnSpellPhaseStarted  += HandleSpellPhaseStarted;
             _battleController.OnSpellRecognized    += HandleSpellRecognized;
             _battleController.OnSpellNotRecognized += HandleSpellNotRecognized;
+            _battleController.OnSpellCastRejected  += HandleSpellCastRejected;
             _battleController.OnBattleStateChanged += HandleBattleStateChanged;
 
             _logic.Hide();
@@ -104,6 +105,15 @@ namespace Axiom.Battle
             _autoHide = StartCoroutine(AutoHideAfterDelay(returnToPrompt: true));
         }
 
+        private void HandleSpellCastRejected(string reason)
+        {
+            CancelAutoHide();
+            _logic.ShowRejection(reason);
+            Refresh();
+            // Return to action menu automatically — player must re-select Spell or another action.
+            _autoHide = StartCoroutine(AutoHideAfterDelay(returnToPrompt: false));
+        }
+
         private void HandleBattleStateChanged(BattleState state)
         {
             // When the turn advances (EnemyTurn, Victory, Defeat, Fled), hide everything.
@@ -139,15 +149,18 @@ namespace Axiom.Battle
             SetActive(_promptPanel,    state == SpellInputUILogic.State.PromptVisible);
             SetActive(_listeningPanel, state == SpellInputUILogic.State.Listening);
             SetActive(_feedbackPanel,  state == SpellInputUILogic.State.SpellRecognized
-                                    || state == SpellInputUILogic.State.NotRecognized);
+                                    || state == SpellInputUILogic.State.NotRecognized
+                                    || state == SpellInputUILogic.State.Rejected);
 
             if (_feedbackText != null)
             {
-                _feedbackText.text = state == SpellInputUILogic.State.SpellRecognized
-                    ? _logic.RecognizedSpellName
-                    : state == SpellInputUILogic.State.NotRecognized
-                        ? "Not recognized. Try again."
-                        : string.Empty;
+                _feedbackText.text = state switch
+                {
+                    SpellInputUILogic.State.SpellRecognized => _logic.RecognizedSpellName,
+                    SpellInputUILogic.State.NotRecognized   => "Not recognized. Try again.",
+                    SpellInputUILogic.State.Rejected        => _logic.RejectionMessage,
+                    _                                       => string.Empty
+                };
             }
         }
 
@@ -184,6 +197,7 @@ namespace Axiom.Battle
             _battleController.OnSpellPhaseStarted  -= HandleSpellPhaseStarted;
             _battleController.OnSpellRecognized    -= HandleSpellRecognized;
             _battleController.OnSpellNotRecognized -= HandleSpellNotRecognized;
+            _battleController.OnSpellCastRejected  -= HandleSpellCastRejected;
             _battleController.OnBattleStateChanged -= HandleBattleStateChanged;
         }
     }
