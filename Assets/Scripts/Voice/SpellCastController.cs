@@ -58,7 +58,17 @@ namespace Axiom.Voice
             while (_resultQueue.TryDequeue(out string voskJson))
             {
                 SpellData matched = SpellResultMatcher.Match(voskJson, _unlockedSpells);
-                if (matched == null) continue;
+
+                if (matched == null)
+                {
+                    // Forward "final result, no match" to BattleController for UI feedback.
+                    // ExtractTextField returns empty for partial results (no "text" key),
+                    // so this only fires on genuine final results that didn't match a spell.
+                    string recognized = SpellResultMatcher.ExtractTextField(voskJson);
+                    if (!string.IsNullOrWhiteSpace(recognized) && _battleController != null)
+                        _battleController.NotifySpellNotRecognized();
+                    continue;
+                }
 
                 if (_battleController == null)
                 {

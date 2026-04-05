@@ -37,6 +37,10 @@ namespace Axiom.Battle
         private BattleHUD _battleHUD;
 
         [SerializeField]
+        [Tooltip("Assign the SpellInputUI component from the Battle Canvas.")]
+        private SpellInputUI _spellInputUI;
+
+        [SerializeField]
         [Tooltip("Attach the PlayerBattleAnimator component from the player GameObject in the Battle scene.")]
         private PlayerBattleAnimator _playerAnimator;
 
@@ -66,6 +70,25 @@ namespace Axiom.Battle
         /// <summary>Fires at the start of the enemy's attack, before damage is calculated.</summary>
         public event Action OnEnemyActionStarted;
 
+        /// <summary>
+        /// Fires when the player selects the Spell action, opening the voice spell phase.
+        /// SpellInputUI subscribes to show the PTT prompt panel.
+        /// </summary>
+        public event Action OnSpellPhaseStarted;
+
+        /// <summary>
+        /// Fires when Vosk returns a recognized spell name before execution resolves.
+        /// SpellInputUI subscribes to display the spell name briefly.
+        /// </summary>
+        public event Action<SpellData> OnSpellRecognized;
+
+        /// <summary>
+        /// Fires when Vosk returns a final result that does not match any unlocked spell.
+        /// SpellInputUI subscribes to show the "Not recognized" error panel.
+        /// Raised via <see cref="NotifySpellNotRecognized"/> (called from SpellCastController).
+        /// </summary>
+        public event Action OnSpellNotRecognized;
+
         // ── Private fields ───────────────────────────────────────────────────
         private BattleManager _battleManager;
         private PlayerActionHandler _actionHandler;
@@ -78,6 +101,7 @@ namespace Axiom.Battle
         private bool _enemyDamageVisualsFired;
         private bool _playerSequenceComplete;
         private bool _enemySequenceComplete;
+        private bool _isAwaitingVoiceSpell;
 
         private void Start()
         {
@@ -115,6 +139,7 @@ namespace Axiom.Battle
             _battleManager.OnStateChanged += HandleStateChanged;
 
             _battleHUD?.Setup(this, _playerStats, _enemyStats);
+            _spellInputUI?.Setup(this);
 
             if (_playerAnimator != null && _enemyAnimator != null)
             {
@@ -134,6 +159,7 @@ namespace Axiom.Battle
             }
 
             _battleManager.StartBattle(startState);
+            _isAwaitingVoiceSpell = false;
         }
 
         // ── Player action methods — wired via ActionMenuUI.OnAttack etc. ─────
@@ -174,31 +200,47 @@ namespace Axiom.Battle
             _battleManager.OnPlayerActionComplete(targetDefeated);
         }
 
-        /// <summary>Executes the Spell placeholder action. No-op outside PlayerTurn or while an action is processing.</summary>
+        /// <summary>
+        /// Called by ActionMenuUI when the player selects the Spell action.
+        /// Enters the voice spell phase: shows the PTT prompt and blocks other actions
+        /// until a spell is recognized via <see cref="OnSpellCast"/>.
+        /// No-op outside PlayerTurn or while an action is already processing.
+        /// </summary>
         public void PlayerSpell()
         {
             if (_battleManager.CurrentState != BattleState.PlayerTurn) return;
             if (_isProcessingAction) return;
-            _isProcessingAction = true;
-            _playerDamageVisualsFired = true; // No damage visuals for spell placeholder
-            string message = _actionHandler.ExecuteSpell();
-            Debug.Log($"[Battle] Spell: {message}");
-            StartCoroutine(CompletePlayerAction(targetDefeated: false));
+            _isProcessingAction   = true;
+            _isAwaitingVoiceSpell = true;
+            OnSpellPhaseStarted?.Invoke();
         }
 
         /// <summary>
-        /// Called by SpellCastController when a recognized spell name matches an unlocked spell.
-        /// Guards against calls outside PlayerTurn or while an action is already processing.
-        /// In Phase 3 the spell executes without damage — Phase 6 will add per-spell effects.
+        /// Called by <see cref="Axiom.Voice.SpellCastController"/> when a recognized spell
+        /// name matches an unlocked spell during the voice spell phase.
+        /// Guards against calls outside the voice spell phase or outside PlayerTurn.
         /// </summary>
         public void OnSpellCast(SpellData spell)
         {
             if (_battleManager.CurrentState != BattleState.PlayerTurn) return;
-            if (_isProcessingAction) return;
-            _isProcessingAction = true;
+            if (!_isAwaitingVoiceSpell) return;
+            _isAwaitingVoiceSpell     = false;
             _playerDamageVisualsFired = true; // No damage visuals for spells in Phase 3
+            OnSpellRecognized?.Invoke(spell);
             Debug.Log($"[Battle] Voice spell cast: {spell.spellName}");
             StartCoroutine(CompletePlayerAction(targetDefeated: false));
+        }
+
+        /// <summary>
+        /// Called by <see cref="Axiom.Voice.SpellCastController"/> when Vosk returns a final
+        /// result that does not match any unlocked spell during the voice spell phase.
+        /// No-op outside the voice spell phase or outside PlayerTurn.
+        /// </summary>
+        public void NotifySpellNotRecognized()
+        {
+            if (!_isAwaitingVoiceSpell) return;
+            if (_battleManager.CurrentState != BattleState.PlayerTurn) return;
+            OnSpellNotRecognized?.Invoke();
         }
 
         /// <summary>Executes the Item placeholder action. No-op outside PlayerTurn or while an action is processing.</summary>
