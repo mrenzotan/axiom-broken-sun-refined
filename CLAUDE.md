@@ -26,7 +26,9 @@ This is a Unity project — there are no CLI build or test commands. All develop
 
 ### Scenes
 
-- `Assets/Scenes/SampleScene.unity` — current only scene (project is early-stage)
+- `Assets/Scenes/Battle.unity` — turn-based combat scene
+- `Assets/Scenes/Platformer.unity` — side-scrolling platformer/exploration scene
+- `Assets/Scenes/SampleScene.unity` — unused placeholder
 - Planned: `MainMenu`, `World_01..N` (platformer), `Battle` (turn-based combat) as separate scenes
 
 ### Scripts Folder Structure (planned, follow this when creating scripts)
