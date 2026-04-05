@@ -27,11 +27,16 @@ namespace Axiom.Battle
 
         /// <summary>
         /// Deals damage to the player. Returns AttackResult with damage, crit flag,
-        /// and whether the player was defeated.
+        /// defeat flag, and immunity flag.
+        /// If the player is Liquid or Vapor (IsPhysicallyImmune), the attack deals 0 damage.
+        /// Uses EffectiveATK to respect Crystallized halving on the enemy.
         /// </summary>
         public AttackResult ExecuteAttack()
         {
-            int baseDamage = Math.Max(1, _enemyStats.ATK - _playerStats.DEF);
+            if (_playerStats.IsPhysicallyImmune)
+                return new AttackResult { Damage = 0, IsCrit = false, TargetDefeated = false, IsImmune = true };
+
+            int baseDamage = Math.Max(1, _enemyStats.EffectiveATK - _playerStats.DEF);
             bool isCrit    = _randomSource() < CritChance;
             int damage     = isCrit ? (int)(baseDamage * CritMultiplier) : baseDamage;
             _playerStats.TakeDamage(damage);
@@ -39,7 +44,8 @@ namespace Axiom.Battle
             {
                 Damage         = damage,
                 IsCrit         = isCrit,
-                TargetDefeated = _playerStats.IsDefeated
+                TargetDefeated = _playerStats.IsDefeated,
+                IsImmune       = false
             };
         }
     }
