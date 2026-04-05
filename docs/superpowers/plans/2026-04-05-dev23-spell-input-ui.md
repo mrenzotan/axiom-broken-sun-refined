@@ -31,7 +31,7 @@ No new `.asmdef` files needed. `SpellInputUILogic` and `SpellInputUI` join the e
 [Idle]
   │  BattleController.OnSpellPhaseStarted
   ▼
-[PromptVisible]   ← "Hold [Space] and speak a spell name"
+[PromptVisible]   ← "Hold [Left Shift] and speak a spell name"
   │  PTT pressed (InputAction.started)
   ▼
 [Listening]       ← "Listening..."
@@ -533,7 +533,7 @@ namespace Axiom.Battle
     /// MonoBehaviour that drives the spell input UI panels during the voice spell phase.
     ///
     /// Panel visibility is controlled by three child GameObjects assigned in the Inspector:
-    ///   - PromptPanel    — visible in PromptVisible state ("Hold [Space] and speak a spell name")
+    ///   - PromptPanel    — visible in PromptVisible state ("Hold [Left Shift] and speak a spell name")
     ///   - ListeningPanel — visible in Listening state ("Listening...")
     ///   - FeedbackPanel  — visible in SpellRecognized / NotRecognized states (dynamic TMP text)
     ///
@@ -738,7 +738,7 @@ namespace Axiom.Battle
   Right-click `SpellInputPanel` → UI → Panel → rename to `PromptPanel`.
   - Position: bottom-center of the canvas (Anchor: bottom-center, Pivot: 0.5/0, PosX: 0, PosY: 40, Width: 500, Height: 60).
   - Right-click `PromptPanel` → UI → Text - TextMeshPro → rename to `PromptText`.
-  - Set `PromptText` content to: **"Hold [Space] and speak a spell name"**
+  - Set `PromptText` content to: **"Hold [Left Shift] and speak a spell name"**
   - Font Size: 24, Alignment: Center/Middle, Color: white.
   - Set `PromptPanel` active: **false** (it starts hidden).
 
@@ -782,7 +782,7 @@ namespace Axiom.Battle
 
 - [ ] **Play Mode smoke test:**
   1. Enter Play Mode (▶).
-  2. Click **Spell** in the action menu → `PromptPanel` should appear ("Hold [Space] and speak a spell name"). `ListeningPanel` and `FeedbackPanel` should be hidden.
+  2. Click **Spell** in the action menu → `PromptPanel` should appear ("Hold [Left Shift] and speak a spell name"). `ListeningPanel` and `FeedbackPanel` should be hidden.
   3. Hold the PTT key → `ListeningPanel` should appear, `PromptPanel` should hide.
   4. Release PTT → `PromptPanel` should return (Listening → PromptVisible transition).
   5. If Vosk is connected and returns a no-match result → `FeedbackPanel` appears with "Not recognized. Try again." then auto-hides after 2s and returns to `PromptPanel`.
