@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Axiom.Data;
 
 namespace Axiom.Battle
 {
@@ -182,6 +183,21 @@ namespace Axiom.Battle
             _playerDamageVisualsFired = true; // No damage visuals for spell placeholder
             string message = _actionHandler.ExecuteSpell();
             Debug.Log($"[Battle] Spell: {message}");
+            StartCoroutine(CompletePlayerAction(targetDefeated: false));
+        }
+
+        /// <summary>
+        /// Called by SpellCastController when a recognized spell name matches an unlocked spell.
+        /// Guards against calls outside PlayerTurn or while an action is already processing.
+        /// In Phase 3 the spell executes without damage — Phase 6 will add per-spell effects.
+        /// </summary>
+        public void OnSpellCast(SpellData spell)
+        {
+            if (_battleManager.CurrentState != BattleState.PlayerTurn) return;
+            if (_isProcessingAction) return;
+            _isProcessingAction = true;
+            _playerDamageVisualsFired = true; // No damage visuals for spells in Phase 3
+            Debug.Log($"[Battle] Voice spell cast: {spell.spellName}");
             StartCoroutine(CompletePlayerAction(targetDefeated: false));
         }
 
