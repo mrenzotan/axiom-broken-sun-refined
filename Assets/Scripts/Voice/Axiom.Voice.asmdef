@@ -2,6 +2,7 @@
     "name": "Axiom.Voice",
     "references": [
         "Axiom.Data",
+        "Axiom.Battle",
         "Unity.InputSystem"
     ],
     "includePlatforms": [],
