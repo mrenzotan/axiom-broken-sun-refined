@@ -1,7 +1,6 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
-using Axiom.Battle;
 using Axiom.Data;
 
 namespace Axiom.Battle
@@ -34,6 +33,12 @@ namespace Axiom.Battle
         /// </summary>
         public void Refresh(CharacterStats stats)
         {
+            if (_container == null || _badgePrefab == null)
+            {
+                Debug.LogError("[ConditionBadgeUI] _container or _badgePrefab is not assigned.", this);
+                return;
+            }
+
             // Clear existing badges
             foreach (Transform child in _container)
                 Destroy(child.gameObject);
@@ -72,13 +77,15 @@ namespace Axiom.Battle
             {
                 case ChemicalCondition.Frozen:       return "Frozen";
                 case ChemicalCondition.Burning:      return "Burning";
-                case ChemicalCondition.Evaporating:  return "Evaporate";
+                case ChemicalCondition.Evaporating:  return "Evaporating";
                 case ChemicalCondition.Corroded:     return "Corroded";
                 case ChemicalCondition.Crystallized: return "Crystal";
                 case ChemicalCondition.Solid:        return "Solid";
                 case ChemicalCondition.Vapor:        return "Vapor";
                 case ChemicalCondition.Liquid:       return "Liquid";
-                default:                             return condition.ToString();
+                default:
+                    Debug.LogWarning($"[ConditionBadgeUI] No label defined for {condition}");
+                    return condition.ToString();
             }
         }
 
@@ -93,7 +100,9 @@ namespace Axiom.Battle
                 case ChemicalCondition.Vapor:        return new Color(0.60f, 0.80f, 0.90f); // pale blue
                 case ChemicalCondition.Corroded:     return new Color(0.47f, 0.70f, 0.22f); // acid green
                 case ChemicalCondition.Crystallized: return new Color(0.60f, 0.44f, 0.85f); // purple
-                default:                             return new Color(0.50f, 0.50f, 0.50f); // grey
+                default:
+                    Debug.LogWarning($"[ConditionBadgeUI] No color defined for {condition}");
+                    return new Color(0.50f, 0.50f, 0.50f); // grey
             }
         }
     }
