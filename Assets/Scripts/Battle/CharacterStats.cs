@@ -169,13 +169,13 @@ namespace Axiom.Battle
         /// Adds a status condition entry. The resolver calls HasCondition() first, so
         /// duplicate prevention is the resolver's responsibility, not this method's.
         /// </summary>
-        public void ApplyStatusCondition(ChemicalCondition condition, int baseDamage = 0)
+        public void ApplyStatusCondition(ChemicalCondition condition, int baseDamage = 0, int duration = 0)
         {
-            int duration = DefaultDurationFor(condition);
+            int effectiveDuration = duration > 0 ? duration : DefaultDurationFor(condition);
             ActiveStatusConditions.Add(new StatusConditionEntry
             {
                 Condition      = condition,
-                TurnsRemaining = duration,
+                TurnsRemaining = effectiveDuration,
                 TickCount      = 0,
                 BaseDamage     = baseDamage
             });

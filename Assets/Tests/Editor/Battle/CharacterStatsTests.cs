@@ -511,4 +511,29 @@ public class CharacterStatsTests
 
         Assert.AreEqual(0, stats.GetMaterialTransformTurns(Axiom.Data.ChemicalCondition.Solid));
     }
+
+    // ---- ApplyStatusCondition duration ----
+
+    [Test]
+    public void ApplyStatusCondition_WhenDurationIsZero_UsesDefaultDuration()
+    {
+        var stats = MakeStats();
+        stats.Initialize();
+
+        // Frozen default is 1 turn
+        stats.ApplyStatusCondition(Axiom.Data.ChemicalCondition.Frozen, duration: 0);
+
+        Assert.AreEqual(1, stats.ActiveStatusConditions[0].TurnsRemaining);
+    }
+
+    [Test]
+    public void ApplyStatusCondition_WhenDurationIsNonZero_UsesSuppliedDuration()
+    {
+        var stats = MakeStats();
+        stats.Initialize();
+
+        stats.ApplyStatusCondition(Axiom.Data.ChemicalCondition.Frozen, duration: 3);
+
+        Assert.AreEqual(3, stats.ActiveStatusConditions[0].TurnsRemaining);
+    }
 }
