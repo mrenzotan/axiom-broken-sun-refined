@@ -119,6 +119,14 @@ namespace Axiom.Battle
         /// </summary>
         public event Action<CharacterStats, int, Axiom.Data.ChemicalCondition> OnConditionDamageTick;
 
+        /// <summary>
+        /// Fires when a physical attack is fully blocked by the target's material state
+        /// (Liquid or Vapor — IsPhysicallyImmune). No damage is dealt.
+        /// Parameters: attacker CharacterStats, target CharacterStats.
+        /// BattleHUD subscribes to show a specific immunity message in the log.
+        /// </summary>
+        public event Action<CharacterStats, CharacterStats> OnPhysicalAttackImmune;
+
         // ── Private fields ───────────────────────────────────────────────────
         private BattleManager _battleManager;
         private PlayerActionHandler _actionHandler;
@@ -421,6 +429,13 @@ namespace Axiom.Battle
         {
             if (_playerDamageVisualsFired) return;
             _playerDamageVisualsFired = true;
+
+            if (_pendingPlayerAttack.IsImmune)
+            {
+                OnPhysicalAttackImmune?.Invoke(_playerStats, _enemyStats);
+                return; // No damage occurred — skip OnDamageDealt to avoid a "0 damage" floating number
+            }
+
             OnDamageDealt?.Invoke(_enemyStats, _pendingPlayerAttack.Damage, _pendingPlayerAttack.IsCrit);
             if (_pendingPlayerAttack.TargetDefeated)
                 OnCharacterDefeated?.Invoke(_enemyStats);
@@ -430,6 +445,13 @@ namespace Axiom.Battle
         {
             if (_enemyDamageVisualsFired) return;
             _enemyDamageVisualsFired = true;
+
+            if (_pendingEnemyAttack.IsImmune)
+            {
+                OnPhysicalAttackImmune?.Invoke(_enemyStats, _playerStats);
+                return; // No damage occurred — skip OnDamageDealt
+            }
+
             OnDamageDealt?.Invoke(_playerStats, _pendingEnemyAttack.Damage, _pendingEnemyAttack.IsCrit);
             if (_pendingEnemyAttack.TargetDefeated)
                 OnCharacterDefeated?.Invoke(_playerStats);
