@@ -450,4 +450,65 @@ public class CharacterStatsTests
         Assert.AreEqual(0,     result.TotalDamageDealt);
         Assert.IsFalse(result.ActionSkipped);
     }
+
+    // ---- GetMaterialTransformTurns ----
+
+    [Test]
+    public void GetMaterialTransformTurns_ActiveTransformation_ReturnsTurnsRemaining()
+    {
+        var stats = MakeStats();
+        var innate = new System.Collections.Generic.List<Axiom.Data.ChemicalCondition>
+            { Axiom.Data.ChemicalCondition.Liquid };
+        stats.Initialize(innate);
+
+        // Simulate a Freeze reaction: consume Liquid, apply Solid for 2 turns
+        stats.ConsumeCondition(Axiom.Data.ChemicalCondition.Liquid);
+        stats.ApplyMaterialTransformation(
+            Axiom.Data.ChemicalCondition.Solid,
+            Axiom.Data.ChemicalCondition.Liquid,
+            2);
+
+        Assert.AreEqual(2, stats.GetMaterialTransformTurns(Axiom.Data.ChemicalCondition.Solid));
+    }
+
+    [Test]
+    public void GetMaterialTransformTurns_InnateCondition_ReturnsZero()
+    {
+        var stats = MakeStats();
+        var innate = new System.Collections.Generic.List<Axiom.Data.ChemicalCondition>
+            { Axiom.Data.ChemicalCondition.Liquid };
+        stats.Initialize(innate);
+
+        // Liquid is innate/permanent — not a transformation
+        Assert.AreEqual(0, stats.GetMaterialTransformTurns(Axiom.Data.ChemicalCondition.Liquid));
+    }
+
+    [Test]
+    public void GetMaterialTransformTurns_ConditionNotPresent_ReturnsZero()
+    {
+        var stats = MakeStats();
+        stats.Initialize();
+
+        Assert.AreEqual(0, stats.GetMaterialTransformTurns(Axiom.Data.ChemicalCondition.Solid));
+    }
+
+    [Test]
+    public void GetMaterialTransformTurns_AfterTransformationExpires_ReturnsZero()
+    {
+        var stats = MakeStats();
+        var innate = new System.Collections.Generic.List<Axiom.Data.ChemicalCondition>
+            { Axiom.Data.ChemicalCondition.Liquid };
+        stats.Initialize(innate);
+
+        stats.ConsumeCondition(Axiom.Data.ChemicalCondition.Liquid);
+        stats.ApplyMaterialTransformation(
+            Axiom.Data.ChemicalCondition.Solid,
+            Axiom.Data.ChemicalCondition.Liquid,
+            1);
+
+        // Tick once — 1-turn transformation expires
+        stats.ProcessConditionTurn();
+
+        Assert.AreEqual(0, stats.GetMaterialTransformTurns(Axiom.Data.ChemicalCondition.Solid));
+    }
 }
