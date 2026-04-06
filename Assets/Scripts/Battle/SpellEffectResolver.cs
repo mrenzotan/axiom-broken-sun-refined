@@ -92,7 +92,7 @@ namespace Axiom.Battle
                 && !effectTarget.HasCondition(spell.inflictsCondition))
             {
                 int baseDamage = DoTDamageFor(spell.inflictsCondition);
-                effectTarget.ApplyStatusCondition(spell.inflictsCondition, baseDamage);
+                effectTarget.ApplyStatusCondition(spell.inflictsCondition, baseDamage, spell.inflictsConditionDuration);
                 conditionApplied = spell.inflictsCondition;
             }
 

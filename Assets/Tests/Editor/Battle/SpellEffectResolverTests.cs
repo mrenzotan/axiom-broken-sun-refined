@@ -258,4 +258,23 @@ public class SpellEffectResolverTests
         Assert.AreEqual(15, result.Amount);
         Assert.AreEqual(45, _target.CurrentHP);
     }
+
+    [Test]
+    public void Resolve_WhenSpellHasInflictsConditionDuration_AppliesCorrectDuration()
+    {
+        var spell = ScriptableObject.CreateInstance<SpellData>();
+        spell.effectType                = SpellEffectType.Damage;
+        spell.power                     = 0;
+        spell.inflictsCondition         = ChemicalCondition.Frozen;
+        spell.inflictsConditionDuration = 4;
+
+        _caster.Initialize();
+        _target.Initialize();
+
+        _resolver.Resolve(spell, _caster, _target);
+
+        Assert.AreEqual(4, _target.ActiveStatusConditions[0].TurnsRemaining);
+
+        UnityEngine.Object.DestroyImmediate(spell);
+    }
 }

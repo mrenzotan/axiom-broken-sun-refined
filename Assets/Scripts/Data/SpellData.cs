@@ -22,6 +22,9 @@ namespace Axiom.Data
         [Tooltip("Status condition applied to the spell's primary target after it resolves. None if no condition is inflicted. Spells can never directly apply a material condition via this field.")]
         public ChemicalCondition inflictsCondition;
 
+        [Tooltip("How many turns the inflicted condition lasts. 0 = use the default duration for that condition (Frozen: 1, Evaporating: 2, Burning: 2, Corroded: 3, Crystallized: 2).")]
+        public int inflictsConditionDuration;
+
         [Tooltip("The condition (material or status) this spell reacts with if already present on the target. None if the spell has no reaction.")]
         public ChemicalCondition reactsWith;
 
