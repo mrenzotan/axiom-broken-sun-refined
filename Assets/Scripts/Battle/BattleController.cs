@@ -127,6 +127,14 @@ namespace Axiom.Battle
         /// </summary>
         public event Action<CharacterStats, CharacterStats> OnPhysicalAttackImmune;
 
+        /// <summary>
+        /// Fires when a character's active condition list may have changed —
+        /// after ProcessConditionTurn() ticks conditions, or after a spell applies a new condition.
+        /// Parameter: the CharacterStats whose conditions changed.
+        /// BattleHUD subscribes to refresh ConditionBadgeUI for the matching character.
+        /// </summary>
+        public event Action<CharacterStats> OnConditionsChanged;
+
         // ── Private fields ───────────────────────────────────────────────────
         private BattleManager _battleManager;
         private PlayerActionHandler _actionHandler;
@@ -309,6 +317,10 @@ namespace Axiom.Battle
                     break;
             }
 
+            // Conditions on either character may have changed due to the spell.
+            OnConditionsChanged?.Invoke(_playerStats);
+            OnConditionsChanged?.Invoke(_enemyStats);
+
             // Zero-damage ping so BattleHUD refreshes MP bar after the spend.
             OnDamageDealt?.Invoke(_playerStats, 0, false);
 
@@ -378,6 +390,8 @@ namespace Axiom.Battle
                 _playerDamageVisualsFired = true;
                 StartCoroutine(CompletePlayerAction(targetDefeated: false));
             }
+
+            OnConditionsChanged?.Invoke(_playerStats);
         }
 
         private void ProcessEnemyTurnStart()
@@ -390,9 +404,11 @@ namespace Axiom.Battle
             {
                 Debug.Log("[Battle] Enemy is Frozen — turn skipped.");
                 _battleManager.OnEnemyActionComplete(false);
+                OnConditionsChanged?.Invoke(_enemyStats);
                 return;
             }
 
+            OnConditionsChanged?.Invoke(_enemyStats);
             ExecuteEnemyTurn();
         }
 
