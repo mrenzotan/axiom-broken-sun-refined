@@ -298,6 +298,22 @@ namespace Axiom.Battle
             };
         }
 
+        // ── Condition queries (continued) ────────────────────────────────────────
+
+        /// <summary>
+        /// Returns the turns remaining for a condition that is active as a temporary
+        /// material transformation (e.g. Liquid frozen into Solid for N turns).
+        /// Returns 0 if the condition is not active as a transformation — i.e. it is
+        /// either an innate permanent condition or not present at all.
+        /// </summary>
+        public int GetMaterialTransformTurns(ChemicalCondition condition)
+        {
+            foreach (var transform in _materialTransformations)
+                if (transform.ReplacementCondition == condition)
+                    return transform.TurnsRemaining;
+            return 0;
+        }
+
         // ── Helpers ──────────────────────────────────────────────────────────
 
         private static int DefaultDurationFor(ChemicalCondition condition)
