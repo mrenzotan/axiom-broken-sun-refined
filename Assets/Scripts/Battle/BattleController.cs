@@ -135,6 +135,13 @@ namespace Axiom.Battle
         /// </summary>
         public event Action<CharacterStats> OnConditionsChanged;
 
+        /// <summary>
+        /// Fires when a character's turn is skipped because they are Frozen.
+        /// Parameter: the CharacterStats whose action was skipped.
+        /// BattleHUD subscribes to post a "can't move" message in the log.
+        /// </summary>
+        public event Action<CharacterStats> OnActionSkipped;
+
         // ── Private fields ───────────────────────────────────────────────────
         private BattleManager _battleManager;
         private PlayerActionHandler _actionHandler;
@@ -386,6 +393,7 @@ namespace Axiom.Battle
             if (result.ActionSkipped)
             {
                 Debug.Log("[Battle] Player is Frozen — turn skipped.");
+                OnActionSkipped?.Invoke(_playerStats);
                 _isProcessingAction = true;
                 _playerDamageVisualsFired = true;
                 StartCoroutine(CompletePlayerAction(targetDefeated: false));
@@ -404,6 +412,7 @@ namespace Axiom.Battle
             if (result.ActionSkipped)
             {
                 Debug.Log("[Battle] Enemy is Frozen — turn skipped.");
+                OnActionSkipped?.Invoke(_enemyStats);
                 _battleManager.OnEnemyActionComplete(false);
                 OnConditionsChanged?.Invoke(_enemyStats);
                 OnConditionsChanged?.Invoke(_playerStats);

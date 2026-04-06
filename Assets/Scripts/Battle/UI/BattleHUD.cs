@@ -79,6 +79,7 @@ namespace Axiom.Battle
             _battleController.OnSpellCastRejected      += HandleSpellCastRejected;
             _battleController.OnPhysicalAttackImmune  += HandlePhysicalAttackImmune;
             _battleController.OnConditionsChanged     += HandleConditionsChanged;
+            _battleController.OnActionSkipped         += HandleActionSkipped;
 
             // Initialise display
             _enemyNameText.text  = enemyStats.Name;
@@ -139,6 +140,9 @@ namespace Axiom.Battle
             {
                 _enemyHealthBar.SetHP(target.CurrentHP, target.MaxHP);
             }
+
+            // Zero-amount events are bar-refresh pings only — no visuals or message.
+            if (amount == 0) return;
 
             // Floating number
             if (_statToRect.TryGetValue(target, out RectTransform rect))
@@ -248,6 +252,11 @@ namespace Axiom.Battle
                 _enemyConditionBadges?.Refresh(target);
         }
 
+        private void HandleActionSkipped(CharacterStats character)
+        {
+            _statusMessageUI.Post($"{character.Name} is Frozen — it can't move!");
+        }
+
         private void Unsubscribe()
         {
             if (_battleController == null) return;
@@ -260,6 +269,7 @@ namespace Axiom.Battle
             _battleController.OnSpellCastRejected      -= HandleSpellCastRejected;
             _battleController.OnPhysicalAttackImmune  -= HandlePhysicalAttackImmune;
             _battleController.OnConditionsChanged     -= HandleConditionsChanged;
+            _battleController.OnActionSkipped         -= HandleActionSkipped;
         }
     }
 }
