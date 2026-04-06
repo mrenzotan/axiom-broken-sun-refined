@@ -49,6 +49,10 @@ namespace Axiom.Battle
         private EnemyBattleAnimator _enemyAnimator;
 
         [SerializeField]
+        [Tooltip("Assign the SpellVFXController from the Battle scene. Leave unassigned to skip VFX/SFX on spell cast.")]
+        private SpellVFXController _spellVfxController;
+
+        [SerializeField]
         [Tooltip("EnemyData ScriptableObject for the enemy in this battle. Provides innateConditions for the enemy's CharacterStats. Optional — leave unassigned for standalone testing without conditions.")]
         private Axiom.Data.EnemyData _enemyData;
 
@@ -306,6 +310,7 @@ namespace Axiom.Battle
             _isAwaitingVoiceSpell     = false;
             _playerDamageVisualsFired = true;
             OnSpellRecognized?.Invoke(spell);
+            _spellVfxController?.Play(spell);
 
             SpellResult result = _resolver.Resolve(spell, _playerStats, _enemyStats);
 
