@@ -15,5 +15,6 @@ namespace Axiom.Battle
         public int TurnsRemaining;
         public int TickCount;
         public int BaseDamage;
+        public int AppliedOrder;
     }
 }

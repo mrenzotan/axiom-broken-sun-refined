@@ -84,7 +84,10 @@ namespace Axiom.Battle
             public ChemicalCondition ReplacementCondition;  // temporary condition added (e.g. Solid)
             public ChemicalCondition SuppressedCondition;   // innate condition it replaced (e.g. Liquid)
             public int TurnsRemaining;
+            public int AppliedOrder;
         }
+
+        private int _conditionAppliedCounter;
 
         // ── Initialization ───────────────────────────────────────────────────
 
@@ -102,6 +105,7 @@ namespace Axiom.Battle
             ActiveMaterialConditions   = new List<ChemicalCondition>(_innateConditions);
             ActiveStatusConditions     = new List<StatusConditionEntry>();
             _materialTransformations.Clear();
+            _conditionAppliedCounter   = 0;
         }
 
         // ── Stat mutation ────────────────────────────────────────────────────
@@ -177,7 +181,8 @@ namespace Axiom.Battle
                 Condition      = condition,
                 TurnsRemaining = effectiveDuration,
                 TickCount      = 0,
-                BaseDamage     = baseDamage
+                BaseDamage     = baseDamage,
+                AppliedOrder   = _conditionAppliedCounter++
             });
         }
 
@@ -196,7 +201,8 @@ namespace Axiom.Battle
             {
                 ReplacementCondition = transformsTo,
                 SuppressedCondition  = suppressedCondition,
-                TurnsRemaining       = duration
+                TurnsRemaining       = duration,
+                AppliedOrder         = _conditionAppliedCounter++
             });
         }
 
@@ -312,6 +318,19 @@ namespace Axiom.Battle
                 if (transform.ReplacementCondition == condition)
                     return transform.TurnsRemaining;
             return 0;
+        }
+
+        /// <summary>
+        /// Returns the applied order for a condition that is active as a temporary
+        /// material transformation. Returns int.MaxValue if not found, so unsorted
+        /// conditions sort to the end.
+        /// </summary>
+        public int GetMaterialTransformOrder(ChemicalCondition condition)
+        {
+            foreach (var transform in _materialTransformations)
+                if (transform.ReplacementCondition == condition)
+                    return transform.AppliedOrder;
+            return int.MaxValue;
         }
 
         // ── Helpers ──────────────────────────────────────────────────────────

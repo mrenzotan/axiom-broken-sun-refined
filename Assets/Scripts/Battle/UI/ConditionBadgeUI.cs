@@ -1,3 +1,5 @@
+using System.Collections.Generic;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -6,7 +8,7 @@ using Axiom.Data;
 namespace Axiom.Battle
 {
     /// <summary>
-    /// Renders a horizontal row of colored pill badges for a character's active
+    /// Renders a wrapping flow of colored pill badges for a character's active
     /// time-limited conditions (status conditions + temporary material transformations).
     ///
     /// Call Refresh() whenever the character's condition list may have changed.
@@ -14,18 +16,25 @@ namespace Axiom.Battle
     /// only conditions with a turn countdown appear.
     ///
     /// Inspector setup required:
-    ///   _badgePrefab — a prefab with an Image (background, on root) + TMP_Text child
-    ///   _container   — a Transform with HorizontalLayoutGroup + ContentSizeFitter
+    ///   _badgePrefab — prefab root: Image + ContentSizeFitter (both axes) +
+    ///                  HorizontalLayoutGroup (for padding); child: TMP_Text.
+    ///                  RectTransform anchor and pivot must both be top-left (0, 1).
+    ///   _container   — a plain RectTransform with NO LayoutGroup.
+    ///                  Anchor/pivot top-left. Width should match the max allowed row
+    ///                  width (e.g. 400 to match EnemyPanel). This script sets height.
     /// </summary>
     public class ConditionBadgeUI : MonoBehaviour
     {
         [SerializeField]
-        [Tooltip("Prefab for one badge. Root must have an Image; child must have a TMP_Text.")]
+        [Tooltip("Prefab for one badge. Root: Image + ContentSizeFitter + HorizontalLayoutGroup; child: TMP_Text. Anchor and pivot must be top-left (0,1).")]
         private GameObject _badgePrefab;
 
         [SerializeField]
-        [Tooltip("Parent container. Add HorizontalLayoutGroup + ContentSizeFitter (horizontal).")]
-        private Transform _container;
+        [Tooltip("Container RectTransform. Must NOT have a LayoutGroup — this script positions children directly. Anchor and pivot top-left. Width = max row width.")]
+        private RectTransform _container;
+
+        [SerializeField] private float _badgeSpacing = 4f;
+        [SerializeField] private float _rowSpacing    = 4f;
 
         /// <summary>
         /// Clears and rebuilds the badge row from the character's current condition state.
@@ -45,30 +54,81 @@ namespace Axiom.Battle
 
             if (stats == null) return;
 
-            // Status conditions — always time-limited (Frozen, Burning, Evaporating, Corroded, Crystallized)
-            foreach (var entry in stats.ActiveStatusConditions)
-                SpawnBadge(entry.Condition, entry.TurnsRemaining);
+            // Build a unified list of (condition, turns, appliedOrder) sorted chronologically.
+            var entries = new List<(ChemicalCondition condition, int turns, int order)>();
 
-            // Material conditions — only show if they are temporary transformations (turns > 0)
+            foreach (var entry in stats.ActiveStatusConditions)
+                entries.Add((entry.Condition, entry.TurnsRemaining, entry.AppliedOrder));
+
             foreach (var condition in stats.ActiveMaterialConditions)
             {
                 int turns = stats.GetMaterialTransformTurns(condition);
                 if (turns > 0)
-                    SpawnBadge(condition, turns);
+                    entries.Add((condition, turns, stats.GetMaterialTransformOrder(condition)));
             }
+
+            var badges = entries
+                .OrderBy(e => e.order)
+                .Select(e => SpawnBadge(e.condition, e.turns))
+                .ToList();
+
+            // Force each badge's ContentSizeFitter to compute its size before layout
+            foreach (var badge in badges)
+                LayoutRebuilder.ForceRebuildLayoutImmediate(badge);
+
+            LayoutBadges(badges);
         }
 
-        private void SpawnBadge(ChemicalCondition condition, int turnsRemaining)
+        /// <summary>
+        /// Positions badges in a left-to-right flow, wrapping to the next row when the
+        /// next badge would exceed the container's width.
+        /// Also resizes the container's height to fit all rows.
+        /// </summary>
+        private void LayoutBadges(List<RectTransform> badges)
+        {
+            float maxWidth  = _container.rect.width;
+            float x         = 0f;
+            float y         = 0f;
+            float rowHeight = 0f;
+
+            foreach (var badge in badges)
+            {
+                float w = badge.rect.width;
+                float h = badge.rect.height;
+
+                // Wrap if this badge would overflow the row (skip wrap check for first badge in row)
+                if (x > 0f && x + w > maxWidth)
+                {
+                    x = 0f;
+                    y -= rowHeight + _rowSpacing;
+                    rowHeight = 0f;
+                }
+
+                badge.anchoredPosition = new Vector2(x, y);
+                x += w + _badgeSpacing;
+                if (h > rowHeight) rowHeight = h;
+            }
+
+            // Resize container height to tightly wrap all rows
+            _container.sizeDelta = new Vector2(_container.sizeDelta.x, Mathf.Abs(y) + rowHeight);
+        }
+
+        private RectTransform SpawnBadge(ChemicalCondition condition, int turnsRemaining)
         {
             GameObject badge = Instantiate(_badgePrefab, _container);
 
             TMP_Text label = badge.GetComponentInChildren<TMP_Text>();
             if (label != null)
+            {
                 label.text = $"{LabelFor(condition)} ({turnsRemaining})";
+                label.ForceMeshUpdate(); // ensure TMP computes size before ForceRebuildLayoutImmediate
+            }
 
             Image bg = badge.GetComponent<Image>();
             if (bg != null)
                 bg.color = ColorFor(condition);
+
+            return badge.GetComponent<RectTransform>();
         }
 
         private static string LabelFor(ChemicalCondition condition)
