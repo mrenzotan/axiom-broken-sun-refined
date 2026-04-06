@@ -392,6 +392,7 @@ namespace Axiom.Battle
             }
 
             OnConditionsChanged?.Invoke(_playerStats);
+            OnConditionsChanged?.Invoke(_enemyStats);
         }
 
         private void ProcessEnemyTurnStart()
@@ -405,10 +406,12 @@ namespace Axiom.Battle
                 Debug.Log("[Battle] Enemy is Frozen — turn skipped.");
                 _battleManager.OnEnemyActionComplete(false);
                 OnConditionsChanged?.Invoke(_enemyStats);
+                OnConditionsChanged?.Invoke(_playerStats);
                 return;
             }
 
             OnConditionsChanged?.Invoke(_enemyStats);
+            OnConditionsChanged?.Invoke(_playerStats);
             ExecuteEnemyTurn();
         }
 
