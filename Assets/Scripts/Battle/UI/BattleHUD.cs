@@ -34,6 +34,8 @@ namespace Axiom.Battle
         [SerializeField] private TurnIndicatorUI       _turnIndicatorUI;
         [SerializeField] private FloatingNumberSpawner _floatingNumberSpawner;
         [SerializeField] private StatusMessageUI       _statusMessageUI;
+        [SerializeField] private ConditionBadgeUI      _playerConditionBadges;
+        [SerializeField] private ConditionBadgeUI      _enemyConditionBadges;
 
         // ── Internal state ────────────────────────────────────────────────────
         private BattleController _battleController;
@@ -75,6 +77,8 @@ namespace Axiom.Battle
             _battleController.OnShieldApplied          += HandleShieldApplied;
             _battleController.OnConditionDamageTick    += HandleConditionDamageTick;
             _battleController.OnSpellCastRejected      += HandleSpellCastRejected;
+            _battleController.OnPhysicalAttackImmune  += HandlePhysicalAttackImmune;
+            _battleController.OnConditionsChanged     += HandleConditionsChanged;
 
             // Initialise display
             _enemyNameText.text  = enemyStats.Name;
@@ -220,6 +224,30 @@ namespace Axiom.Battle
             _statusMessageUI.Post(reason);
         }
 
+        private void HandlePhysicalAttackImmune(CharacterStats attacker, CharacterStats target)
+        {
+            // Find the specific material condition causing immunity (Liquid or Vapor)
+            string conditionName = "that material";
+            foreach (var cond in target.ActiveMaterialConditions)
+            {
+                if (cond == Axiom.Data.ChemicalCondition.Liquid
+                    || cond == Axiom.Data.ChemicalCondition.Vapor)
+                {
+                    conditionName = cond.ToString();
+                    break;
+                }
+            }
+            _statusMessageUI.Post($"{target.Name} is {conditionName} — physical attacks pass right through!");
+        }
+
+        private void HandleConditionsChanged(CharacterStats target)
+        {
+            if (target == _playerStats)
+                _playerConditionBadges?.Refresh(target);
+            else if (target == _enemyStats)
+                _enemyConditionBadges?.Refresh(target);
+        }
+
         private void Unsubscribe()
         {
             if (_battleController == null) return;
@@ -230,6 +258,8 @@ namespace Axiom.Battle
             _battleController.OnShieldApplied          -= HandleShieldApplied;
             _battleController.OnConditionDamageTick    -= HandleConditionDamageTick;
             _battleController.OnSpellCastRejected      -= HandleSpellCastRejected;
+            _battleController.OnPhysicalAttackImmune  -= HandlePhysicalAttackImmune;
+            _battleController.OnConditionsChanged     -= HandleConditionsChanged;
         }
     }
 }
