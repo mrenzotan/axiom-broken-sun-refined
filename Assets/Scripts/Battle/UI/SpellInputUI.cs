@@ -156,7 +156,7 @@ namespace Axiom.Battle
             {
                 _feedbackText.text = state switch
                 {
-                    SpellInputUILogic.State.SpellRecognized => _logic.RecognizedSpellName,
+                    SpellInputUILogic.State.SpellRecognized => char.ToUpper(_logic.RecognizedSpellName[0]) + _logic.RecognizedSpellName[1..],
                     SpellInputUILogic.State.NotRecognized   => "Not recognized. Try again.",
                     SpellInputUILogic.State.Rejected        => _logic.RejectionMessage,
                     _                                       => string.Empty

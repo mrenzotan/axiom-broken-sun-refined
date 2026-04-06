@@ -5,7 +5,7 @@ namespace Axiom.Data
     [CreateAssetMenu(fileName = "NewSpellData", menuName = "Axiom/Data/Spell Data")]
     public class SpellData : ScriptableObject
     {
-        [Tooltip("The spoken trigger word or phrase the player says to cast this spell.")]
+        [Tooltip("The spoken trigger word or phrase the player says to cast this spell. MUST be lowercase — Vosk only recognizes lowercase input.")]
         public string spellName;
 
         [Tooltip("The type of effect this spell applies: Damage (targets enemy), Heal (targets caster), or Shield (targets caster).")]
@@ -36,5 +36,13 @@ namespace Axiom.Data
 
         [Tooltip("How many turns the transformed material condition lasts before the innate condition is restored. Only meaningful when transformsTo != None.")]
         public int transformationDuration;
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            if (spellName != null)
+                spellName = spellName.ToLower();
+        }
+#endif
     }
 }
