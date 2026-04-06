@@ -37,6 +37,14 @@ namespace Axiom.Data
         [Tooltip("How many turns the transformed material condition lasts before the innate condition is restored. Only meaningful when transformsTo != None.")]
         public int transformationDuration;
 
+        [Header("Spell Effects")]
+
+        [Tooltip("Sprite animation clip played at the VFX spawn point when this spell is cast. Leave empty for no visual effect.")]
+        public AnimationClip castVfxClip;
+
+        [Tooltip("Sound effects played when this spell is cast. Assign 1-5 clips — one is chosen at random each cast to avoid repetition. Leave empty for no audio effect.")]
+        public AudioClip[] castSfxVariants;
+
 #if UNITY_EDITOR
         private void OnValidate()
         {
