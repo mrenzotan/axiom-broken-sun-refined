@@ -263,7 +263,7 @@ Unity Version Control → Pending Changes → Check in with message: `feat(DEV-2
 
 ```
 Assets/Art/Sprites/VFX/
-Assets/Art/Animations/Battle/VFX/
+Assets/Animations/VFX/
 Assets/Audio/SFX/Spells/
 ```
 
@@ -298,7 +298,7 @@ Examples: `vfx_ember_sheet.png`, `vfx_cryo_sheet.png`
 
 1. In the Project window, select all sliced frames for that spell
 2. Drag them onto the **Hierarchy** to auto-generate an AnimationClip (or use Animation window → Create New Clip)
-3. Save the clip to `Assets/Art/Animations/Battle/VFX/<SpellName>_VFX.anim`
+3. Save the clip to `Assets/Animations/VFX/<SpellName>_VFX.anim`
 4. Select the `.anim` file → Inspector → **Loop Time: unchecked** (each VFX plays once)
 
 **Frame rate and count guidance:**
@@ -319,7 +319,7 @@ This follows the game-art animation principles (squash & stretch, anticipation, 
 
 > **Unity Editor task (user):**
 
-1. In `Assets/Art/Animations/Battle/VFX/`, right-click → Create → Animation
+1. In `Assets/Animations/VFX/`, right-click → Create → Animation
 2. Name it exactly **`SpellVFXBase`** — this exact string is the lookup key used by `AnimatorOverrideController` at runtime. Any spelling difference will cause a silent no-op at runtime.
 3. Leave it as an empty single-frame clip (no keyframes needed — it is a placeholder only)
 
@@ -327,7 +327,7 @@ This follows the game-art animation principles (squash & stretch, anticipation, 
 
 > **Unity Editor task (user):**
 
-1. In `Assets/Art/Animations/Battle/VFX/`, right-click → Create → Animator Controller → name it **`SpellVFXAnimator`**
+1. In `Assets/Animations/VFX/`, right-click → Create → Animator Controller → name it **`SpellVFXAnimator`**
 2. Open the **Animator** window (Window → Animation → Animator)
 3. Delete any auto-created default states (select → Delete)
 4. Right-click in the Animator graph → **Create State → Empty** → name the state **`SpellVFX`** (exact name — matches `VfxStateName` constant in `SpellVFXController`)
@@ -399,12 +399,12 @@ Unity Version Control → Pending Changes → Check in with message: `feat(DEV-2
 
 Stage all new/modified files, including:
 - `Assets/Art/Sprites/VFX/` and all frame textures + `.meta` files
-- `Assets/Art/Animations/Battle/VFX/SpellVFXBase.anim` + `.meta`
-- `Assets/Art/Animations/Battle/VFX/SpellVFXAnimator.controller` + `.meta`
+- `Assets/Animations/VFX/SpellVFXBase.anim` + `.meta`
+- `Assets/Animations/VFX/SpellVFXAnimator.controller` + `.meta`
 - All per-spell `.anim` files + `.meta` files
 - `Assets/Audio/SFX/Spells/` SFX files + `.meta` files
 - `Assets/Scenes/Battle.unity` (new SpellVFX GameObject + BattleController field assignment)
-- All new folder `.meta` files (e.g., `Assets/Art/Sprites/VFX.meta`, `Assets/Art/Animations/Battle/VFX.meta`, `Assets/Audio/SFX/Spells.meta`)
+- All new folder `.meta` files (e.g., `Assets/Art/Sprites/VFX.meta`, `Assets/Animations/VFX.meta`, `Assets/Audio/SFX/Spells.meta`)
 - Updated `Assets/Data/Spells/*.asset` files with the new VFX/SFX assignments
 
 ---
