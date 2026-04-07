@@ -55,7 +55,7 @@ Do this once when you join the project.
 
 - Git installed: https://git-scm.com/downloads
 - GitHub account created and shared with the project lead (to be added as a collaborator)
-- UVCS workspace already synced (you should have the full project locally)
+- UVCS workspace already synced (you should have the full project locally, including `.gitignore` and `.gitattributes`)
 
 ### Steps
 
@@ -86,7 +86,7 @@ git checkout -b main
 Ask the project lead for the GitHub repository URL, then:
 
 ```bash
-git remote add origin https://github.com/[OWNER]/axiom-broken-sun-refined.git
+git remote add origin https://github.com/mrenzotan/axiom-broken-sun-refined.git
 ```
 
 **5. Push your first commit**
@@ -96,6 +96,8 @@ git add -A
 git commit -m "chore: initial mirror setup for [your name]"
 git push -u origin main
 ```
+
+`git add -A` is safe here — `.gitignore` (synced from UVCS) automatically blocks all binary and generated files. If you see thousands of untracked files, it means `.gitignore` is missing from your workspace. Re-sync UVCS before continuing.
 
 Do **not** run `git pull`. Your UVCS workspace already has the latest files — pulling from GitHub is unnecessary and risks conflicts.
 
@@ -214,13 +216,15 @@ Do not use `git add <specific-file>` for routine pushes — `git add -A` is corr
 
 ## Troubleshooting
 
-### "UVCS shows `.git/` or `.gitignore` as pending changes"
+### "UVCS shows `.git/` as pending changes"
 
 The UVCS ignore config needs updating. Open the UVCS panel → Preferences → Ignored files and add:
 
 ```
 .git
 ```
+
+Do **not** add `.gitignore` or `.gitattributes` to the ignore list — these files are intentionally tracked by UVCS so all developers receive them on sync.
 
 ### "git is trying to add a large file / `.unity` scene file"
 

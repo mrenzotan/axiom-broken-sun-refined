@@ -51,6 +51,7 @@ namespace Axiom.Battle
         /// </summary>
         public void OnDamageDealt(CharacterStats target, int damage, bool isCrit)
         {
+            if (damage <= 0) return; // Zero-damage pings (e.g. MP bar refresh) must not trigger hurt.
             if (target == _playerStats) { _playerHurt?.Invoke();  return; }
             if (target == _enemyStats)  { _enemyHurt?.Invoke();   return; }
             // Unknown target — do nothing rather than misfire on the wrong character.

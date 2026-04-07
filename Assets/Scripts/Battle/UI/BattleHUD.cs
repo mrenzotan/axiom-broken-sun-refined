@@ -34,6 +34,8 @@ namespace Axiom.Battle
         [SerializeField] private TurnIndicatorUI       _turnIndicatorUI;
         [SerializeField] private FloatingNumberSpawner _floatingNumberSpawner;
         [SerializeField] private StatusMessageUI       _statusMessageUI;
+        [SerializeField] private ConditionBadgeUI      _playerConditionBadges;
+        [SerializeField] private ConditionBadgeUI      _enemyConditionBadges;
 
         // ── Internal state ────────────────────────────────────────────────────
         private BattleController _battleController;
@@ -68,9 +70,16 @@ namespace Axiom.Battle
             _actionMenuUI.OnFlee   = _battleController.PlayerFlee;
 
             // Subscribe to battle events
-            _battleController.OnBattleStateChanged += HandleStateChanged;
-            _battleController.OnDamageDealt        += HandleDamageDealt;
-            _battleController.OnCharacterDefeated  += HandleCharacterDefeated;
+            _battleController.OnBattleStateChanged    += HandleStateChanged;
+            _battleController.OnDamageDealt            += HandleDamageDealt;
+            _battleController.OnCharacterDefeated      += HandleCharacterDefeated;
+            _battleController.OnSpellHealed            += HandleSpellHealed;
+            _battleController.OnShieldApplied          += HandleShieldApplied;
+            _battleController.OnConditionDamageTick    += HandleConditionDamageTick;
+            _battleController.OnSpellCastRejected      += HandleSpellCastRejected;
+            _battleController.OnPhysicalAttackImmune  += HandlePhysicalAttackImmune;
+            _battleController.OnConditionsChanged     += HandleConditionsChanged;
+            _battleController.OnActionSkipped         += HandleActionSkipped;
 
             // Initialise display
             _enemyNameText.text  = enemyStats.Name;
@@ -79,6 +88,9 @@ namespace Axiom.Battle
             _partyNameText.text = playerStats.Name;
             _partyHealthBar.SetHP(playerStats.CurrentHP, playerStats.MaxHP);
             _partyHealthBar.SetMP(playerStats.CurrentMP, playerStats.MaxMP);
+
+            // Buttons start disabled; HandleStateChanged enables them when PlayerTurn fires.
+            _actionMenuUI.SetInteractable(false);
         }
 
         private void OnDestroy() => Unsubscribe();
@@ -129,6 +141,9 @@ namespace Axiom.Battle
                 _enemyHealthBar.SetHP(target.CurrentHP, target.MaxHP);
             }
 
+            // Zero-amount events are bar-refresh pings only — no visuals or message.
+            if (amount == 0) return;
+
             // Floating number
             if (_statToRect.TryGetValue(target, out RectTransform rect))
             {
@@ -160,12 +175,101 @@ namespace Axiom.Battle
             }
         }
 
+        private void HandleSpellHealed(CharacterStats target, int amount)
+        {
+            if (target == _playerStats)
+            {
+                _partyHealthBar.SetHP(target.CurrentHP, target.MaxHP);
+                _partyHealthBar.SetMP(target.CurrentMP, target.MaxMP);
+            }
+            else if (target == _enemyStats)
+            {
+                _enemyHealthBar.SetHP(target.CurrentHP, target.MaxHP);
+            }
+
+            if (_statToRect.TryGetValue(target, out RectTransform rect))
+                _floatingNumberSpawner.Spawn(rect, amount, FloatingNumberSpawner.NumberType.Heal);
+
+            _statusMessageUI.Post($"{target.Name} recovers {amount} HP.");
+        }
+
+        private void HandleShieldApplied(CharacterStats target, int amount)
+        {
+            if (_statToRect.TryGetValue(target, out RectTransform rect))
+                _floatingNumberSpawner.Spawn(rect, amount, FloatingNumberSpawner.NumberType.Shield);
+
+            _statusMessageUI.Post($"{target.Name} is shielded for {amount} HP.");
+        }
+
+        private void HandleConditionDamageTick(CharacterStats target, int damage, Axiom.Data.ChemicalCondition condition)
+        {
+            if (target == _playerStats)
+            {
+                _partyHealthBar.SetHP(target.CurrentHP, target.MaxHP);
+                _partyHealthBar.SetMP(target.CurrentMP, target.MaxMP);
+            }
+            else if (target == _enemyStats)
+            {
+                _enemyHealthBar.SetHP(target.CurrentHP, target.MaxHP);
+            }
+
+            if (_statToRect.TryGetValue(target, out RectTransform rect) && damage > 0)
+                _floatingNumberSpawner.Spawn(rect, damage, FloatingNumberSpawner.NumberType.Damage);
+
+            if (damage > 0)
+                _statusMessageUI.Post($"{target.Name} takes {damage} damage from a condition.");
+
+            if (target.IsDefeated)
+                HandleCharacterDefeated(target);
+        }
+
+        private void HandleSpellCastRejected(string reason)
+        {
+            _statusMessageUI.Post(reason);
+        }
+
+        private void HandlePhysicalAttackImmune(CharacterStats attacker, CharacterStats target)
+        {
+            // Find the specific material condition causing immunity (Liquid or Vapor)
+            string conditionName = "that material";
+            foreach (var cond in target.ActiveMaterialConditions)
+            {
+                if (cond == Axiom.Data.ChemicalCondition.Liquid
+                    || cond == Axiom.Data.ChemicalCondition.Vapor)
+                {
+                    conditionName = cond.ToString();
+                    break;
+                }
+            }
+            _statusMessageUI.Post($"{target.Name} is {conditionName} — physical attacks pass right through!");
+        }
+
+        private void HandleConditionsChanged(CharacterStats target)
+        {
+            if (target == _playerStats)
+                _playerConditionBadges?.Refresh(target);
+            else if (target == _enemyStats)
+                _enemyConditionBadges?.Refresh(target);
+        }
+
+        private void HandleActionSkipped(CharacterStats character)
+        {
+            _statusMessageUI.Post($"{character.Name} is Frozen — it can't move!");
+        }
+
         private void Unsubscribe()
         {
             if (_battleController == null) return;
-            _battleController.OnBattleStateChanged -= HandleStateChanged;
-            _battleController.OnDamageDealt        -= HandleDamageDealt;
-            _battleController.OnCharacterDefeated  -= HandleCharacterDefeated;
+            _battleController.OnBattleStateChanged    -= HandleStateChanged;
+            _battleController.OnDamageDealt            -= HandleDamageDealt;
+            _battleController.OnCharacterDefeated      -= HandleCharacterDefeated;
+            _battleController.OnSpellHealed            -= HandleSpellHealed;
+            _battleController.OnShieldApplied          -= HandleShieldApplied;
+            _battleController.OnConditionDamageTick    -= HandleConditionDamageTick;
+            _battleController.OnSpellCastRejected      -= HandleSpellCastRejected;
+            _battleController.OnPhysicalAttackImmune  -= HandlePhysicalAttackImmune;
+            _battleController.OnConditionsChanged     -= HandleConditionsChanged;
+            _battleController.OnActionSkipped         -= HandleActionSkipped;
         }
     }
 }

@@ -10,7 +10,7 @@ namespace Axiom.Battle
     /// </summary>
     public class FloatingNumberSpawner : MonoBehaviour
     {
-        public enum NumberType { Damage, Heal, Crit }
+        public enum NumberType { Damage, Heal, Crit, Shield }
 
         [SerializeField]
         [Tooltip("Prefab with FloatingNumberInstance, TMP_Text, and CanvasGroup components.")]
@@ -21,7 +21,8 @@ namespace Axiom.Battle
 
         private static readonly Color DamageColor = new Color(0.92f, 0.30f, 0.20f); // red
         private static readonly Color HealColor   = new Color(0.15f, 0.76f, 0.36f); // green
-        private static readonly Color CritColor   = new Color(0.95f, 0.61f, 0.07f); // gold
+        private static readonly Color CritColor    = new Color(0.95f, 0.61f, 0.07f); // gold
+        private static readonly Color ShieldColor  = new Color(0.28f, 0.62f, 0.95f); // blue
 
         private IObjectPool<FloatingNumberInstance> _pool;
 
@@ -57,6 +58,11 @@ namespace Axiom.Battle
                     color = CritColor;
                     scale = 1.4f;
                     label = $"{amount}!";
+                    break;
+                case NumberType.Shield:
+                    color = ShieldColor;
+                    scale = 1f;
+                    label = $"+{amount} shield";
                     break;
                 default: // Damage
                     color = DamageColor;
