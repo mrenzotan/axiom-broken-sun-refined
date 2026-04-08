@@ -310,7 +310,14 @@ namespace Axiom.Battle
             _isAwaitingVoiceSpell     = false;
             _playerDamageVisualsFired = true;
             OnSpellRecognized?.Invoke(spell);
-            _spellVfxController?.Play(spell);
+
+            if (_spellVfxController != null)
+            {
+                Vector3 vfxPosition = spell.effectType == SpellEffectType.Damage
+                    ? (_enemyAnimator  != null ? _enemyAnimator.transform.position  : Vector3.zero)
+                    : (_playerAnimator != null ? _playerAnimator.transform.position : Vector3.zero);
+                _spellVfxController.Play(spell, vfxPosition);
+            }
 
             SpellResult result = _resolver.Resolve(spell, _playerStats, _enemyStats);
 
