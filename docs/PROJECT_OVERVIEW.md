@@ -64,48 +64,107 @@ The project is mid-development. Here is what is fully implemented vs. what is ne
 
 ---
 
-## Scripts Directory Structure
+## Assets Directory Structure
+
+```
+Assets/
+├── Animations/
+│   ├── Enemies/
+│   │   └── Ice Slime/              # Animator controller + animation clips
+│   ├── Player/                     # Animator controllers + animation clips
+│   └── VFX/                        # Spell VFX animators and sprite animation clips
+├── Art/
+│   ├── Backgrounds/                # Parallax layer PNGs (Far, Mid, Near)
+│   ├── Sprites/
+│   │   ├── Enemies/Ice Slime/      # Enemy sprite sheet
+│   │   ├── Player/                 # Kaelen sprite sheet
+│   │   └── VFX/                    # Spell VFX sprite sheets + VFXAtlas
+│   └── Tilemaps/                   # Rule tile assets + tilemap textures
+├── Audio/
+│   └── SFX/
+│       └── Spells/                 # Spell sound effects (.ogg) — one set per spell
+├── Data/                           # ScriptableObject asset files — never hardcode values in code
+│   ├── Enemies/                    # ED_*.asset  (e.g. ED_MeltspawnTest.asset)
+│   └── Spells/                     # SD_*.asset  (e.g. SD_Combust.asset)
+├── Editor/                         # Editor-only tools (stripped from builds)
+│   ├── LevelBuilderTool.cs
+│   └── SceneSetup/
+│       └── SceneSetupTool.cs
+├── InputSystem_Actions.inputactions    # New Input System action map
+├── Prefabs/
+│   ├── Enemies/                    # Enemy prefabs (battle scene variants)
+│   ├── Player/                     # Player prefabs (battle scene variant)
+│   ├── UI/                         # Shared UI prefabs (FloatingNumber, ConditionBadge)
+│   └── Voice/                      # MicrophoneInputHandler prefab
+├── Scenes/
+│   ├── Battle.unity                # Turn-based combat scene
+│   ├── Platformer.unity            # Side-scrolling exploration scene
+│   └── SampleScene.unity           # Unused placeholder
+├── Scripts/                        # All runtime C# — see breakdown below
+├── Tests/
+│   └── Editor/                     # Edit-mode unit tests (Unity Test Framework)
+│       ├── Battle/                 # BattleManager, SpellEffectResolver, CharacterStats, etc.
+│       ├── SceneSetup/             # SceneSetupTool tests
+│       ├── UI/                     # UI logic tests (AttackResult, StatusMessageQueue)
+│       └── Voice/                  # Vosk, SpellMatcher, SpellVocabularyManager tests
+└── ThirdParty/
+    └── Vosk/                       # Vosk SDK — Vosk.dll + platform plugins (OSX/Windows)
+```
+
+### Scripts Breakdown
 
 ```
 Assets/Scripts/
-├── Battle/                   # Turn-based combat
-│   ├── BattleManager.cs      # Pure C# state machine (no Unity calls)
-│   ├── BattleController.cs   # MonoBehaviour wrapper — Unity lifecycle only
-│   ├── PlayerActionHandler.cs
-│   ├── EnemyActionHandler.cs
-│   ├── SpellEffectResolver.cs
+├── Battle/
+│   ├── AttackResult.cs
 │   ├── BattleAnimationService.cs
-│   ├── CharacterStats.cs     # HP, MP, conditions, combat math
-│   ├── SpellVFXController.cs # Particle + audio playback on spell cast
-│   └── UI/                   # All battle scene UI components
+│   ├── BattleController.cs         # MonoBehaviour wrapper — Unity lifecycle only
+│   ├── BattleManager.cs            # Pure C# state machine (no Unity calls)
+│   ├── BattleState.cs
+│   ├── CharacterStats.cs           # HP, MP, conditions, combat math
+│   ├── CombatStartState.cs
+│   ├── ConditionTurnResult.cs
+│   ├── EnemyActionHandler.cs
+│   ├── EnemyBattleAnimator.cs
+│   ├── PlayerActionHandler.cs
+│   ├── PlayerBattleAnimator.cs
+│   ├── SpellEffectResolver.cs
+│   ├── SpellResult.cs
+│   ├── SpellVFXController.cs       # Particle + audio playback on spell cast
+│   ├── StatusConditionEntry.cs
+│   └── UI/                         # All battle scene UI components
 │       ├── ActionMenuUI.cs
 │       ├── BattleHUD.cs
-│       ├── HealthBarUI.cs
-│       ├── TurnIndicatorUI.cs
-│       ├── FloatingNumberSpawner.cs
 │       ├── ConditionBadgeUI.cs
-│       ├── SpellInputUI.cs / SpellInputUILogic.cs
-│       └── StatusMessageUI.cs / StatusMessageQueue.cs
-├── Core/                     # (Planned) GameManager singleton
-├── Data/                     # ScriptableObject definitions
-│   ├── SpellData.cs          # Spell name, damage, MP cost, effects, VFX/SFX clips
-│   ├── EnemyData.cs          # Enemy stats and innate conditions
-│   ├── ChemicalCondition.cs  # Enum: Burning, Frozen, Corroding, etc.
-│   └── SpellEffectType.cs    # Enum: Damage, Heal, Shield, etc.
-├── Platformer/               # Player controller and exploration
-│   ├── PlayerController.cs
-│   ├── PlayerMovement.cs
-│   ├── PlayerAnimator.cs
+│       ├── FloatingNumberInstance.cs
+│       ├── FloatingNumberSpawner.cs
+│       ├── HealthBarUI.cs
+│       ├── SpellInputUI.cs
+│       ├── SpellInputUILogic.cs
+│       ├── StatusMessageQueue.cs
+│       ├── StatusMessageUI.cs
+│       └── TurnIndicatorUI.cs
+├── Core/                           # (Phase 4) GameManager singleton — not yet implemented
+├── Data/                           # ScriptableObject definitions
+│   ├── ChemicalCondition.cs        # Enum: Burning, Frozen, Corroding, etc.
+│   ├── EnemyData.cs                # Enemy stats and innate conditions
+│   ├── SpellData.cs                # Spell name, damage, MP cost, effects, VFX/SFX clips
+│   └── SpellEffectType.cs          # Enum: Damage, Heal, Shield, etc.
+├── Platformer/
+│   ├── InputSystem_Actions.cs      # Auto-generated Input System wrapper
 │   ├── ParallaxBackground.cs
-│   └── ParallaxController.cs
-└── Voice/                    # Vosk speech recognition pipeline
-    ├── BattleVoiceBootstrap.cs   # Wires the pipeline at scene start
-    ├── VoskRecognizerService.cs  # Background thread — runs AcceptWaveform()
-    ├── MicrophoneInputHandler.cs # Main thread mic capture → PCM16 queue
-    ├── SpellCastController.cs    # Polls result queue in Update()
-    ├── SpellVocabularyManager.cs # Builds Vosk grammar from unlocked spells
-    ├── SpellResultMatcher.cs     # Matches Vosk JSON output to SpellData
-    └── MicrophoneCapture.cs
+│   ├── ParallaxController.cs
+│   ├── PlayerAnimator.cs
+│   ├── PlayerController.cs
+│   └── PlayerMovement.cs
+└── Voice/
+    ├── BattleVoiceBootstrap.cs     # Wires the pipeline at scene start
+    ├── MicrophoneCapture.cs
+    ├── MicrophoneInputHandler.cs   # Main thread mic capture → PCM16 queue
+    ├── SpellCastController.cs      # Polls result queue in Update()
+    ├── SpellResultMatcher.cs       # Matches Vosk JSON output to SpellData
+    ├── SpellVocabularyManager.cs   # Builds Vosk grammar from unlocked spells
+    └── VoskRecognizerService.cs    # Background thread — runs AcceptWaveform()
 ```
 
 **Rule:** UI scripts live inside their scene's subfolder (`Battle/UI/`), not a shared top-level `UI/` folder.
