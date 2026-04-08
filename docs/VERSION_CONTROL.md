@@ -255,3 +255,25 @@ git add -A
 git commit -m "catch-up: sync recent UVCS check-ins to GitHub"
 git push
 ```
+
+### "git push is rejected after syncing UVCS — local branch is behind origin/main"
+
+This happens when teammates have pushed to GitHub since your last push, and you've accumulated UVCS check-ins without mirroring them. Your local files are correct (UVCS is the source of truth) — only the git histories have diverged.
+
+**Do not run `git pull`.** Pulling from GitHub is never correct — it risks overwriting your UVCS-synced files with stale history.
+
+Instead, stage and commit your changes, then force-push:
+
+```bash
+git add -A
+git commit -m "chore: catch-up sync of recent UVCS check-ins to GitHub"
+git push
+```
+
+If git rejects the push (non-fast-forward error):
+
+```bash
+git push --force
+```
+
+This is safe because GitHub is a write-only mirror — no one on the team pulls from it. Force-pushing rewrites the remote git history to match your correct local state. To avoid this situation, push to GitHub after every UVCS check-in that includes code or docs.
