@@ -68,6 +68,12 @@ namespace Axiom.Battle
         public void TriggerCast()    { _animator.SetBool(IsChargingHash, false); _animator.SetTrigger(CastHash); }
 
         /// <summary>
+        /// Resets the charge animation when the voice spell phase ends without a cast.
+        /// Called by BattleController via the OnSpellChargeAborted event.
+        /// </summary>
+        public void TriggerResetCharge() => _animator.SetBool(IsChargingHash, false);
+
+        /// <summary>
         /// Called by Unity Animation Event on the cast clip's fire frame.
         /// The method name must match exactly what is set in the Animation Event inspector.
         /// </summary>

@@ -61,12 +61,16 @@ namespace Axiom.Voice
 
                 if (matched == null)
                 {
-                    // Forward "final result, no match" to BattleController for UI feedback.
-                    // ExtractTextField returns empty for partial results (no "text" key),
-                    // so this only fires on genuine final results that didn't match a spell.
+                    if (_battleController == null) { continue; }
+
+                    // VoskRecognizerService only enqueues Result() and FinalResult() — both have a
+                    // "text" field. Non-empty text → word heard but not in spell list (not recognized).
+                    // Empty text → PTT released without any speech (silent release).
                     string recognized = SpellResultMatcher.ExtractTextField(voskJson);
-                    if (!string.IsNullOrWhiteSpace(recognized) && _battleController != null)
+                    if (!string.IsNullOrWhiteSpace(recognized))
                         _battleController.NotifySpellNotRecognized();
+                    else
+                        _battleController.NotifyVoiceResultEmpty();
                     continue;
                 }
 

@@ -43,6 +43,15 @@ namespace Axiom.Battle
             _fleeButton.interactable   = interactable;
         }
 
+        /// <summary>
+        /// Enables or disables only the Spell button independently of the other three actions.
+        /// Call with false when voice recognition is unavailable (model missing, no mic device).
+        /// </summary>
+        public void SetSpellInteractable(bool interactable)
+        {
+            _spellButton.interactable = interactable;
+        }
+
         private void OnDestroy()
         {
             _attackButton.onClick.RemoveAllListeners();
