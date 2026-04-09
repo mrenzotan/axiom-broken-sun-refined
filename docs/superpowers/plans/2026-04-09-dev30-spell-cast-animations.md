@@ -65,12 +65,14 @@ public void AnimEvent_OnSpellFire() => OnSpellFireFrame?.Invoke();
 
 Expected: no compile errors related to `PlayerBattleAnimator`.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Check in**
 
+UVCS check-in comment:
 ```
-git add Assets/Scripts/Battle/PlayerBattleAnimator.cs
-git commit -m "feat(DEV-30): add TriggerCharge, TriggerCast, and OnSpellFireFrame to PlayerBattleAnimator"
+feat(DEV-30): add TriggerCharge, TriggerCast, and OnSpellFireFrame to PlayerBattleAnimator
 ```
+
+Stage: `Assets/Scripts/Battle/PlayerBattleAnimator.cs`
 
 ---
 
@@ -83,7 +85,7 @@ This task has the most surface area. Read `BattleController.cs` in full before t
 
 ### 2a — Add pending spell fields
 
-- [ ] **Step 1: Add `_pendingSpell` and `_pendingSpellResult` private fields**
+- [x] **Step 1: Add `_pendingSpell` and `_pendingSpellResult` private fields**
 
 After `private SpellEffectResolver _resolver;` (line 163), add:
 
@@ -94,7 +96,7 @@ private SpellResult _pendingSpellResult;
 
 ### 2b — Wire/unwire `OnSpellFireFrame` in `Initialize()` and `OnDestroy()`
 
-- [ ] **Step 2: Add unwire call inside the re-init guard at the top of `Initialize()`**
+- [x] **Step 2: Add unwire call inside the re-init guard at the top of `Initialize()`**
 
 Inside the `if (_animationService != null)` block in `Initialize()` (lines 175–186), add before `_animationService = null;`:
 
@@ -102,7 +104,7 @@ Inside the `if (_animationService != null)` block in `Initialize()` (lines 175�
 _playerAnimator.OnSpellFireFrame -= FireSpellVisuals;
 ```
 
-- [ ] **Step 3: Add wire call inside the animator assignment block in `Initialize()`**
+- [x] **Step 3: Add wire call inside the animator assignment block in `Initialize()`**
 
 Inside the `if (_playerAnimator != null && _enemyAnimator != null)` block (lines 216–231), add after `_enemyAnimator.OnAttackSequenceComplete += OnEnemySequenceComplete;`:
 
@@ -110,7 +112,7 @@ Inside the `if (_playerAnimator != null && _enemyAnimator != null)` block (lines
 _playerAnimator.OnSpellFireFrame += FireSpellVisuals;
 ```
 
-- [ ] **Step 4: Add unwire call in `OnDestroy()`**
+- [x] **Step 4: Add unwire call in `OnDestroy()`**
 
 Inside `OnDestroy()` (lines 503–520), after `if (_playerAnimator != null) _playerAnimator.OnAttackSequenceComplete -= OnPlayerSequenceComplete;`, add:
 
@@ -120,7 +122,7 @@ if (_playerAnimator != null) _playerAnimator.OnSpellFireFrame -= FireSpellVisual
 
 ### 2c — Call `TriggerCharge()` from `PlayerSpell()`
 
-- [ ] **Step 5: Add charge trigger call in `PlayerSpell()`**
+- [x] **Step 5: Add charge trigger call in `PlayerSpell()`**
 
 In `PlayerSpell()` (lines 280–287), after `_isAwaitingVoiceSpell = true;`, add:
 
@@ -130,7 +132,7 @@ _playerAnimator?.TriggerCharge();
 
 ### 2d — Restructure `OnSpellCast()` and add `FireSpellVisuals()`
 
-- [ ] **Step 6: Rewrite `OnSpellCast()` to store the pending spell and trigger the cast animation**
+- [x] **Step 6: Rewrite `OnSpellCast()` to store the pending spell and trigger the cast animation**
 
 Replace the body of `OnSpellCast()` from line 296 onward with:
 
@@ -167,7 +169,7 @@ public void OnSpellCast(SpellData spell)
 }
 ```
 
-- [ ] **Step 7: Add the `FireSpellVisuals()` method**
+- [x] **Step 7: Add the `FireSpellVisuals()` method**
 
 Add the following private method after `OnSpellCast()` (before `NotifySpellNotRecognized()`):
 
@@ -216,16 +218,18 @@ private void FireSpellVisuals()
 }
 ```
 
-- [ ] **Step 8: Verify the file compiles — check Unity Console for errors**
+- [x] **Step 8: Verify the file compiles — check Unity Console for errors**
 
 Expected: no compile errors. The `_playerDamageVisualsFired` flag that was set in the old `OnSpellCast()` is no longer set here; that flag guards physical attack visuals only and is not needed for the spell path — verify the flag is still set correctly for physical attacks (it is, in `PlayerAttack()`).
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Check in**
 
+UVCS check-in comment:
 ```
-git add Assets/Scripts/Battle/BattleController.cs
-git commit -m "feat(DEV-30): restructure OnSpellCast to defer VFX and damage to FireSpellVisuals on cast fire frame"
+feat(DEV-30): restructure OnSpellCast to defer VFX and damage to FireSpellVisuals on cast fire frame
 ```
+
+Stage: `Assets/Scripts/Battle/BattleController.cs`
 
 ---
 
@@ -323,12 +327,14 @@ _playerDamageVisualsFired = true; // Spell path does not go through FirePlayerDa
 
 Place it after `_pendingSpell = spell;` in `OnSpellCast()`.
 
-- [ ] **Step 3: Commit the fix if Step 2 required a change**
+- [ ] **Step 3: Check in the fix if Step 2 required a change**
 
+UVCS check-in comment:
 ```
-git add Assets/Scripts/Battle/BattleController.cs
-git commit -m "fix(DEV-30): set _playerDamageVisualsFired on spell path to prevent null attack safety-net call"
+fix(DEV-30): set _playerDamageVisualsFired on spell path to prevent null attack safety-net call
 ```
+
+Stage: `Assets/Scripts/Battle/BattleController.cs`
 
 ---
 
