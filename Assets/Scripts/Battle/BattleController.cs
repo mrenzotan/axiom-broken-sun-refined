@@ -85,6 +85,18 @@ namespace Axiom.Battle
         public event Action OnSpellPhaseStarted;
 
         /// <summary>
+        /// Fires when the player enters the spell charge state (waiting for voice input).
+        /// BattleAnimationService subscribes to route this to PlayerBattleAnimator.TriggerCharge().
+        /// </summary>
+        public event Action OnSpellChargeStarted;
+
+        /// <summary>
+        /// Fires when a spell is recognized and the cast animation begins.
+        /// BattleAnimationService subscribes to route this to PlayerBattleAnimator.TriggerCast().
+        /// </summary>
+        public event Action OnSpellCastStarted;
+
+        /// <summary>
         /// Fires when Vosk returns a recognized spell name before execution resolves.
         /// SpellInputUI subscribes to display the spell name briefly.
         /// </summary>
@@ -180,6 +192,8 @@ namespace Axiom.Battle
                 OnEnemyActionStarted   -= _animationService.OnEnemyActionStarted;
                 OnDamageDealt          -= _animationService.OnDamageDealt;
                 OnCharacterDefeated    -= _animationService.OnCharacterDefeated;
+                OnSpellChargeStarted   -= _animationService.OnSpellChargeStarted;
+                OnSpellCastStarted     -= _animationService.OnSpellCastStarted;
                 _playerAnimator.OnHitFrame -= FirePlayerDamageVisuals;
                 _enemyAnimator.OnHitFrame  -= FireEnemyDamageVisuals;
                 _playerAnimator.OnAttackSequenceComplete -= OnPlayerSequenceComplete;
@@ -221,12 +235,15 @@ namespace Axiom.Battle
                 _animationService = new BattleAnimationService(
                     _playerStats, _enemyStats,
                     _playerAnimator.TriggerAttack, _playerAnimator.TriggerHurt, _playerAnimator.TriggerDefeat,
+                    _playerAnimator.TriggerCharge, _playerAnimator.TriggerCast,
                     _enemyAnimator.TriggerAttack,  _enemyAnimator.TriggerHurt,  _enemyAnimator.TriggerDefeat);
 
                 OnPlayerActionStarted  += _animationService.OnPlayerActionStarted;
                 OnEnemyActionStarted   += _animationService.OnEnemyActionStarted;
                 OnDamageDealt          += _animationService.OnDamageDealt;
                 OnCharacterDefeated    += _animationService.OnCharacterDefeated;
+                OnSpellChargeStarted   += _animationService.OnSpellChargeStarted;
+                OnSpellCastStarted     += _animationService.OnSpellCastStarted;
                 _playerAnimator.OnHitFrame += FirePlayerDamageVisuals;
                 _enemyAnimator.OnHitFrame  += FireEnemyDamageVisuals;
                 _playerAnimator.OnAttackSequenceComplete += OnPlayerSequenceComplete;
@@ -287,7 +304,7 @@ namespace Axiom.Battle
             if (_isProcessingAction) return;
             _isProcessingAction   = true;
             _isAwaitingVoiceSpell = true;
-            _playerAnimator?.TriggerCharge();
+            OnSpellChargeStarted?.Invoke();
             OnSpellPhaseStarted?.Invoke();
         }
 
@@ -319,15 +336,13 @@ namespace Axiom.Battle
             // Show the spell name in SpellInputUI during the cast animation.
             OnSpellRecognized?.Invoke(spell);
 
-            if (_playerAnimator != null)
-            {
-                _playerAnimator.TriggerCast();
-                // FireSpellVisuals() is called by the OnSpellFireFrame animation event.
-            }
-            else
+            OnSpellCastStarted?.Invoke();
+
+            if (_animationService == null)
             {
                 FireSpellVisuals();
             }
+            // else: FireSpellVisuals() is called by the OnSpellFireFrame animation event.
         }
 
         private void FireSpellVisuals()
@@ -535,6 +550,8 @@ namespace Axiom.Battle
                 OnEnemyActionStarted   -= _animationService.OnEnemyActionStarted;
                 OnDamageDealt          -= _animationService.OnDamageDealt;
                 OnCharacterDefeated    -= _animationService.OnCharacterDefeated;
+                OnSpellChargeStarted   -= _animationService.OnSpellChargeStarted;
+                OnSpellCastStarted     -= _animationService.OnSpellCastStarted;
             }
 
             if (_playerAnimator != null) _playerAnimator.OnHitFrame -= FirePlayerDamageVisuals;
