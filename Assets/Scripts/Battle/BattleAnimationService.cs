@@ -15,6 +15,8 @@ namespace Axiom.Battle
         private readonly Action _playerAttack;
         private readonly Action _playerHurt;
         private readonly Action _playerDefeat;
+        private readonly Action _playerCharge;
+        private readonly Action _playerCast;
         private readonly Action _enemyAttack;
         private readonly Action _enemyHurt;
         private readonly Action _enemyDefeat;
@@ -25,6 +27,8 @@ namespace Axiom.Battle
             Action playerAttack,
             Action playerHurt,
             Action playerDefeat,
+            Action playerCharge,
+            Action playerCast,
             Action enemyAttack,
             Action enemyHurt,
             Action enemyDefeat)
@@ -34,6 +38,8 @@ namespace Axiom.Battle
             _playerAttack = playerAttack;
             _playerHurt   = playerHurt;
             _playerDefeat = playerDefeat;
+            _playerCharge = playerCharge;
+            _playerCast   = playerCast;
             _enemyAttack  = enemyAttack;
             _enemyHurt    = enemyHurt;
             _enemyDefeat  = enemyDefeat;
@@ -41,6 +47,12 @@ namespace Axiom.Battle
 
         /// <summary>Call when the player starts an attack action.</summary>
         public void OnPlayerActionStarted() => _playerAttack?.Invoke();
+
+        /// <summary>Call when the player enters the charge animation state (waiting for voice input).</summary>
+        public void OnSpellChargeStarted() => _playerCharge?.Invoke();
+
+        /// <summary>Call when a spell is recognized and the cast animation begins.</summary>
+        public void OnSpellCastStarted()   => _playerCast?.Invoke();
 
         /// <summary>Call when the enemy starts an attack action.</summary>
         public void OnEnemyActionStarted() => _enemyAttack?.Invoke();
