@@ -160,6 +160,8 @@ namespace Axiom.Battle
         private bool _enemySequenceComplete;
         private bool _isAwaitingVoiceSpell;
         private SpellEffectResolver _resolver;
+        private SpellData   _pendingSpell;
+        private SpellResult _pendingSpellResult;
 
         private void Start()
         {
@@ -182,6 +184,7 @@ namespace Axiom.Battle
                 _enemyAnimator.OnHitFrame  -= FireEnemyDamageVisuals;
                 _playerAnimator.OnAttackSequenceComplete -= OnPlayerSequenceComplete;
                 _enemyAnimator.OnAttackSequenceComplete  -= OnEnemySequenceComplete;
+                _playerAnimator.OnSpellFireFrame -= FireSpellVisuals;
                 _animationService = null;
             }
 
@@ -228,6 +231,7 @@ namespace Axiom.Battle
                 _enemyAnimator.OnHitFrame  += FireEnemyDamageVisuals;
                 _playerAnimator.OnAttackSequenceComplete += OnPlayerSequenceComplete;
                 _enemyAnimator.OnAttackSequenceComplete  += OnEnemySequenceComplete;
+                _playerAnimator.OnSpellFireFrame += FireSpellVisuals;
             }
 
             _battleManager.StartBattle(startState);
@@ -283,6 +287,7 @@ namespace Axiom.Battle
             if (_isProcessingAction) return;
             _isProcessingAction   = true;
             _isAwaitingVoiceSpell = true;
+            _playerAnimator?.TriggerCharge();
             OnSpellPhaseStarted?.Invoke();
         }
 
@@ -307,9 +312,29 @@ namespace Axiom.Battle
                 return;
             }
 
-            _isAwaitingVoiceSpell     = false;
-            _playerDamageVisualsFired = true;
+            _isAwaitingVoiceSpell = false;
+            _pendingSpell         = spell;
+            _playerDamageVisualsFired = true; // Spell path does not go through FirePlayerDamageVisuals
+
+            // Show the spell name in SpellInputUI during the cast animation.
             OnSpellRecognized?.Invoke(spell);
+
+            if (_playerAnimator != null)
+            {
+                _playerAnimator.TriggerCast();
+                // FireSpellVisuals() is called by the OnSpellFireFrame animation event.
+            }
+            else
+            {
+                FireSpellVisuals();
+            }
+        }
+
+        private void FireSpellVisuals()
+        {
+            if (_pendingSpell == null) return;
+            SpellData spell = _pendingSpell;
+            _pendingSpell = null;
 
             if (_spellVfxController != null)
             {
@@ -336,7 +361,6 @@ namespace Axiom.Battle
                     break;
             }
 
-            // Conditions on either character may have changed due to the spell.
             OnConditionsChanged?.Invoke(_playerStats);
             OnConditionsChanged?.Invoke(_enemyStats);
 
@@ -517,6 +541,7 @@ namespace Axiom.Battle
             if (_enemyAnimator  != null) _enemyAnimator.OnHitFrame  -= FireEnemyDamageVisuals;
             if (_playerAnimator != null) _playerAnimator.OnAttackSequenceComplete -= OnPlayerSequenceComplete;
             if (_enemyAnimator  != null) _enemyAnimator.OnAttackSequenceComplete  -= OnEnemySequenceComplete;
+            if (_playerAnimator != null) _playerAnimator.OnSpellFireFrame -= FireSpellVisuals;
         }
     }
 }
