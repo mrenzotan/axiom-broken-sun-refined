@@ -41,7 +41,7 @@ This is a Unity project — there are no CLI build or test commands. All develop
 - `Assets/Scenes/SampleScene.unity` — unused placeholder
 - Planned: `MainMenu`, `World_01..N` (platformer), `Battle` (turn-based combat) as separate scenes
 
-### Scripts Folder Structure (planned, follow this when creating scripts)
+### Scripts Folder Structure (follow this when creating new scripts)
 
 ```
 Assets/Scripts/
@@ -80,7 +80,7 @@ Vosk speech recognition runs on a **producer/consumer threaded pattern** — the
 
 | System             | Class                    | Type                                  |
 | ------------------ | ------------------------ | ------------------------------------- |
-| Cross-scene state  | `GameManager`            | MonoBehaviour (DontDestroyOnLoad)     |
+| Cross-scene state  | `GameManager`            | MonoBehaviour (DontDestroyOnLoad) — **Phase 4, not yet implemented** |
 | Turn-based combat  | `BattleManager`          | Plain C# (state machine)              |
 | Speech recognition | `VoskRecognizerService`  | Plain C# (threaded service)           |
 | Mic capture        | `MicrophoneInputHandler` | MonoBehaviour (capture only)          |
@@ -102,10 +102,10 @@ Vosk speech recognition runs on a **producer/consumer threaded pattern** — the
 
 See `docs/GAME_PLAN.md` Section 5 for full exit criteria per phase:
 
-1. **Platformer Foundation** — player controller, tilemap, Cinemachine, animations
-2. **Combat System** — BattleManager state machine, turn-based UI, enemy AI (no voice yet)
-3. **Voice Spell System** — Vosk threaded integration, SpellCastController, push-to-talk
-4. **Scene Bridge** — GameManager, battle triggers, scene transitions, world state restore
+1. ~~**Platformer Foundation**~~ ✓ — player controller, tilemap, Cinemachine, animations
+2. ~~**Combat System**~~ ✓ — BattleManager state machine, turn-based UI, enemy AI (no voice yet)
+3. ~~**Voice Spell System**~~ ✓ — Vosk threaded integration, SpellCastController, push-to-talk
+4. **Scene Bridge** ← current — GameManager, battle triggers, scene transitions, world state restore
 5. **Data Layer & Progression** — ScriptableObjects, save/load, XP/level system
 6. **World & Content** — levels, full enemy/spell/item rosters, narrative (start only after Phases 1–4 complete)
 7. **Polish & Release** — audio, visual juice, accessibility, profiling, builds

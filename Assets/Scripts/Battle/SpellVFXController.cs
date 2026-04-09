@@ -47,20 +47,23 @@ namespace Axiom.Battle
         }
 
         /// <summary>
-        /// Plays the VFX clip and/or SFX from the given SpellData.
+        /// Plays the VFX clip and/or SFX from the given SpellData at the specified world position.
         /// Fields are optional — null castVfxClip or null castSfx are silently skipped.
         /// If called while a previous effect is playing, it is interrupted immediately.
         /// No-op if spell is null.
         /// </summary>
-        public void Play(SpellData spell)
+        public void Play(SpellData spell, Vector3 position)
         {
             if (spell == null) return;
             StopAllCoroutines();
-            StartCoroutine(PlaySequence(spell));
+            StartCoroutine(PlaySequence(spell, position));
         }
 
-        private IEnumerator PlaySequence(SpellData spell)
+        private IEnumerator PlaySequence(SpellData spell, Vector3 position)
         {
+            // Reposition to the target character before any visual appears.
+            transform.position = position;
+
             // SFX: pick a random variant and fire immediately at cast time.
             // Using an array of 1-5 variants prevents the same sound from playing every cast.
             if (spell.castSfxVariants != null && spell.castSfxVariants.Length > 0 && _audioSource != null)

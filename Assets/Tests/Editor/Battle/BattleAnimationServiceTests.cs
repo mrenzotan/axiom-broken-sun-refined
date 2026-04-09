@@ -15,11 +15,13 @@ public class BattleAnimationServiceTests
     private static BattleAnimationService MakeService(
         CharacterStats player, CharacterStats enemy,
         System.Action playerAttack = null, System.Action playerHurt = null, System.Action playerDefeat = null,
-        System.Action enemyAttack = null,  System.Action enemyHurt = null,  System.Action enemyDefeat = null)
+        System.Action playerCharge = null, System.Action playerCast   = null,
+        System.Action enemyAttack  = null, System.Action enemyHurt   = null, System.Action enemyDefeat = null)
     {
         return new BattleAnimationService(
             player, enemy,
             playerAttack ?? (() => {}), playerHurt ?? (() => {}), playerDefeat ?? (() => {}),
+            playerCharge ?? (() => {}), playerCast  ?? (() => {}),
             enemyAttack  ?? (() => {}), enemyHurt  ?? (() => {}), enemyDefeat  ?? (() => {}));
     }
 
@@ -75,6 +77,32 @@ public class BattleAnimationServiceTests
         svc.OnEnemyActionStarted();
 
         Assert.IsFalse(called);
+    }
+
+    [Test]
+    public void OnSpellChargeStarted_InvokesPlayerCharge()
+    {
+        bool called = false;
+        var player = MakeStats("Player");
+        var enemy  = MakeStats("Enemy");
+        var svc = MakeService(player, enemy, playerCharge: () => called = true);
+
+        svc.OnSpellChargeStarted();
+
+        Assert.IsTrue(called);
+    }
+
+    [Test]
+    public void OnSpellCastStarted_InvokesPlayerCast()
+    {
+        bool called = false;
+        var player = MakeStats("Player");
+        var enemy  = MakeStats("Enemy");
+        var svc = MakeService(player, enemy, playerCast: () => called = true);
+
+        svc.OnSpellCastStarted();
+
+        Assert.IsTrue(called);
     }
 
     // ── Hurt animations ───────────────────────────────────────────────────────
@@ -192,12 +220,14 @@ public class BattleAnimationServiceTests
     {
         var player = MakeStats("Player");
         var enemy  = MakeStats("Enemy");
-        var svc = new BattleAnimationService(player, enemy, null, null, null, null, null, null);
+        var svc = new BattleAnimationService(player, enemy, null, null, null, null, null, null, null, null);
 
         Assert.DoesNotThrow(() => svc.OnPlayerActionStarted());
         Assert.DoesNotThrow(() => svc.OnEnemyActionStarted());
         Assert.DoesNotThrow(() => svc.OnDamageDealt(player, 5, false));
         Assert.DoesNotThrow(() => svc.OnCharacterDefeated(enemy));
+        Assert.DoesNotThrow(() => svc.OnSpellChargeStarted());
+        Assert.DoesNotThrow(() => svc.OnSpellCastStarted());
     }
 
     // ── Unknown target guard ──────────────────────────────────────────────────
