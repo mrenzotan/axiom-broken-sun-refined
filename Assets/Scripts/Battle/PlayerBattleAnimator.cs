@@ -26,7 +26,9 @@ namespace Axiom.Battle
         private static readonly int HurtHash      = Animator.StringToHash("Hurt");
         private static readonly int DefeatHash    = Animator.StringToHash("Defeat");
         private static readonly int IsRunningHash = Animator.StringToHash("IsRunning");
-        private static readonly int MoveRightHash = Animator.StringToHash("MoveRight");
+        private static readonly int MoveRightHash  = Animator.StringToHash("MoveRight");
+        private static readonly int IsChargingHash = Animator.StringToHash("IsCharging");
+        private static readonly int CastHash       = Animator.StringToHash("Cast");
 
         private Vector3 _originalLocalPosition;
 
@@ -43,6 +45,12 @@ namespace Axiom.Battle
         public event System.Action OnAttackSequenceComplete;
 
         /// <summary>
+        /// Fired by Unity Animation Event on the fire frame of the cast clip.
+        /// BattleController subscribes to spawn VFX and resolve spell damage at the right moment.
+        /// </summary>
+        public event System.Action OnSpellFireFrame;
+
+        /// <summary>
         /// Called by Unity Animation Event on the attack clip's hit frame.
         /// The method name must match exactly what is set in the Animation Event inspector.
         /// </summary>
@@ -56,6 +64,14 @@ namespace Axiom.Battle
         public void TriggerAttack()  => StartCoroutine(MoveAndAttackSequence());
         public void TriggerHurt()    => _animator.SetTrigger(HurtHash);
         public void TriggerDefeat()  => _animator.SetTrigger(DefeatHash);
+        public void TriggerCharge()  => _animator.SetBool(IsChargingHash, true);
+        public void TriggerCast()    { _animator.SetBool(IsChargingHash, false); _animator.SetTrigger(CastHash); }
+
+        /// <summary>
+        /// Called by Unity Animation Event on the cast clip's fire frame.
+        /// The method name must match exactly what is set in the Animation Event inspector.
+        /// </summary>
+        public void AnimEvent_OnSpellFire() => OnSpellFireFrame?.Invoke();
 
         private System.Collections.IEnumerator MoveAndAttackSequence()
         {
