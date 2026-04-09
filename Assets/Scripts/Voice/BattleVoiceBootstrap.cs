@@ -50,6 +50,7 @@ namespace Axiom.Voice
             Path.Combine("VoskModels", "vosk-model-en-us-0.22-lgraph");
 
         private VoskRecognizerService _recognizerService;
+        private Model _voskModel;
 
         // ── Unity lifecycle ───────────────────────────────────────────────────────
 
@@ -85,15 +86,16 @@ namespace Axiom.Voice
                 yield break;
             }
 
+            _voskModel = modelTask.Result;
             SpellData[] spells = _unlockedSpells ?? Array.Empty<SpellData>();
 
             Task<VoskRecognizer> recognizerTask =
-                SpellVocabularyManager.RebuildRecognizerAsync(modelTask.Result, _sampleRate, spells);
+                SpellVocabularyManager.RebuildRecognizerAsync(_voskModel, _sampleRate, spells);
             yield return new WaitUntil(() => recognizerTask.IsCompleted);
 
             if (recognizerTask.IsFaulted)
             {
-                modelTask.Result.Dispose();
+                _voskModel.Dispose();
                 Debug.LogError(
                     $"[BattleVoiceBootstrap] Failed to build Vosk recognizer: " +
                     $"{recognizerTask.Exception?.InnerException?.Message}", this);
@@ -136,6 +138,8 @@ namespace Axiom.Voice
         {
             _recognizerService?.Dispose();
             _recognizerService = null;
+            _voskModel?.Dispose();
+            _voskModel = null;
         }
     }
 }

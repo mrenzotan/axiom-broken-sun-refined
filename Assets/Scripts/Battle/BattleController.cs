@@ -429,6 +429,8 @@ namespace Axiom.Battle
         {
             if (!_isAwaitingVoiceSpell) return;
             if (_battleManager.CurrentState != BattleState.PlayerTurn) return;
+            _isAwaitingVoiceSpell = false;
+            _isProcessingAction   = false;
             OnSpellNotRecognized?.Invoke();
             OnSpellChargeAborted?.Invoke();
         }
@@ -443,6 +445,8 @@ namespace Axiom.Battle
         {
             if (!_isAwaitingVoiceSpell) return;
             if (_battleManager.CurrentState != BattleState.PlayerTurn) return;
+            _isAwaitingVoiceSpell = false;
+            _isProcessingAction   = false;
             OnSpellChargeAborted?.Invoke();
         }
 
