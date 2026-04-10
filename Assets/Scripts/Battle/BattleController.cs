@@ -117,6 +117,14 @@ namespace Axiom.Battle
         public event Action<string> OnSpellCastRejected;
 
         /// <summary>
+        /// Fires when the voice spell phase ends without a cast being dispatched —
+        /// either because Vosk returned empty text (silent PTT release) or because
+        /// the recognized word did not match any unlocked spell.
+        /// <see cref="PlayerBattleAnimator"/> subscribes via <see cref="Initialize"/> to reset IsCharging.
+        /// </summary>
+        public event Action OnSpellChargeAborted;
+
+        /// <summary>
         /// Fires when a Heal spell resolves. Parameters: target CharacterStats, HP amount healed.
         /// BattleHUD subscribes to update the HP bar.
         /// </summary>
@@ -175,6 +183,13 @@ namespace Axiom.Battle
         private SpellData   _pendingSpell;
         private SpellResult _pendingSpellResult;
 
+        [SerializeField]
+        [Tooltip("Seconds to wait for AnimEvent_OnSpellFire before forcing spell resolution. " +
+                 "Set to a value greater than your longest cast animation clip length.")]
+        private float _spellFireTimeout = 3f;
+
+        private Coroutine _spellFireTimeoutCoroutine;
+
         private void Start()
         {
             Initialize(_startState);
@@ -204,6 +219,9 @@ namespace Axiom.Battle
 
             if (_battleManager != null)
                 _battleManager.OnStateChanged -= HandleStateChanged;
+
+            if (_playerAnimator != null)
+                OnSpellChargeAborted -= _playerAnimator.TriggerResetCharge;
 
             if (_enemyData != null)
             {
@@ -249,6 +267,7 @@ namespace Axiom.Battle
                 _playerAnimator.OnAttackSequenceComplete += OnPlayerSequenceComplete;
                 _enemyAnimator.OnAttackSequenceComplete  += OnEnemySequenceComplete;
                 _playerAnimator.OnSpellFireFrame += FireSpellVisuals;
+                OnSpellChargeAborted += _playerAnimator.TriggerResetCharge;
             }
 
             _battleManager.StartBattle(startState);
@@ -342,11 +361,24 @@ namespace Axiom.Battle
             {
                 FireSpellVisuals();
             }
-            // else: FireSpellVisuals() is called by the OnSpellFireFrame animation event.
+            else
+            {
+                // Safety net: if AnimEvent_OnSpellFire never fires (missing animation event or
+                // clip interrupted), resolve spell visuals after the timeout so the turn advances.
+                _spellFireTimeoutCoroutine = StartCoroutine(SpellFireTimeoutCoroutine());
+            }
         }
 
         private void FireSpellVisuals()
         {
+            // Cancel the safety-net timeout — either the animation event fired on time,
+            // or the timeout itself called us. Either way the coroutine is no longer needed.
+            if (_spellFireTimeoutCoroutine != null)
+            {
+                StopCoroutine(_spellFireTimeoutCoroutine);
+                _spellFireTimeoutCoroutine = null;
+            }
+
             if (_pendingSpell == null) return;
             SpellData spell = _pendingSpell;
             _pendingSpell = null;
@@ -397,7 +429,25 @@ namespace Axiom.Battle
         {
             if (!_isAwaitingVoiceSpell) return;
             if (_battleManager.CurrentState != BattleState.PlayerTurn) return;
+            _isAwaitingVoiceSpell = false;
+            _isProcessingAction   = false;
             OnSpellNotRecognized?.Invoke();
+            OnSpellChargeAborted?.Invoke();
+        }
+
+        /// <summary>
+        /// Called by <see cref="Axiom.Voice.SpellCastController"/> when Vosk returns a final
+        /// result with empty text (e.g. PTT released without speaking). Resets the charge
+        /// animation if the player is still in the voice spell phase.
+        /// No-op outside the voice spell phase or outside PlayerTurn.
+        /// </summary>
+        public void NotifyVoiceResultEmpty()
+        {
+            if (!_isAwaitingVoiceSpell) return;
+            if (_battleManager.CurrentState != BattleState.PlayerTurn) return;
+            _isAwaitingVoiceSpell = false;
+            _isProcessingAction   = false;
+            OnSpellChargeAborted?.Invoke();
         }
 
         /// <summary>Executes the Item placeholder action. No-op outside PlayerTurn or while an action is processing.</summary>
@@ -504,6 +554,16 @@ namespace Axiom.Battle
             _battleManager.OnEnemyActionComplete(targetDefeated);
         }
 
+        private System.Collections.IEnumerator SpellFireTimeoutCoroutine()
+        {
+            yield return new WaitForSeconds(_spellFireTimeout);
+            _spellFireTimeoutCoroutine = null;
+            Debug.LogWarning(
+                "[Battle] AnimEvent_OnSpellFire did not fire within timeout — resolving spell via fallback.",
+                this);
+            FireSpellVisuals();
+        }
+
         private void FirePlayerDamageVisuals()
         {
             if (_playerDamageVisualsFired) return;
@@ -559,6 +619,7 @@ namespace Axiom.Battle
             if (_playerAnimator != null) _playerAnimator.OnAttackSequenceComplete -= OnPlayerSequenceComplete;
             if (_enemyAnimator  != null) _enemyAnimator.OnAttackSequenceComplete  -= OnEnemySequenceComplete;
             if (_playerAnimator != null) _playerAnimator.OnSpellFireFrame -= FireSpellVisuals;
+            if (_playerAnimator != null) OnSpellChargeAborted -= _playerAnimator.TriggerResetCharge;
         }
     }
 }

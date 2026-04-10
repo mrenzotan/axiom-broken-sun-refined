@@ -273,7 +273,7 @@ git push
 If git rejects the push (non-fast-forward error):
 
 ```bash
-git push --force
+git push --force-with-lease
 ```
 
-This is safe because GitHub is a write-only mirror — no one on the team pulls from it. Force-pushing rewrites the remote git history to match your correct local state. To avoid this situation, push to GitHub after every UVCS check-in that includes code or docs.
+This is safe because GitHub is a write-only mirror — no one on the team pulls from it. Force-pushing rewrites the remote git history to match your correct local state. `--force-with-lease` is preferred over `--force`: it only overwrites the remote if the remote tip matches what your git client last fetched, so it fails safely if another team member pushed a catch-up sync at the same time. To avoid this situation, push to GitHub after every UVCS check-in that includes code or docs.

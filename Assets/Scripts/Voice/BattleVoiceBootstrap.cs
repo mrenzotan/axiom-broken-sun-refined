@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Concurrent;
 using System.IO;
 using System.Threading.Tasks;
+using Axiom.Battle;
 using Axiom.Data;
 using UnityEngine;
 using Vosk;
@@ -41,15 +42,27 @@ namespace Axiom.Voice
         [Tooltip("Sample rate in Hz passed to the Vosk recognizer. Must match MicrophoneInputHandler._sampleRate.")]
         private int _sampleRate = 16000; // Widened to float when passed to RebuildRecognizerAsync.
 
+        [SerializeField]
+        [Tooltip("ActionMenuUI in the Battle scene. Assign to disable the Spell button when voice is unavailable.")]
+        private ActionMenuUI _actionMenuUI;
+
         private static readonly string ModelRelativePath =
             Path.Combine("VoskModels", "vosk-model-en-us-0.22-lgraph");
 
         private VoskRecognizerService _recognizerService;
+        private Model _voskModel;
 
         // ── Unity lifecycle ───────────────────────────────────────────────────────
 
         private IEnumerator Start()
         {
+            if (Microphone.devices.Length == 0)
+            {
+                Debug.LogWarning("[BattleVoiceBootstrap] No microphone device detected — Spell button disabled.", this);
+                DisableSpell();
+                yield break;
+            }
+
             string modelPath = Path.Combine(Application.streamingAssetsPath, ModelRelativePath);
 
             if (!Directory.Exists(modelPath))
@@ -57,10 +70,10 @@ namespace Axiom.Voice
                 Debug.LogError(
                     $"[BattleVoiceBootstrap] Vosk model not found at: {modelPath}\n" +
                     "Place vosk-model-en-us-0.22-lgraph inside StreamingAssets/VoskModels/.", this);
+                DisableSpell();
                 yield break;
             }
 
-            // Model construction is blocking and slow (~1-2s). Run on a background thread.
             Task<Model> modelTask = Task.Run(() => new Model(modelPath));
             yield return new WaitUntil(() => modelTask.IsCompleted);
 
@@ -69,22 +82,24 @@ namespace Axiom.Voice
                 Debug.LogError(
                     $"[BattleVoiceBootstrap] Failed to load Vosk model: " +
                     $"{modelTask.Exception?.InnerException?.Message}", this);
+                DisableSpell();
                 yield break;
             }
 
+            _voskModel = modelTask.Result;
             SpellData[] spells = _unlockedSpells ?? Array.Empty<SpellData>();
 
-            // VoskRecognizer construction applies grammar to the model — also off main thread.
             Task<VoskRecognizer> recognizerTask =
-                SpellVocabularyManager.RebuildRecognizerAsync(modelTask.Result, _sampleRate, spells);
+                SpellVocabularyManager.RebuildRecognizerAsync(_voskModel, _sampleRate, spells);
             yield return new WaitUntil(() => recognizerTask.IsCompleted);
 
             if (recognizerTask.IsFaulted)
             {
-                modelTask.Result.Dispose();
+                _voskModel.Dispose();
                 Debug.LogError(
                     $"[BattleVoiceBootstrap] Failed to build Vosk recognizer: " +
                     $"{recognizerTask.Exception?.InnerException?.Message}", this);
+                DisableSpell();
                 yield break;
             }
 
@@ -93,14 +108,13 @@ namespace Axiom.Voice
                 Debug.LogWarning(
                     "[BattleVoiceBootstrap] Spell list is empty — voice recognition not started.\n" +
                     "Assign at least one SpellData asset to the Unlocked Spells field.", this);
+                DisableSpell();
                 yield break;
             }
 
-            // Create the shared queues.
             var inputQueue  = new ConcurrentQueue<short[]>();
             var resultQueue = new ConcurrentQueue<string>();
 
-            // Wire the pipeline.
             _recognizerService = new VoskRecognizerService(recognizerTask.Result, inputQueue, resultQueue);
             _recognizerService.Start();
 
@@ -110,10 +124,22 @@ namespace Axiom.Voice
             Debug.Log("[BattleVoiceBootstrap] Vosk pipeline ready.");
         }
 
+        private void DisableSpell()
+        {
+            if (_actionMenuUI == null)
+            {
+                Debug.LogError("[BattleVoiceBootstrap] ActionMenuUI is not assigned — Spell button cannot be disabled. Assign it in the Inspector.", this);
+                return;
+            }
+            _actionMenuUI.SetSpellInteractable(false);
+        }
+
         private void OnDestroy()
         {
             _recognizerService?.Dispose();
             _recognizerService = null;
+            _voskModel?.Dispose();
+            _voskModel = null;
         }
     }
 }
