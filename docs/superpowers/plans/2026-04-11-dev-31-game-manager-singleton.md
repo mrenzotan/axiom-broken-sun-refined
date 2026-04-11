@@ -552,9 +552,9 @@ namespace Axiom.Core
 
 The singleton guard allows the prefab to live in both scenes safely: if Battle is loaded additively after Platformer, the second `GameManager` is destroyed immediately in `Awake`. If a developer plays the Battle scene directly from the Editor without first passing through Platformer, the GameManager in Battle provides the singleton.
 
-- [ ] **Step 1: Create the `Assets/Prefabs/` folder (if it doesn't exist)**
+- [ ] **Step 1: Create the `Assets/Prefabs/Core/` folder**
 
-> **Unity Editor task (user):** In the Project window, check if `Assets/Prefabs/` already exists. If not, right-click `Assets/` → Create → Folder → name it `Prefabs`.
+> **Unity Editor task (user):** In the Project window, right-click `Assets/Prefabs/` → Create → Folder → name it `Core`.
 
 - [ ] **Step 2: Create the GameManager prefab**
 
@@ -562,20 +562,20 @@ The singleton guard allows the prefab to live in both scenes safely: if Battle i
 > 1. Open `Assets/Scenes/Platformer.unity`.
 > 2. In the Hierarchy, right-click → Create Empty → rename the new GameObject to `GameManager`.
 > 3. With `GameManager` selected, in the Inspector → Add Component → type `GameManager` → select `Axiom.Core.GameManager`.
-> 4. Drag the `GameManager` GameObject from the Hierarchy into `Assets/Prefabs/` to create `Assets/Prefabs/GameManager.prefab`.
+> 4. Drag the `GameManager` GameObject from the Hierarchy into `Assets/Prefabs/Core/` to create `Assets/Prefabs/Core/GameManager.prefab`.
 > 5. Delete the original `GameManager` GameObject from the Hierarchy (you will re-add it as a prefab instance next).
 
 - [ ] **Step 3: Add the prefab instance to the Platformer scene**
 
 > **Unity Editor task (user):**
-> 1. While `Assets/Scenes/Platformer.unity` is open, drag `Assets/Prefabs/GameManager.prefab` from the Project window into the Hierarchy.
+> 1. While `Assets/Scenes/Platformer.unity` is open, drag `Assets/Prefabs/Core/GameManager.prefab` from the Project window into the Hierarchy.
 > 2. Save the scene (Ctrl+S).
 
 - [ ] **Step 4: Add the prefab instance to the Battle scene**
 
 > **Unity Editor task (user):**
 > 1. Open `Assets/Scenes/Battle.unity`.
-> 2. Drag `Assets/Prefabs/GameManager.prefab` into the Hierarchy.
+> 2. Drag `Assets/Prefabs/Core/GameManager.prefab` into the Hierarchy.
 > 3. Save the scene (Ctrl+S).
 
 - [ ] **Step 5: Smoke test in Play Mode**
@@ -588,8 +588,8 @@ The singleton guard allows the prefab to live in both scenes safely: if Battle i
 
   Unity Version Control → Pending Changes → stage the files below → Check in with message: `chore(DEV-31): add GameManager prefab to Platformer and Battle scenes`
 
-  - `Assets/Prefabs/` *(folder .meta — if new)*
-  - `Assets/Prefabs/GameManager.prefab`
-  - `Assets/Prefabs/GameManager.prefab.meta`
+  - `Assets/Prefabs/Core/` *(folder .meta — new)*
+  - `Assets/Prefabs/Core/GameManager.prefab`
+  - `Assets/Prefabs/Core/GameManager.prefab.meta`
   - `Assets/Scenes/Platformer.unity`
   - `Assets/Scenes/Battle.unity`
