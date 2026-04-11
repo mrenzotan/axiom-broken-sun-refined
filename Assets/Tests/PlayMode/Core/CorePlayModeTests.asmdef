@@ -1,9 +1,7 @@
 {
     "name": "CorePlayModeTests",
     "references": [
-        "Axiom.Core"
-    ],
-    "testReferences": [
+        "Axiom.Core",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

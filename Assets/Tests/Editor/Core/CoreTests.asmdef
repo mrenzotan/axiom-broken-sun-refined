@@ -1,9 +1,7 @@
 {
     "name": "CoreTests",
     "references": [
-        "Axiom.Core"
-    ],
-    "testReferences": [
+        "Axiom.Core",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],
