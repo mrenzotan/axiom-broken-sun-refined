@@ -32,8 +32,9 @@ namespace Axiom.Platformer
             _attackAction = _actions.Player.Attack;
         }
 
-        private void OnEnable()  => _attackAction.Enable();
-        private void OnDisable() => _attackAction.Disable();
+        private void OnEnable()   => _attackAction.Enable();
+        private void OnDisable()  => _attackAction.Disable();
+        private void OnDestroy()  => _actions.Dispose();
 
         private void Update()
         {
