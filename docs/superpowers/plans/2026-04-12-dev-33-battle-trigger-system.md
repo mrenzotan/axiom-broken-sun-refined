@@ -75,7 +75,7 @@ DEV-32's `EnemyPatrolBehavior` and `EnemyController` are in the **global C# name
 
 `CombatStartState` must live in `Axiom.Data` so both `Axiom.Core` and `Axiom.Battle` can reference it without circular dependency. This is a namespace-only move — the enum values do not change.
 
-- [ ] **Step 1: Create the new file in Data**
+- [x] **Step 1: Create the new file in Data**
 
 Create `Assets/Scripts/Data/CombatStartState.cs` with this exact content (namespace changed from `Axiom.Battle` to `Axiom.Data`):
 
@@ -95,13 +95,13 @@ namespace Axiom.Data
 }
 ```
 
-- [ ] **Step 2: Delete the old file**
+- [x] **Step 2: Delete the old file**
 
 Delete `Assets/Scripts/Battle/CombatStartState.cs` and its `.meta` file.
 
 > **Unity Editor task (user):** In the Project window, delete `Assets/Scripts/Battle/CombatStartState.cs`. Unity will prompt to also delete the `.meta` — confirm yes. Then right-click `Assets/Scripts/Data/` → Reimport All to pick up the new file.
 
-- [ ] **Step 3: Add `using Axiom.Data;` to BattleManager.cs**
+- [x] **Step 3: Add `using Axiom.Data;` to BattleManager.cs**
 
 `BattleManager.cs` uses `CombatStartState` without a `using` statement because it was previously in the same namespace. Now add it at the top of `Assets/Scripts/Battle/BattleManager.cs`:
 
@@ -114,7 +114,7 @@ namespace Axiom.Battle
     // ... rest of file unchanged
 ```
 
-- [ ] **Step 4: Add `using Axiom.Data;` to BattleController.cs**
+- [x] **Step 4: Add `using Axiom.Data;` to BattleController.cs**
 
 `BattleController.cs` already has `using Axiom.Data;` at line 4. Verify this line is present. If it is, no change is needed — `CombatStartState` is now resolved through the existing import. If somehow it is missing, add it:
 
@@ -129,13 +129,13 @@ namespace Axiom.Battle
     // ... rest of file unchanged
 ```
 
-- [ ] **Step 5: Check for any other files using CombatStartState**
+- [x] **Step 5: Check for any other files using CombatStartState**
 
 Search `Assets/Scripts/` for all files referencing `CombatStartState`. If any other file has it under `Axiom.Battle` namespace assumptions, add `using Axiom.Data;` to that file too.
 
 > Run in Unity Test Runner to confirm no compile errors at this stage before moving on.
 
-- [ ] **Step 6: Check in via UVCS**
+- [x] **Step 6: Check in via UVCS**
 
   Unity Version Control → Pending Changes → stage the files listed below → Check in with message: `refactor(DEV-33): move CombatStartState to Axiom.Data namespace`
   - `Assets/Scripts/Data/CombatStartState.cs`
@@ -155,7 +155,7 @@ Search `Assets/Scripts/` for all files referencing `CombatStartState`. If any ot
 
 `EnemyData` is nullable — passing `null` is valid for standalone Battle scene testing where `BattleController` falls back to its Inspector-configured stats.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `Assets/Tests/Editor/Battle/BattleEntryTests.cs`:
 
@@ -209,13 +209,13 @@ namespace Axiom.Tests.Editor.Battle
 }
 ```
 
-- [ ] **Step 2: Run the tests — expect compile errors (BattleEntry does not exist yet)**
+- [x] **Step 2: Run the tests — expect compile errors (BattleEntry does not exist yet)**
 
   Unity Editor → Window → General → Test Runner → Edit Mode → Run All
 
   Expected: `BattleEntry` not found compile errors. This confirms the tests are wired correctly.
 
-- [ ] **Step 3: Implement BattleEntry**
+- [x] **Step 3: Implement BattleEntry**
 
 Create `Assets/Scripts/Data/BattleEntry.cs`:
 
@@ -243,13 +243,13 @@ namespace Axiom.Data
 }
 ```
 
-- [ ] **Step 4: Run tests — expect all 4 to pass**
+- [x] **Step 4: Run tests — expect all 4 to pass**
 
   Unity Editor → Test Runner → Edit Mode → Run All
 
   Expected: `BattleEntryTests` — 4 passed, 0 failed.
 
-- [ ] **Step 5: Check in via UVCS**
+- [x] **Step 5: Check in via UVCS**
 
   Unity Version Control → Pending Changes → stage the files listed below → Check in with message: `feat(DEV-33): add BattleEntry data class`
   - `Assets/Scripts/Data/BattleEntry.cs`
@@ -269,7 +269,7 @@ namespace Axiom.Data
 
 These asmdef changes establish the dependency graph described at the top of this plan. All four edits must be made together — partial application will cause compile errors.
 
-- [ ] **Step 1: Update Axiom.Core.asmdef**
+- [x] **Step 1: Update Axiom.Core.asmdef**
 
 Replace the contents of `Assets/Scripts/Core/Axiom.Core.asmdef` with:
 
@@ -291,7 +291,7 @@ Replace the contents of `Assets/Scripts/Core/Axiom.Core.asmdef` with:
 }
 ```
 
-- [ ] **Step 2: Update Battle.asmdef**
+- [x] **Step 2: Update Battle.asmdef**
 
 Replace the contents of `Assets/Scripts/Battle/Battle.asmdef` with:
 
@@ -317,7 +317,7 @@ Replace the contents of `Assets/Scripts/Battle/Battle.asmdef` with:
 }
 ```
 
-- [ ] **Step 3: Update Platformer.asmdef**
+- [x] **Step 3: Update Platformer.asmdef**
 
 Replace the contents of `Assets/Scripts/Platformer/Platformer.asmdef` with:
 
@@ -341,7 +341,7 @@ Replace the contents of `Assets/Scripts/Platformer/Platformer.asmdef` with:
 }
 ```
 
-- [ ] **Step 4: Update CoreTests.asmdef**
+- [x] **Step 4: Update CoreTests.asmdef**
 
 Replace the contents of `Assets/Tests/Editor/Core/CoreTests.asmdef` with:
 
@@ -366,13 +366,13 @@ Replace the contents of `Assets/Tests/Editor/Core/CoreTests.asmdef` with:
 }
 ```
 
-- [ ] **Step 5: Verify no compile errors**
+- [x] **Step 5: Verify no compile errors**
 
   Save all `.asmdef` files and wait for Unity to recompile. The Console should show zero errors. If errors appear, they will name the missing reference — check the dependency graph at the top of this plan.
 
   **DEV-32 note:** `Assets/Tests/Editor/Platformer/PlatformerTests.asmdef` exists and only references `Axiom.Platformer` — no update needed. Assembly reference dependencies are not transitive in Unity (test assemblies only see what they directly reference), and `PlatformerTests` only uses `EnemyPatrolBehavior` and `Vector2`, both accessible via `Axiom.Platformer` without needing `Axiom.Core` or `Axiom.Data` directly.
 
-- [ ] **Step 6: Check in via UVCS**
+- [x] **Step 6: Check in via UVCS**
 
   Unity Version Control → Pending Changes → stage the files listed below → Check in with message: `chore(DEV-33): update assembly definitions for Core→Data, Battle→Core, Platformer→Core+Data dependency chain`
   - `Assets/Scripts/Core/Axiom.Core.asmdef`
@@ -390,7 +390,7 @@ Replace the contents of `Assets/Tests/Editor/Core/CoreTests.asmdef` with:
 
 `GameManager` gains three simple methods: `SetPendingBattle(BattleEntry)`, `ClearPendingBattle()`, and a read-only `PendingBattle` property. `BattleController` will call `ClearPendingBattle()` after consuming the entry so the data is never stale.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 Create `Assets/Tests/Editor/Core/GameManagerPendingBattleTests.cs`:
 
@@ -471,13 +471,13 @@ namespace Axiom.Tests.Editor.Core
 }
 ```
 
-- [ ] **Step 2: Run the tests — expect failures (API does not exist yet)**
+- [x] **Step 2: Run the tests — expect failures (API does not exist yet)**
 
   Unity Editor → Test Runner → Edit Mode → Run All
 
   Expected: `GameManagerPendingBattleTests` — all 5 fail with `PendingBattle` / `SetPendingBattle` / `ClearPendingBattle` not found.
 
-- [ ] **Step 3: Implement PendingBattle API in GameManager**
+- [x] **Step 3: Implement PendingBattle API in GameManager**
 
 Replace the full contents of `Assets/Scripts/Core/GameManager.cs` with:
 
@@ -545,13 +545,13 @@ namespace Axiom.Core
 }
 ```
 
-- [ ] **Step 4: Run tests — expect all 5 to pass**
+- [x] **Step 4: Run tests — expect all 5 to pass**
 
   Unity Editor → Test Runner → Edit Mode → Run All
 
   Expected: `GameManagerPendingBattleTests` — 5 passed, 0 failed. All other existing tests still pass.
 
-- [ ] **Step 5: Check in via UVCS**
+- [x] **Step 5: Check in via UVCS**
 
   Unity Version Control → Pending Changes → stage the files listed below → Check in with message: `feat(DEV-33): add PendingBattle API to GameManager`
   - `Assets/Scripts/Core/GameManager.cs`
@@ -569,7 +569,7 @@ namespace Axiom.Core
 
 If `GameManager` is absent (standalone Battle scene testing with no `GameManager` prefab in the scene), `Instance` is null and the guard falls through to the existing Inspector-driven `Initialize()` call unchanged.
 
-- [ ] **Step 1: Add `using Axiom.Core;` to BattleController.cs**
+- [x] **Step 1: Add `using Axiom.Core;` to BattleController.cs**
 
 `BattleController.cs` already has `using Axiom.Data;` — it does not yet have `using Axiom.Core;`. Add it to the using block at the top of `Assets/Scripts/Battle/BattleController.cs`:
 
@@ -585,7 +585,7 @@ namespace Axiom.Battle
     // ... rest of file
 ```
 
-- [ ] **Step 2: Modify BattleController.Start()**
+- [x] **Step 2: Modify BattleController.Start()**
 
 Find the `Start()` method in `BattleController.cs` (currently at line 193):
 
@@ -613,17 +613,17 @@ private void Start()
 }
 ```
 
-- [ ] **Step 3: Run all Edit Mode tests to confirm no regressions**
+- [x] **Step 3: Run all Edit Mode tests to confirm no regressions**
 
   Unity Editor → Test Runner → Edit Mode → Run All
 
   Expected: all existing tests still pass. The `BattleController` change has no Edit Mode tests of its own (it requires scene lifecycle to test fully), but it must not break existing test compilation.
 
-- [ ] **Step 4: Verify standalone Battle scene still works**
+- [x] **Step 4: Verify standalone Battle scene still works**
 
   Open the Battle scene. Press Play in the Unity Editor. The battle should start with Inspector-configured values (GameManager is not present in the Battle scene). Confirm the turn order matches the `_startState` value set in the `BattleController` Inspector.
 
-- [ ] **Step 5: Check in via UVCS**
+- [x] **Step 5: Check in via UVCS**
 
   Unity Version Control → Pending Changes → stage the files listed below → Check in with message: `feat(DEV-33): wire BattleController.Start to consume GameManager.PendingBattle`
   - `Assets/Scripts/Battle/BattleController.cs`
@@ -644,7 +644,7 @@ A `_triggered` guard prevents double-trigger if both conditions overlap in the s
 
 If `GameManager.Instance` is null (no GameManager prefab in the Platformer scene), a warning is logged and the scene still loads — `BattleController` falls back to its Inspector values. This ensures DEV-33 degrades gracefully during development when GameManager is not yet wired up.
 
-- [ ] **Step 1: Implement OverworldEnemyCombatTrigger**
+- [x] **Step 1: Implement OverworldEnemyCombatTrigger**
 
 Create `Assets/Scripts/Platformer/OverworldEnemyCombatTrigger.cs`:
 
@@ -715,7 +715,7 @@ namespace Axiom.Platformer
 }
 ```
 
-- [ ] **Step 2: Check in via UVCS**
+- [x] **Step 2: Check in via UVCS**
 
   Unity Version Control → Pending Changes → stage the files listed below → Check in with message: `feat(DEV-33): add OverworldEnemyCombatTrigger MonoBehaviour`
   - `Assets/Scripts/Platformer/OverworldEnemyCombatTrigger.cs`
@@ -734,7 +734,7 @@ The attack range is drawn as a Gizmo in the Scene view when the player is select
 
 > **Prerequisite:** The Unity Input Actions asset must have an "Attack" action defined in the "Player" action map before this script will compile without errors (see Task 8, Step 1).
 
-- [ ] **Step 1: Implement PlayerOverworldAttack**
+- [x] **Step 1: Implement PlayerOverworldAttack**
 
 Create `Assets/Scripts/Platformer/PlayerOverworldAttack.cs`:
 
@@ -796,7 +796,7 @@ namespace Axiom.Platformer
 }
 ```
 
-- [ ] **Step 2: Check in via UVCS**
+- [x] **Step 2: Check in via UVCS**
 
   Unity Version Control → Pending Changes → stage the files listed below → Check in with message: `feat(DEV-33): add PlayerOverworldAttack MonoBehaviour`
   - `Assets/Scripts/Platformer/PlayerOverworldAttack.cs`
