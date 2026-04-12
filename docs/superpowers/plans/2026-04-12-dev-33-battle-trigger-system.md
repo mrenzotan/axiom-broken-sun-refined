@@ -25,14 +25,12 @@ No circular dependencies.
 
 ---
 
-## DEV-32 Independence Note
+## DEV-32 Context Note
 
-DEV-32 (enemy patrol + chase) is in progress. This plan is intentionally decoupled:
+DEV-32 (enemy patrol + chase) is **complete**. This plan integrates directly with its output:
 
-- `OverworldEnemyCombatTrigger` is a standalone MonoBehaviour — attach it to any enemy prefab, including the patrol enemy DEV-32 will produce.
-- DEV-32 produces `Assets/Prefabs/Enemies/Enemy.prefab`. If it exists when executing Task 8, use it as the base — do not create a new enemy from scratch.
-- If DEV-32 is not yet complete, place a **static (non-patrolling) enemy** placeholder in the Platformer scene with `OverworldEnemyCombatTrigger` attached for isolated testing.
-- When DEV-32 ships, attach `OverworldEnemyCombatTrigger` to the patrol enemy prefab. No code changes required.
+- `OverworldEnemyCombatTrigger` is a standalone MonoBehaviour — attach it to the patrol enemy prefab DEV-32 produced.
+- `Assets/Prefabs/Enemies/Enemy.prefab` exists. Use it as the base in Task 8 — do not create a new enemy from scratch.
 
 ### Collision architecture with DEV-32
 
@@ -372,7 +370,7 @@ Replace the contents of `Assets/Tests/Editor/Core/CoreTests.asmdef` with:
 
   Save all `.asmdef` files and wait for Unity to recompile. The Console should show zero errors. If errors appear, they will name the missing reference — check the dependency graph at the top of this plan.
 
-  **DEV-32 note:** If DEV-32's `Assets/Tests/Editor/Platformer/PlatformerTests.asmdef` already exists at this point, it only references `Axiom.Platformer` — no update needed. Assembly reference dependencies are not transitive in Unity (test assemblies only see what they directly reference), but `PlatformerTests` only uses `EnemyPatrolBehavior` and `Vector2`, both of which are accessible via `Axiom.Platformer` without needing `Axiom.Core` or `Axiom.Data` directly.
+  **DEV-32 note:** `Assets/Tests/Editor/Platformer/PlatformerTests.asmdef` exists and only references `Axiom.Platformer` — no update needed. Assembly reference dependencies are not transitive in Unity (test assemblies only see what they directly reference), and `PlatformerTests` only uses `EnemyPatrolBehavior` and `Vector2`, both accessible via `Axiom.Platformer` without needing `Axiom.Core` or `Axiom.Data` directly.
 
 - [ ] **Step 6: Check in via UVCS**
 
@@ -823,16 +821,7 @@ namespace Axiom.Platformer
 
 ### Step 3: Configure a test enemy for the Surprised path
 
-> **Unity Editor task (user):** Open `Assets/Scenes/Platformer.unity`.
->
-> **If DEV-32 is complete** (`Assets/Prefabs/Enemies/Enemy.prefab` exists):
-> - Open `Assets/Prefabs/Enemies/Enemy.prefab` in Prefab Mode (double-click).
-> - Proceed with steps 1–4 below inside Prefab Mode, then click **Save** to apply to all instances.
->
-> **If DEV-32 is not yet complete:**
-> - In the Hierarchy, Create Empty → rename it `Enemy`. Add Component → `Box Collider 2D` (sized to a placeholder body) and a `Rigidbody2D`. This is a static placeholder for testing only.
->
-> **Steps for both cases:**
+> **Unity Editor task (user):** Open `Assets/Prefabs/Enemies/Enemy.prefab` in Prefab Mode (double-click). Proceed with steps 1–4 below inside Prefab Mode, then click **Save** to apply to all instances.
 > 1. Add Component → **OverworldEnemyCombatTrigger**
 > 2. In the Inspector, assign an **EnemyData** ScriptableObject to the `_enemyData` field. If none exist yet, right-click `Assets/Data/Enemies/` → Create → Axiom → Data → Enemy Data, fill in stats (e.g. Name: "Void Wraith", MaxHP: 60, ATK: 8, DEF: 4, SPD: 5), and assign it.
 > 3. **Add a second Collider2D** for the Surprised trigger — do **not** modify the existing physics collider (that one keeps `Is Trigger` unchecked so the enemy can stand on the ground). Click **Add Component → Box Collider 2D** (or Capsule Collider 2D), check **Is Trigger**, and size it to match the enemy's visible body. This second collider is the one that fires `OnTriggerEnter2D`.
@@ -845,7 +834,7 @@ namespace Axiom.Platformer
 > 1. Add Component → **PlayerOverworldAttack**
 > 2. Set `_attackRange` to `1.5` (or adjust to taste — the red Gizmo circle in the Scene view shows the reach).
 > 3. Set `_enemyLayer` to the **"Enemy"** layer created in Step 3. _(This is distinct from the "Player" layer DEV-32 creates for `EnemyController.playerLayer`.)_
-> 4. Confirm the Player GameObject has the tag **Player** (top of the Inspector → Tag dropdown → Player). _(DEV-32 requires this tag for the enemy's aggro detection — if DEV-32 is already implemented, this will already be set.)_
+> 4. Confirm the Player GameObject has the tag **Player** (top of the Inspector → Tag dropdown → Player). _(DEV-32's `EnemyController` uses this tag for aggro detection — it is already set on the Player.)_
 
 ### Step 5: Verify the "Battle" scene is in Build Settings
 
