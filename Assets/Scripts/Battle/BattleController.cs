@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Axiom.Core;
 using Axiom.Data;
 
 namespace Axiom.Battle
@@ -192,6 +193,14 @@ namespace Axiom.Battle
 
         private void Start()
         {
+            var pending = GameManager.Instance?.PendingBattle;
+            if (pending != null)
+            {
+                _startState = pending.StartState;
+                _enemyData  = pending.EnemyData;
+                GameManager.Instance.ClearPendingBattle();
+            }
+
             Initialize(_startState);
         }
 
