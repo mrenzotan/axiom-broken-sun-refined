@@ -1,6 +1,8 @@
 {
     "name": "Axiom.Core",
-    "references": [],
+    "references": [
+        "Axiom.Data"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

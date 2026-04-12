@@ -2,6 +2,7 @@
     "name": "Axiom.Battle",
     "references": [
         "Axiom.Data",
+        "Axiom.Core",
         "Unity.TextMeshPro",
         "UnityEngine.UI",
         "Unity.InputSystem"

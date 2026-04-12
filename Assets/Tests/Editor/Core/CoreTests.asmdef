@@ -2,6 +2,7 @@
     "name": "CoreTests",
     "references": [
         "Axiom.Core",
+        "Axiom.Data",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],
