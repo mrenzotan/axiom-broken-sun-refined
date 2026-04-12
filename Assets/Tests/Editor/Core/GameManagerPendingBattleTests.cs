@@ -13,6 +13,7 @@ namespace Axiom.Tests.Editor.Core
         [SetUp]
         public void SetUp()
         {
+            // AddComponent triggers Awake, which sets GameManager.Instance.
             _go = new GameObject("GameManager");
             _gm = _go.AddComponent<GameManager>();
         }
@@ -20,6 +21,7 @@ namespace Axiom.Tests.Editor.Core
         [TearDown]
         public void TearDown()
         {
+            // DestroyImmediate triggers OnDestroy synchronously, which clears GameManager.Instance.
             Object.DestroyImmediate(_go);
         }
 
