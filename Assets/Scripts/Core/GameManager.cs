@@ -1,4 +1,5 @@
 using UnityEngine;
+using Axiom.Data;
 
 namespace Axiom.Core
 {
@@ -21,6 +22,22 @@ namespace Axiom.Core
         public static GameManager Instance { get; private set; }
 
         public PlayerState PlayerState { get; private set; }
+
+        /// <summary>
+        /// Set by OverworldEnemyCombatTrigger before loading the Battle scene.
+        /// Consumed and cleared by BattleController.Start() on Battle scene load.
+        /// Null when no battle transition is pending (normal state).
+        /// </summary>
+        public BattleEntry PendingBattle { get; private set; }
+
+        /// <summary>Sets the pending battle context before transitioning to the Battle scene.</summary>
+        public void SetPendingBattle(BattleEntry entry) => PendingBattle = entry;
+
+        /// <summary>
+        /// Clears the pending battle context after BattleController has consumed it.
+        /// Safe to call when PendingBattle is already null.
+        /// </summary>
+        public void ClearPendingBattle() => PendingBattle = null;
 
         private void Awake()
         {

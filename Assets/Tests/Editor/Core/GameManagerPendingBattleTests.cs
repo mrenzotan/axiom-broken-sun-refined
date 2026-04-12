@@ -1,0 +1,71 @@
+using NUnit.Framework;
+using UnityEngine;
+using Axiom.Core;
+using Axiom.Data;
+
+namespace Axiom.Tests.Editor.Core
+{
+    public class GameManagerPendingBattleTests
+    {
+        private GameObject _go;
+        private GameManager _gm;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _go = new GameObject("GameManager");
+            _gm = _go.AddComponent<GameManager>();
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            Object.DestroyImmediate(_go);
+        }
+
+        [Test]
+        public void PendingBattle_IsNullByDefault()
+        {
+            Assert.IsNull(_gm.PendingBattle);
+        }
+
+        [Test]
+        public void SetPendingBattle_StoresEntry()
+        {
+            var entry = new BattleEntry(CombatStartState.Advantaged, enemyData: null);
+
+            _gm.SetPendingBattle(entry);
+
+            Assert.AreSame(entry, _gm.PendingBattle);
+        }
+
+        [Test]
+        public void SetPendingBattle_ReplacesExistingEntry()
+        {
+            var first  = new BattleEntry(CombatStartState.Advantaged, enemyData: null);
+            var second = new BattleEntry(CombatStartState.Surprised,  enemyData: null);
+
+            _gm.SetPendingBattle(first);
+            _gm.SetPendingBattle(second);
+
+            Assert.AreSame(second, _gm.PendingBattle);
+        }
+
+        [Test]
+        public void ClearPendingBattle_NullsProperty()
+        {
+            var entry = new BattleEntry(CombatStartState.Surprised, enemyData: null);
+            _gm.SetPendingBattle(entry);
+
+            _gm.ClearPendingBattle();
+
+            Assert.IsNull(_gm.PendingBattle);
+        }
+
+        [Test]
+        public void ClearPendingBattle_IsNoOp_WhenAlreadyNull()
+        {
+            Assert.DoesNotThrow(() => _gm.ClearPendingBattle());
+        }
+    }
+}
