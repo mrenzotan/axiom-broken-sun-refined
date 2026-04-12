@@ -594,3 +594,128 @@ public class EnemyController : MonoBehaviour
   - `Assets/Prefabs/Enemies/Enemy.prefab`
   - `Assets/Prefabs/Enemies/Enemy.prefab.meta`
   - `Assets/Scenes/Platformer.unity`
+
+---
+
+### Task 5: Platform-scoped aggro via ledge detection
+
+**Files:**
+
+- Modify: `Assets/Scripts/Platformer/EnemyController.cs`
+
+**Approach:** Add a downward raycast just ahead of the enemy's feet in the facing direction. If no ground is detected, suppress `playerDetected = false` before passing to `Tick()`. `EnemyPatrolBehavior` is unchanged — the suppression happens entirely in `EnemyController.FixedUpdate()`.
+
+No new unit tests are needed: the ledge check uses `Physics2D.Raycast` (Unity API, not testable in Edit Mode), and `EnemyPatrolBehavior` has no new logic. Verify via Play Mode smoke test.
+
+- [ ] **Step 1: Add ledge detection fields and method to `EnemyController`**
+
+Add a `[Header("Ledge Detection")]` block to the serialized fields:
+
+```csharp
+[Header("Ledge Detection")]
+[SerializeField] private float ledgeCheckOffsetX = 0.4f;  // horizontal distance ahead of feet to cast from
+[SerializeField] private float ledgeCheckDepth   = 0.6f;  // how far down to cast
+[SerializeField] private LayerMask groundLayer;
+```
+
+Replace `FixedUpdate()` with:
+
+```csharp
+private void FixedUpdate()
+{
+    Collider2D hit = Physics2D.OverlapCircle(transform.position, aggroRadius, playerLayer);
+    bool detected = hit != null;
+    Vector2 playerPos = detected ? (Vector2)hit.transform.position : Vector2.zero;
+
+    if (detected && IsLedgeAhead())
+        detected = false;
+
+    float xVel = _behavior.Tick((Vector2)transform.position, detected, playerPos, Time.fixedDeltaTime);
+    _rb.linearVelocity = new Vector2(xVel, _rb.linearVelocity.y);
+
+    if (visualTransform != null)
+        visualTransform.localScale = new Vector3(_behavior.FacingDirectionX, 1f, 1f);
+}
+
+private bool IsLedgeAhead()
+{
+    float ahead = _behavior.FacingDirectionX * ledgeCheckOffsetX;
+    Vector2 origin = (Vector2)transform.position + new Vector2(ahead, 0f);
+    return !Physics2D.Raycast(origin, Vector2.down, ledgeCheckDepth, groundLayer);
+}
+```
+
+Replace `OnDrawGizmosSelected()` with (adds ledge ray visualization):
+
+```csharp
+private void OnDrawGizmosSelected()
+{
+    Gizmos.color = Color.yellow;
+    Gizmos.DrawWireSphere(transform.position, aggroRadius);
+
+    Gizmos.color = Color.red;
+    float ahead = Application.isPlaying && _behavior != null
+        ? _behavior.FacingDirectionX * ledgeCheckOffsetX
+        : ledgeCheckOffsetX;
+    Vector2 ledgeOrigin = (Vector2)transform.position + new Vector2(ahead, 0f);
+    Gizmos.DrawLine(ledgeOrigin, ledgeOrigin + Vector2.down * ledgeCheckDepth);
+}
+```
+
+- [ ] **Step 2: Verify it compiles cleanly**
+
+> **Unity Editor task (user):** Switch to Unity Editor → wait for compile → confirm zero Console errors.
+
+- [ ] **Step 3: Assign Ground layer in Inspector**
+
+> **Unity Editor task (user):**
+>
+> 1. If a `Ground` layer doesn't exist: Edit → Project Settings → Tags and Layers → add `Ground`.
+> 2. Select all ground/platform GameObjects in the Hierarchy → set their **Layer** to `Ground`.
+> 3. Select `Enemy` → `EnemyController` → **Ground Layer** field → tick the `Ground` layer.
+> 4. Tune **Ledge Check Offset X** to roughly match the enemy's half-width (default 0.4). Tune **Ledge Check Depth** so the red gizmo ray visibly reaches below the platform surface (default 0.6).
+
+- [ ] **Step 4: Smoke test in Play Mode**
+
+> **Unity Editor task (user):**
+>
+> 1. Enter Play Mode.
+> 2. Walk the player to the opposite side of a ledge from the enemy — the enemy must stop at the ledge edge and de-aggro rather than fall off.
+> 3. Walk the player onto the same platform — the enemy must resume chasing normally.
+> 4. Confirm patrol and return behavior are unaffected (ledge check only fires when `playerDetected` is true).
+> 5. Confirm zero Console errors.
+
+- [ ] **Step 5: Check in via UVCS**
+
+  Unity Version Control → Pending Changes → stage the files below → Check in with message: `feat(DEV-32): add ledge-detection platform-scoped aggro to EnemyController`
+  - `Assets/Scripts/Platformer/EnemyController.cs`
+
+---
+
+## Reference: Hierarchy Organization for Multiple Enemies
+
+Patrol points are **fixed world-space anchors** — they must never be children of the enemy GameObject (they would move with it, breaking the patrol route). Keep them in a sibling group:
+
+```
+Scene Hierarchy
+├── Enemies/
+│   ├── Enemy_A
+│   ├── Enemy_B
+│   └── Enemy_C
+└── PatrolRoutes/
+    ├── Route_Enemy_A/
+    │   ├── Point_0
+    │   └── Point_1
+    ├── Route_Enemy_B/
+    │   ├── Point_0
+    │   └── Point_1
+    └── Route_Enemy_C/
+        ├── Point_0
+        └── Point_1
+```
+
+**Rules:**
+- `Enemies/` and `PatrolRoutes/` are empty GameObjects used only as Hierarchy labels — no components.
+- Each `Route_Enemy_X/` folder groups the points for one enemy instance. Name it to match the enemy it serves.
+- Wire up manually: drag `Route_Enemy_X`'s points into the **Patrol Points** array on the corresponding `EnemyController` in the Inspector.
+- Selecting a `Route_Enemy_X` folder in the Hierarchy selects all its points, making it easy to reposition the whole route as a group.
