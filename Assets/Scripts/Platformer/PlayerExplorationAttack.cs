@@ -44,7 +44,8 @@ namespace Axiom.Platformer
             if (hit == null) return;
 
             var trigger = hit.GetComponent<ExplorationEnemyCombatTrigger>();
-            trigger?.TriggerAdvantagedBattle();
+            if (trigger != null)
+                GetComponent<PlayerController>().BeginAttack(trigger);
         }
 
         private void OnDrawGizmosSelected()
