@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Implement two distinct overworld combat engagement paths — Advantaged (player strikes enemy first) and Surprised (enemy catches player) — each producing the correct `CombatStartState` that is passed through `GameManager` to `BattleController` when the Battle scene loads.
+**Goal:** Implement two distinct exploration combat engagement paths — Advantaged (player strikes enemy first) and Surprised (enemy catches player) — each producing the correct `CombatStartState` that is passed through `GameManager` to `BattleController` when the Battle scene loads.
 
-**Architecture:** `CombatStartState` moves from `Axiom.Battle` to `Axiom.Data` to break a potential circular assembly dependency. `GameManager` (in `Axiom.Core`) gains a `PendingBattle` property holding a new `BattleEntry` data object (in `Axiom.Data`). `BattleController.Start()` consumes `PendingBattle` from `GameManager` when present, falling back to Inspector values for standalone Battle scene testing. Two MonoBehaviours in `Axiom.Platformer` — `OverworldEnemyCombatTrigger` (on the enemy) and `PlayerOverworldAttack` (on the player) — set `PendingBattle` and call `SceneManager.LoadScene("Battle")`.
+**Architecture:** `CombatStartState` moves from `Axiom.Battle` to `Axiom.Data` to break a potential circular assembly dependency. `GameManager` (in `Axiom.Core`) gains a `PendingBattle` property holding a new `BattleEntry` data object (in `Axiom.Data`). `BattleController.Start()` consumes `PendingBattle` from `GameManager` when present, falling back to Inspector values for standalone Battle scene testing. Two MonoBehaviours in `Axiom.Platformer` — `ExplorationEnemyCombatTrigger` (on the enemy) and `PlayerExplorationAttack` (on the player) — set `PendingBattle` and call `SceneManager.LoadScene("Battle")`.
 
 **Tech Stack:** Unity 6 LTS, C#, Unity New Input System, Unity SceneManager, NUnit (Edit Mode tests via Unity Test Runner)
 
@@ -29,7 +29,7 @@ No circular dependencies.
 
 DEV-32 (enemy patrol + chase) is **complete**. This plan integrates directly with its output:
 
-- `OverworldEnemyCombatTrigger` is a standalone MonoBehaviour — attach it to the patrol enemy prefab DEV-32 produced.
+- `ExplorationEnemyCombatTrigger` is a standalone MonoBehaviour — attach it to the patrol enemy prefab DEV-32 produced.
 - `Assets/Prefabs/Enemies/Enemy.prefab` exists. Use it as the base in Task 8 — do not create a new enemy from scratch.
 
 ### Collision architecture with DEV-32
@@ -38,11 +38,11 @@ DEV-32's enemy root already has a **physics Collider2D** (non-trigger) required 
 
 ### Layer setup relationship with DEV-32
 
-DEV-32 creates a **"Player" layer** (assigned to the player GameObject) used by `EnemyController.playerLayer` for aggro detection. DEV-33 needs a separate **"Enemy" layer** (assigned to enemy GameObjects) used by `PlayerOverworldAttack._enemyLayer` for the Advantaged attack scan. These are two distinct layers serving different purposes — both must exist.
+DEV-32 creates a **"Player" layer** (assigned to the player GameObject) used by `EnemyController.playerLayer` for aggro detection. DEV-33 needs a separate **"Enemy" layer** (assigned to enemy GameObjects) used by `PlayerExplorationAttack._enemyLayer` for the Advantaged attack scan. These are two distinct layers serving different purposes — both must exist.
 
 ### Namespace note
 
-DEV-32's `EnemyPatrolBehavior` and `EnemyController` are in the **global C# namespace** (no `namespace` wrapper), while `OverworldEnemyCombatTrigger` is in `namespace Axiom.Platformer`. Both live in the `Axiom.Platformer` assembly — no compile issues arise from the namespace difference.
+DEV-32's `EnemyPatrolBehavior` and `EnemyController` are in the **global C# namespace** (no `namespace` wrapper), while `ExplorationEnemyCombatTrigger` is in `namespace Axiom.Platformer`. Both live in the `Axiom.Platformer` assembly — no compile issues arise from the namespace difference.
 
 ---
 
@@ -61,8 +61,8 @@ DEV-32's `EnemyPatrolBehavior` and `EnemyController` are in the **global C# name
 | **Modify** | `Assets/Scripts/Battle/Battle.asmdef` | Add `Axiom.Core` reference |
 | **Modify** | `Assets/Scripts/Platformer/Platformer.asmdef` | Add `Axiom.Core`, `Axiom.Data` references |
 | **Modify** | `Assets/Tests/Editor/Core/CoreTests.asmdef` | Add `Axiom.Data` reference |
-| **Create** | `Assets/Scripts/Platformer/OverworldEnemyCombatTrigger.cs` | Enemy-side MonoBehaviour; both trigger paths |
-| **Create** | `Assets/Scripts/Platformer/PlayerOverworldAttack.cs` | Player-side MonoBehaviour; attack input → Advantaged path |
+| **Create** | `Assets/Scripts/Platformer/ExplorationEnemyCombatTrigger.cs` | Enemy-side MonoBehaviour; both trigger paths |
+| **Create** | `Assets/Scripts/Platformer/PlayerExplorationAttack.cs` | Player-side MonoBehaviour; attack input → Advantaged path |
 
 ---
 
@@ -223,7 +223,7 @@ Create `Assets/Scripts/Data/BattleEntry.cs`:
 namespace Axiom.Data
 {
     /// <summary>
-    /// Cross-scene battle context. Set by the overworld trigger before loading the Battle
+    /// Cross-scene battle context. Set by the exploration trigger before loading the Battle
     /// scene; consumed and cleared by BattleController.Start() on Battle scene load.
     ///
     /// EnemyData may be null — BattleController falls back to its Inspector-configured
@@ -508,7 +508,7 @@ namespace Axiom.Core
         public PlayerState PlayerState { get; private set; }
 
         /// <summary>
-        /// Set by OverworldEnemyCombatTrigger before loading the Battle scene.
+        /// Set by ExplorationEnemyCombatTrigger before loading the Battle scene.
         /// Consumed and cleared by BattleController.Start() on Battle scene load.
         /// Null when no battle transition is pending (normal state).
         /// </summary>
@@ -630,23 +630,23 @@ private void Start()
 
 ---
 
-## Task 6: Implement OverworldEnemyCombatTrigger
+## Task 6: Implement ExplorationEnemyCombatTrigger
 
 **Files:**
-- Create: `Assets/Scripts/Platformer/OverworldEnemyCombatTrigger.cs`
+- Create: `Assets/Scripts/Platformer/ExplorationEnemyCombatTrigger.cs`
 
-This MonoBehaviour lives on an overworld enemy GameObject. It handles both combat engagement paths:
+This MonoBehaviour lives on an exploration enemy GameObject. It handles both combat engagement paths:
 
 - **Surprised:** `OnTriggerEnter2D` fires when the enemy's trigger collider overlaps the Player tag. This is the "enemy caught the player" path.
-- **Advantaged:** `TriggerAdvantagedBattle()` is called externally by `PlayerOverworldAttack` when the player attacks first.
+- **Advantaged:** `TriggerAdvantagedBattle()` is called externally by `PlayerExplorationAttack` when the player attacks first.
 
 A `_triggered` guard prevents double-trigger if both conditions overlap in the same frame.
 
 If `GameManager.Instance` is null (no GameManager prefab in the Platformer scene), a warning is logged and the scene still loads — `BattleController` falls back to its Inspector values. This ensures DEV-33 degrades gracefully during development when GameManager is not yet wired up.
 
-- [x] **Step 1: Implement OverworldEnemyCombatTrigger**
+- [x] **Step 1: Implement ExplorationEnemyCombatTrigger**
 
-Create `Assets/Scripts/Platformer/OverworldEnemyCombatTrigger.cs`:
+Create `Assets/Scripts/Platformer/ExplorationEnemyCombatTrigger.cs`:
 
 ```csharp
 using UnityEngine;
@@ -657,16 +657,16 @@ using Axiom.Data;
 namespace Axiom.Platformer
 {
     /// <summary>
-    /// Attach to an overworld enemy. Handles both combat engagement paths:
+    /// Attach to an exploration enemy. Handles both combat engagement paths:
     ///
     ///   Surprised  — enemy body trigger overlaps the Player tag → enemy acts first.
-    ///   Advantaged — PlayerOverworldAttack calls TriggerAdvantagedBattle() → player acts first.
+    ///   Advantaged — PlayerExplorationAttack calls TriggerAdvantagedBattle() → player acts first.
     ///
     /// Sets GameManager.PendingBattle then loads the Battle scene.
     /// Requires a Collider2D on this GameObject with Is Trigger enabled for the Surprised path.
     /// Requires the player GameObject to have the "Player" tag.
     /// </summary>
-    public class OverworldEnemyCombatTrigger : MonoBehaviour
+    public class ExplorationEnemyCombatTrigger : MonoBehaviour
     {
         [SerializeField]
         [Tooltip("EnemyData ScriptableObject for this enemy. Passed to BattleController at battle load.")]
@@ -676,7 +676,7 @@ namespace Axiom.Platformer
         private bool _triggered;
 
         /// <summary>
-        /// Called by PlayerOverworldAttack when the player attacks this enemy first.
+        /// Called by PlayerExplorationAttack when the player attacks this enemy first.
         /// Produces CombatStartState.Advantaged — player takes the first turn.
         /// No-op if a battle trigger is already in progress.
         /// </summary>
@@ -704,7 +704,7 @@ namespace Axiom.Platformer
             else
             {
                 Debug.LogWarning(
-                    "[OverworldEnemyCombatTrigger] GameManager not found — Battle scene will " +
+                    "[ExplorationEnemyCombatTrigger] GameManager not found — Battle scene will " +
                     "use BattleController Inspector fallback values.",
                     this);
             }
@@ -717,26 +717,26 @@ namespace Axiom.Platformer
 
 - [x] **Step 2: Check in via UVCS**
 
-  Unity Version Control → Pending Changes → stage the files listed below → Check in with message: `feat(DEV-33): add OverworldEnemyCombatTrigger MonoBehaviour`
-  - `Assets/Scripts/Platformer/OverworldEnemyCombatTrigger.cs`
-  - `Assets/Scripts/Platformer/OverworldEnemyCombatTrigger.cs.meta`
+  Unity Version Control → Pending Changes → stage the files listed below → Check in with message: `feat(DEV-33): add ExplorationEnemyCombatTrigger MonoBehaviour`
+  - `Assets/Scripts/Platformer/ExplorationEnemyCombatTrigger.cs`
+  - `Assets/Scripts/Platformer/ExplorationEnemyCombatTrigger.cs.meta`
 
 ---
 
-## Task 7: Implement PlayerOverworldAttack
+## Task 7: Implement PlayerExplorationAttack
 
 **Files:**
-- Create: `Assets/Scripts/Platformer/PlayerOverworldAttack.cs`
+- Create: `Assets/Scripts/Platformer/PlayerExplorationAttack.cs`
 
-This MonoBehaviour lives on the Player. When the Attack input action is pressed, it does an overlap circle check for any nearby enemy with an `OverworldEnemyCombatTrigger`. If one is found, it calls `TriggerAdvantagedBattle()`.
+This MonoBehaviour lives on the Player. When the Attack input action is pressed, it does an overlap circle check for any nearby enemy with an `ExplorationEnemyCombatTrigger`. If one is found, it calls `TriggerAdvantagedBattle()`.
 
 The attack range is drawn as a Gizmo in the Scene view when the player is selected.
 
 > **Prerequisite:** The Unity Input Actions asset must have an "Attack" action defined in the "Player" action map before this script will compile without errors (see Task 8, Step 1).
 
-- [x] **Step 1: Implement PlayerOverworldAttack**
+- [x] **Step 1: Implement PlayerExplorationAttack**
 
-Create `Assets/Scripts/Platformer/PlayerOverworldAttack.cs`:
+Create `Assets/Scripts/Platformer/PlayerExplorationAttack.cs`:
 
 ```csharp
 using UnityEngine;
@@ -746,22 +746,22 @@ namespace Axiom.Platformer
 {
     /// <summary>
     /// Attach to the Player. Reads the "Player/Attack" input action.
-    /// When Attack is pressed and an OverworldEnemyCombatTrigger is within range,
+    /// When Attack is pressed and an ExplorationEnemyCombatTrigger is within range,
     /// calls TriggerAdvantagedBattle() — the player acts first in the resulting battle.
     ///
     /// Requires:
     ///   - "Attack" action in the "Player" action map of the project's Input Actions asset.
-    ///   - _enemyLayer set to the layer used by overworld enemy GameObjects.
-    ///   - OverworldEnemyCombatTrigger component present on enemy GameObjects.
+    ///   - _enemyLayer set to the layer used by exploration enemy GameObjects.
+    ///   - ExplorationEnemyCombatTrigger component present on enemy GameObjects.
     /// </summary>
-    public class PlayerOverworldAttack : MonoBehaviour
+    public class PlayerExplorationAttack : MonoBehaviour
     {
         [SerializeField]
         [Tooltip("Radius around the player's position to search for attackable enemies.")]
         private float _attackRange = 1.5f;
 
         [SerializeField]
-        [Tooltip("Layer mask for overworld enemy GameObjects. Set to your enemy layer in the Inspector.")]
+        [Tooltip("Layer mask for exploration enemy GameObjects. Set to your enemy layer in the Inspector.")]
         private LayerMask _enemyLayer;
 
         private InputSystem_Actions _actions;
@@ -783,7 +783,7 @@ namespace Axiom.Platformer
             Collider2D hit = Physics2D.OverlapCircle(transform.position, _attackRange, _enemyLayer);
             if (hit == null) return;
 
-            var trigger = hit.GetComponent<OverworldEnemyCombatTrigger>();
+            var trigger = hit.GetComponent<ExplorationEnemyCombatTrigger>();
             trigger?.TriggerAdvantagedBattle();
         }
 
@@ -798,9 +798,9 @@ namespace Axiom.Platformer
 
 - [x] **Step 2: Check in via UVCS**
 
-  Unity Version Control → Pending Changes → stage the files listed below → Check in with message: `feat(DEV-33): add PlayerOverworldAttack MonoBehaviour`
-  - `Assets/Scripts/Platformer/PlayerOverworldAttack.cs`
-  - `Assets/Scripts/Platformer/PlayerOverworldAttack.cs.meta`
+  Unity Version Control → Pending Changes → stage the files listed below → Check in with message: `feat(DEV-33): add PlayerExplorationAttack MonoBehaviour`
+  - `Assets/Scripts/Platformer/PlayerExplorationAttack.cs`
+  - `Assets/Scripts/Platformer/PlayerExplorationAttack.cs.meta`
 
 ---
 
@@ -810,7 +810,7 @@ namespace Axiom.Platformer
 
 ### Step 1: Add "Attack" action to Input Actions asset
 
-> **Unity Editor task (user):** Open `Assets/InputSystem_Actions.inputactions` (double-click → Input Actions editor opens). In the Action Maps panel on the left, select the **Player** action map. In the Actions panel, click the `+` button to add a new action. Name it **Attack**. Set Action Type to **Button**. Under Bindings, click `+` → Add Binding. Assign the key you want for the overworld attack (e.g. `Z` on keyboard, or a controller button). Click **Save Asset** (top-right of the Input Actions editor). Unity will regenerate `InputSystem_Actions.cs`.
+> **Unity Editor task (user):** Open `Assets/InputSystem_Actions.inputactions` (double-click → Input Actions editor opens). In the Action Maps panel on the left, select the **Player** action map. In the Actions panel, click the `+` button to add a new action. Name it **Attack**. Set Action Type to **Button**. Under Bindings, click `+` → Add Binding. Assign the key you want for the exploration attack (e.g. `Z` on keyboard, or a controller button). Click **Save Asset** (top-right of the Input Actions editor). Unity will regenerate `InputSystem_Actions.cs`.
 
 ### Step 2: Add GameManager to the Platformer scene
 
@@ -822,16 +822,16 @@ namespace Axiom.Platformer
 ### Step 3: Configure a test enemy for the Surprised path
 
 > **Unity Editor task (user):** Open `Assets/Prefabs/Enemies/Enemy.prefab` in Prefab Mode (double-click). Proceed with steps 1–4 below inside Prefab Mode, then click **Save** to apply to all instances.
-> 1. Add Component → **OverworldEnemyCombatTrigger**
+> 1. Add Component → **ExplorationEnemyCombatTrigger**
 > 2. In the Inspector, assign an **EnemyData** ScriptableObject to the `_enemyData` field. If none exist yet, right-click `Assets/Data/Enemies/` → Create → Axiom → Data → Enemy Data, fill in stats (e.g. Name: "Void Wraith", MaxHP: 60, ATK: 8, DEF: 4, SPD: 5), and assign it.
 > 3. **Add a second Collider2D** for the Surprised trigger — do **not** modify the existing physics collider (that one keeps `Is Trigger` unchecked so the enemy can stand on the ground). Click **Add Component → Box Collider 2D** (or Capsule Collider 2D), check **Is Trigger**, and size it to match the enemy's visible body. This second collider is the one that fires `OnTriggerEnter2D`.
-> 4. Create an "Enemy" layer if it does not yet exist: Edit → Project Settings → Tags and Layers → add `Enemy` under User Layers. Set the enemy GameObject's **Layer** to `Enemy`. _(Note: DEV-32 creates a "Player" layer for the player — "Enemy" is a separate layer needed here for `PlayerOverworldAttack`'s overlap scan.)_
+> 4. Create an "Enemy" layer if it does not yet exist: Edit → Project Settings → Tags and Layers → add `Enemy` under User Layers. Set the enemy GameObject's **Layer** to `Enemy`. _(Note: DEV-32 creates a "Player" layer for the player — "Enemy" is a separate layer needed here for `PlayerExplorationAttack`'s overlap scan.)_
 
 ### Step 4: Configure the player for the Advantaged path
 
 > **Unity Editor task (user):** In the Platformer scene Hierarchy, select the **Player** GameObject:
 >
-> 1. Add Component → **PlayerOverworldAttack**
+> 1. Add Component → **PlayerExplorationAttack**
 > 2. Set `_attackRange` to `1.5` (or adjust to taste — the red Gizmo circle in the Scene view shows the reach).
 > 3. Set `_enemyLayer` to the **"Enemy"** layer created in Step 3. _(This is distinct from the "Player" layer DEV-32 creates for `EnemyController.playerLayer`.)_
 > 4. Confirm the Player GameObject has the tag **Player** (top of the Inspector → Tag dropdown → Player). _(DEV-32's `EnemyController` uses this tag for aggro detection — it is already set on the Player.)_
@@ -891,7 +891,7 @@ Verify both trigger paths work in the Unity Editor before closing the ticket.
 
 | Acceptance Criterion | Covered by |
 |---------------------|-----------|
-| Advantaged path: player strikes enemy → `CombatStartState.Advantaged` → player first | Task 7 (`PlayerOverworldAttack`), Task 6 (`TriggerAdvantagedBattle`), Task 5 (`BattleController.Start`) |
+| Advantaged path: player strikes enemy → `CombatStartState.Advantaged` → player first | Task 7 (`PlayerExplorationAttack`), Task 6 (`TriggerAdvantagedBattle`), Task 5 (`BattleController.Start`) |
 | Surprised path: enemy contacts player → `CombatStartState.Surprised` → enemy first | Task 6 (`OnTriggerEnter2D`) |
 | `CombatStartState` passed cleanly to `BattleManager` at battle load | Task 5 (BattleController consumes PendingBattle, calls `Initialize(_startState)` which calls `BattleManager.StartBattle`) |
 | Both paths reliably and consistently triggered | `_triggered` guard in Task 6; no double-trigger |
