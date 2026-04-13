@@ -90,26 +90,30 @@ public class PlayerController : MonoBehaviour
         _movement.CutJump();
     }
 
+    public bool IsFacingRight => _playerAnimator.IsFacingRight;
+
     /// <summary>
-    /// Initiates the attack sequence: locks movement, triggers the attack animation,
-    /// and stores the enemy trigger so the scene transition fires after the clip ends.
-    /// Called by PlayerExplorationAttack.
+    /// Initiates the attack sequence: reserves the enemy trigger (blocking the Surprised
+    /// path), locks movement, and starts the attack animation.
+    /// Called by PlayerExplorationAttack. No-op if the player is airborne.
     /// </summary>
     public void BeginAttack(Axiom.Platformer.ExplorationEnemyCombatTrigger pending)
     {
+        if (!_movement.IsGrounded) return;
+        if (pending != null) pending.ReserveForAdvantagedBattle();
         _movement.SetMovementLocked(true);
         _playerAnimator.TriggerAttack();
         _pendingAttackTrigger = pending;
     }
 
     /// <summary>
-    /// Called by PlayerAnimationEventReceiver when the attack animation clip ends.
-    /// Unlocks movement and triggers the battle scene transition.
+    /// Called by PlayerExplorationAnimator when the attack animation clip ends.
+    /// Unlocks movement and triggers the Advantaged battle scene transition.
     /// </summary>
     public void OnAttackAnimationEnd()
     {
         _movement.SetMovementLocked(false);
-        _pendingAttackTrigger?.TriggerAdvantagedBattle();
+        if (_pendingAttackTrigger != null) _pendingAttackTrigger.TriggerAdvantagedBattle();
         _pendingAttackTrigger = null;
     }
 }

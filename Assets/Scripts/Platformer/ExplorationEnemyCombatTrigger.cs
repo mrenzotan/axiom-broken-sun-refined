@@ -21,11 +21,24 @@ namespace Axiom.Platformer
         [Tooltip("EnemyData ScriptableObject for this enemy. Passed to BattleController at battle load.")]
         private EnemyData _enemyData;
 
-        // Prevents double-trigger if Advantaged and Surprised fire in the same frame.
+        // Set once a battle path is committed — blocks any further trigger on this enemy.
         private bool _triggered;
+        // Set by PlayerController.BeginAttack — blocks the Surprised path while the
+        // attack animation plays so the enemy walking into the player can't override
+        // the Advantaged state before OnAttackAnimationEnd fires.
+        private bool _reservedForAdvantaged;
 
         /// <summary>
-        /// Called by PlayerExplorationAttack when the player attacks this enemy first.
+        /// Called by PlayerController.BeginAttack when the player commits to attacking
+        /// this enemy. Blocks the Surprised path for the duration of the attack animation.
+        /// </summary>
+        public void ReserveForAdvantagedBattle()
+        {
+            _reservedForAdvantaged = true;
+        }
+
+        /// <summary>
+        /// Called by PlayerController.OnAttackAnimationEnd after the attack clip finishes.
         /// Produces CombatStartState.Advantaged — player takes the first turn.
         /// No-op if a battle trigger is already in progress.
         /// </summary>
@@ -37,7 +50,7 @@ namespace Axiom.Platformer
 
         private void OnTriggerEnter2D(Collider2D other)
         {
-            if (_triggered) return;
+            if (_triggered || _reservedForAdvantaged) return;
             if (!other.CompareTag("Player")) return;
             TriggerBattle(CombatStartState.Surprised);
         }

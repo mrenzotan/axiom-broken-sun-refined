@@ -17,6 +17,8 @@ public class PlayerAnimator
 
     private bool _facingRight = true;
 
+    public bool IsFacingRight => _facingRight;
+
     public PlayerAnimator(Animator animator, PlayerMovement movement)
     {
         Debug.Assert(animator != null, "PlayerAnimator: animator is null — Animator component not found on Player or any child.");
