@@ -10,6 +10,7 @@ public class PlayerAnimator
     private static readonly int ParamVelocityY = Animator.StringToHash("VelocityY");
     private static readonly int ParamIsGrounded = Animator.StringToHash("IsGrounded");
     private static readonly int ParamIsFacingRight = Animator.StringToHash("IsFacingRight");
+    private static readonly int ParamAttack = Animator.StringToHash("Attack");
 
     private readonly Animator _animator;
     private readonly PlayerMovement _movement;
@@ -41,5 +42,14 @@ public class PlayerAnimator
         _animator.SetFloat(ParamVelocityY, _movement.VelocityY);
         _animator.SetBool(ParamIsGrounded, _movement.IsGrounded);
         _animator.SetBool(ParamIsFacingRight, _facingRight);
+    }
+
+    /// <summary>
+    /// Sets the Attack trigger on the Animator. Called by PlayerController.BeginAttack().
+    /// The Animator Controller routes to AttackRight or AttackLeft based on IsFacingRight.
+    /// </summary>
+    public void TriggerAttack()
+    {
+        _animator.SetTrigger(ParamAttack);
     }
 }
