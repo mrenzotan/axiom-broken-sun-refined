@@ -28,6 +28,7 @@ public class PlayerController : MonoBehaviour
     private PlayerAnimator _playerAnimator;
     private InputSystem_Actions _input;
     private float _moveInput;
+    private Axiom.Platformer.ExplorationEnemyCombatTrigger _pendingAttackTrigger;
 
     private void Awake()
     {
@@ -87,5 +88,28 @@ public class PlayerController : MonoBehaviour
     private void OnJumpCanceled(InputAction.CallbackContext ctx)
     {
         _movement.CutJump();
+    }
+
+    /// <summary>
+    /// Initiates the attack sequence: locks movement, triggers the attack animation,
+    /// and stores the enemy trigger so the scene transition fires after the clip ends.
+    /// Called by PlayerExplorationAttack.
+    /// </summary>
+    public void BeginAttack(Axiom.Platformer.ExplorationEnemyCombatTrigger pending)
+    {
+        _movement.SetMovementLocked(true);
+        _playerAnimator.TriggerAttack();
+        _pendingAttackTrigger = pending;
+    }
+
+    /// <summary>
+    /// Called by PlayerAnimationEventReceiver when the attack animation clip ends.
+    /// Unlocks movement and triggers the battle scene transition.
+    /// </summary>
+    public void OnAttackAnimationEnd()
+    {
+        _movement.SetMovementLocked(false);
+        _pendingAttackTrigger?.TriggerAdvantagedBattle();
+        _pendingAttackTrigger = null;
     }
 }
