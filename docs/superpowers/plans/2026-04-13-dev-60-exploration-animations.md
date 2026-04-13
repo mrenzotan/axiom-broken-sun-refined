@@ -80,8 +80,14 @@ The spec covers two independent subsystems. They share no runtime state and can 
 
   The player should move and jump normally. There is no visual change yet — this step only confirms the project compiles without error. Check the Console tab for any C# compile errors.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Check in (UVCS + Git)**
 
+  **UVCS (primary):** Unity Version Control → Pending Changes → select `PlayerMovement.cs` → Check in with message:
+  ```
+  feat(DEV-60): add SetMovementLocked to PlayerMovement
+  ```
+
+  **Git (mirror):**
   ```
   git add Assets/Scripts/Platformer/PlayerMovement.cs
   git commit -m "feat(DEV-60): add SetMovementLocked to PlayerMovement"
@@ -119,8 +125,14 @@ The spec covers two independent subsystems. They share no runtime state and can 
 
   Open Unity Editor — Console must be error-free.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Check in (UVCS + Git)**
 
+  **UVCS (primary):** Unity Version Control → Pending Changes → select `PlayerAnimator.cs` → Check in with message:
+  ```
+  feat(DEV-60): add TriggerAttack to PlayerAnimator
+  ```
+
+  **Git (mirror):**
   ```
   git add Assets/Scripts/Platformer/PlayerAnimator.cs
   git commit -m "feat(DEV-60): add TriggerAttack to PlayerAnimator"
@@ -174,8 +186,14 @@ The spec covers two independent subsystems. They share no runtime state and can 
 
   Open Unity Editor — Console must be error-free.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Check in (UVCS + Git)**
 
+  **UVCS (primary):** Unity Version Control → Pending Changes → select `PlayerController.cs` → Check in with message:
+  ```
+  feat(DEV-60): add BeginAttack and OnAttackAnimationEnd to PlayerController
+  ```
+
+  **Git (mirror):**
   ```
   git add Assets/Scripts/Platformer/PlayerController.cs
   git commit -m "feat(DEV-60): add BeginAttack and OnAttackAnimationEnd to PlayerController"
@@ -226,8 +244,14 @@ The spec covers two independent subsystems. They share no runtime state and can 
 
   Open Unity Editor — Console must be error-free.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Check in (UVCS + Git)**
 
+  **UVCS (primary):** Unity Version Control → Pending Changes → select `PlayerAnimationEventReceiver.cs` → Check in with message:
+  ```
+  feat(DEV-60): create PlayerAnimationEventReceiver bridge
+  ```
+
+  **Git (mirror):**
   ```
   git add Assets/Scripts/Platformer/PlayerAnimationEventReceiver.cs
   git commit -m "feat(DEV-60): create PlayerAnimationEventReceiver bridge"
@@ -265,8 +289,14 @@ The spec covers two independent subsystems. They share no runtime state and can 
 
   Enter Play Mode in the Platformer scene. Press Attack near an enemy. The player should **not** immediately transition to the Battle scene (no controller + animator wiring yet). The Console should show no errors. Movement lock will not be visible until the Animator Controller is wired in Task 6.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Check in (UVCS + Git)**
 
+  **UVCS (primary):** Unity Version Control → Pending Changes → select `PlayerExplorationAttack.cs` → Check in with message:
+  ```
+  feat(DEV-60): defer battle trigger through BeginAttack in PlayerExplorationAttack
+  ```
+
+  **Git (mirror):**
   ```
   git add Assets/Scripts/Platformer/PlayerExplorationAttack.cs
   git commit -m "feat(DEV-60): defer battle trigger through BeginAttack in PlayerExplorationAttack"
@@ -390,8 +420,14 @@ The spec covers two independent subsystems. They share no runtime state and can 
 
   Console must show no errors. If `PlayerAnimationEventReceiver` logs its assert, the component is on the wrong GameObject.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 5: Check in (UVCS + Git)**
 
+  **UVCS (primary):** Unity Version Control → Pending Changes → select `Player.controller`, `playerAttackRight.anim`, `playerAttackLeft.anim`, and the Player prefab/scene if modified → Check in with message:
+  ```
+  feat(DEV-60): wire player attack animation — controller states, events, receiver
+  ```
+
+  **Git (mirror — if these files are tracked):**
   ```
   git add Assets/Animations/Player/Player.controller
   git add Assets/Animations/Player/playerAttackRight.anim
@@ -454,8 +490,14 @@ The spec covers two independent subsystems. They share no runtime state and can 
 
   Open Unity Editor — Console must be error-free.
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 3: Check in (UVCS + Git)**
 
+  **UVCS (primary):** Unity Version Control → Pending Changes → select `EnemyAnimator.cs` → Check in with message:
+  ```
+  feat(DEV-60): create EnemyAnimator plain C# driver
+  ```
+
+  **Git (mirror):**
   ```
   git add Assets/Scripts/Platformer/EnemyAnimator.cs
   git commit -m "feat(DEV-60): create EnemyAnimator plain C# driver"
@@ -527,8 +569,14 @@ The spec covers two independent subsystems. They share no runtime state and can 
 
   Open Unity Editor — Console must be error-free.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Check in (UVCS + Git)**
 
+  **UVCS (primary):** Unity Version Control → Pending Changes → select `EnemyController.cs` → Check in with message:
+  ```
+  feat(DEV-60): wire EnemyAnimator into EnemyController
+  ```
+
+  **Git (mirror):**
   ```
   git add Assets/Scripts/Platformer/EnemyController.cs
   git commit -m "feat(DEV-60): wire EnemyAnimator into EnemyController"
@@ -621,8 +669,14 @@ The spec covers two independent subsystems. They share no runtime state and can 
   - Sprite flips correctly when reversing direction (handled by `EnemyController`).
   - Console shows no errors or missing component warnings.
 
-- [ ] **Step 8: Commit**
+- [ ] **Step 8: Check in (UVCS + Git)**
 
+  **UVCS (primary):** Unity Version Control → Pending Changes → select `IceSlimeExploration.controller` and `Enemy.prefab` → Check in with message:
+  ```
+  feat(DEV-60): wire Ice Slime exploration animations — controller and prefab setup
+  ```
+
+  **Git (mirror — if these files are tracked):**
   ```
   git add Assets/Animations/Enemies/Ice\ Slime/IceSlimeExploration.controller
   git add Assets/Prefabs/Enemies/Enemy.prefab
