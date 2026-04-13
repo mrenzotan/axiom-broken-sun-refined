@@ -4,7 +4,7 @@
 
 **Goal:** Wire existing animation clips into the exploration (platformer) scene — attack animations for the player (with movement lock + deferred scene transition) and idle/move animations for the Ice Slime enemy (driven by patrol state).
 
-**Architecture:** Two independent subsystems share a common pattern: a plain-C# driver class (`PlayerAnimator`, `EnemyAnimator`) owned by a MonoBehaviour coordinator (`PlayerController`, `EnemyController`). Unity Animation Events use a thin bridge MonoBehaviour (`PlayerAnimationEventReceiver`) on the Animator child to delegate back to the coordinator without coupling the Animator child to game logic. Enemy animation reuse is guaranteed by an `IsMoving` bool parameter contract that each enemy's Animator Controller must honour.
+**Architecture:** Two independent subsystems share a common pattern: a plain-C# driver class (`PlayerAnimator`, `EnemyAnimator`) owned by a MonoBehaviour coordinator (`PlayerController`, `EnemyController`). Unity Animation Events use a thin bridge MonoBehaviour (`PlayerExplorationAnimator`) on the Animator child to delegate back to the coordinator without coupling the Animator child to game logic. Enemy animation reuse is guaranteed by an `IsMoving` bool parameter contract that each enemy's Animator Controller must honour.
 
 **Tech Stack:** Unity 6 LTS, URP 2D, Unity Animator / Animation Events, Unity 2D Input System, C# plain-class injection pattern.
 
@@ -18,21 +18,21 @@ The spec covers two independent subsystems. They share no runtime state and can 
 
 ## File Map
 
-| Action | Path | Responsibility |
-|--------|------|----------------|
-| Modify | `Assets/Scripts/Platformer/PlayerMovement.cs` | Add `SetMovementLocked(bool)` |
-| Modify | `Assets/Scripts/Platformer/PlayerAnimator.cs` | Add `TriggerAttack()` |
-| Modify | `Assets/Scripts/Platformer/PlayerController.cs` | Add `BeginAttack()`, `OnAttackAnimationEnd()`, `_pendingAttackTrigger` field |
-| Create | `Assets/Scripts/Platformer/PlayerAnimationEventReceiver.cs` | Animation Event bridge on Animator child |
-| Modify | `Assets/Scripts/Platformer/PlayerExplorationAttack.cs` | Replace direct `TriggerAdvantagedBattle()` call with `BeginAttack()` |
-| Modify (Unity Editor) | `Assets/Animations/Player/Player.controller` | Add `Attack` trigger, `AttackRight`/`AttackLeft` states, transitions |
-| Modify (Unity Editor) | `Assets/Animations/Player/playerAttackRight.anim` | Add Animation Event at last frame → `OnAttackEnd` |
-| Modify (Unity Editor) | `Assets/Animations/Player/playerAttackLeft.anim` | Add Animation Event at last frame → `OnAttackEnd` |
-| Modify (Unity Editor) | Player prefab / scene — Animator child | Add `PlayerAnimationEventReceiver` component |
-| Create | `Assets/Scripts/Platformer/EnemyAnimator.cs` | Plain C# driver — sets `IsMoving` from xVelocity |
-| Modify | `Assets/Scripts/Platformer/EnemyController.cs` | Add `_animator` SerializeField + `EnemyAnimator` wiring |
-| Create (Unity Editor) | `Assets/Animations/Enemies/Ice Slime/IceSlimeExploration.controller` | Idle/Move states with `IsMoving` bool |
-| Modify (Unity Editor) | `Assets/Prefabs/Enemies/Enemy.prefab` | Rename Visual→Animator child, add Animator component, assign controller and field |
+| Action                | Path                                                                 | Responsibility                                                                    |
+| --------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Modify                | `Assets/Scripts/Platformer/PlayerMovement.cs`                        | Add `SetMovementLocked(bool)`                                                     |
+| Modify                | `Assets/Scripts/Platformer/PlayerAnimator.cs`                        | Add `TriggerAttack()`                                                             |
+| Modify                | `Assets/Scripts/Platformer/PlayerController.cs`                      | Add `BeginAttack()`, `OnAttackAnimationEnd()`, `_pendingAttackTrigger` field      |
+| Create                | `Assets/Scripts/Platformer/PlayerExplorationAnimator.cs`          | Animation Event bridge on Animator child                                          |
+| Modify                | `Assets/Scripts/Platformer/PlayerExplorationAttack.cs`               | Replace direct `TriggerAdvantagedBattle()` call with `BeginAttack()`              |
+| Modify (Unity Editor) | `Assets/Animations/Player/Player.controller`                         | Add `Attack` trigger, `AttackRight`/`AttackLeft` states, transitions              |
+| Modify (Unity Editor) | `Assets/Animations/Player/playerAttackRight.anim`                    | Add Animation Event at last frame → `OnAttackEnd`                                 |
+| Modify (Unity Editor) | `Assets/Animations/Player/playerAttackLeft.anim`                     | Add Animation Event at last frame → `OnAttackEnd`                                 |
+| Modify (Unity Editor) | Player prefab / scene — Animator child                               | Add `PlayerExplorationAnimator` component                                      |
+| Create                | `Assets/Scripts/Platformer/EnemyAnimator.cs`                         | Plain C# driver — sets `IsMoving` from xVelocity                                  |
+| Modify                | `Assets/Scripts/Platformer/EnemyController.cs`                       | Add `_animator` SerializeField + `EnemyAnimator` wiring                           |
+| Create (Unity Editor) | `Assets/Animations/Enemies/Ice Slime/IceSlimeExploration.controller` | Idle/Move states with `IsMoving` bool                                             |
+| Modify (Unity Editor) | `Assets/Prefabs/Enemies/Enemy.prefab`                                | Rename Visual→Animator child, add Animator component, assign controller and field |
 
 ---
 
@@ -43,6 +43,7 @@ The spec covers two independent subsystems. They share no runtime state and can 
 ### Task 1: Add `SetMovementLocked` to `PlayerMovement`
 
 **Files:**
+
 - Modify: `Assets/Scripts/Platformer/PlayerMovement.cs`
 
 - [ ] **Step 1: Add the `_movementLocked` field and `SetMovementLocked` method**
@@ -83,11 +84,13 @@ The spec covers two independent subsystems. They share no runtime state and can 
 - [ ] **Step 3: Check in (UVCS + Git)**
 
   **UVCS (primary):** Unity Version Control → Pending Changes → select `PlayerMovement.cs` → Check in with message:
+
   ```
   feat(DEV-60): add SetMovementLocked to PlayerMovement
   ```
 
   **Git (mirror):**
+
   ```
   git add Assets/Scripts/Platformer/PlayerMovement.cs
   git commit -m "feat(DEV-60): add SetMovementLocked to PlayerMovement"
@@ -98,6 +101,7 @@ The spec covers two independent subsystems. They share no runtime state and can 
 ### Task 2: Add `TriggerAttack` to `PlayerAnimator`
 
 **Files:**
+
 - Modify: `Assets/Scripts/Platformer/PlayerAnimator.cs`
 
 - [ ] **Step 1: Add the `Attack` trigger hash and `TriggerAttack` method**
@@ -128,11 +132,13 @@ The spec covers two independent subsystems. They share no runtime state and can 
 - [ ] **Step 3: Check in (UVCS + Git)**
 
   **UVCS (primary):** Unity Version Control → Pending Changes → select `PlayerAnimator.cs` → Check in with message:
+
   ```
   feat(DEV-60): add TriggerAttack to PlayerAnimator
   ```
 
   **Git (mirror):**
+
   ```
   git add Assets/Scripts/Platformer/PlayerAnimator.cs
   git commit -m "feat(DEV-60): add TriggerAttack to PlayerAnimator"
@@ -143,6 +149,7 @@ The spec covers two independent subsystems. They share no runtime state and can 
 ### Task 3: Add `BeginAttack` and `OnAttackAnimationEnd` to `PlayerController`
 
 **Files:**
+
 - Modify: `Assets/Scripts/Platformer/PlayerController.cs`
 
 - [ ] **Step 1: Add the `_pendingAttackTrigger` field**
@@ -171,7 +178,7 @@ The spec covers two independent subsystems. They share no runtime state and can 
   }
 
   /// <summary>
-  /// Called by PlayerAnimationEventReceiver when the attack animation clip ends.
+  /// Called by PlayerExplorationAnimator when the attack animation clip ends.
   /// Unlocks movement and triggers the battle scene transition.
   /// </summary>
   public void OnAttackAnimationEnd()
@@ -189,11 +196,13 @@ The spec covers two independent subsystems. They share no runtime state and can 
 - [ ] **Step 4: Check in (UVCS + Git)**
 
   **UVCS (primary):** Unity Version Control → Pending Changes → select `PlayerController.cs` → Check in with message:
+
   ```
   feat(DEV-60): add BeginAttack and OnAttackAnimationEnd to PlayerController
   ```
 
   **Git (mirror):**
+
   ```
   git add Assets/Scripts/Platformer/PlayerController.cs
   git commit -m "feat(DEV-60): add BeginAttack and OnAttackAnimationEnd to PlayerController"
@@ -201,14 +210,15 @@ The spec covers two independent subsystems. They share no runtime state and can 
 
 ---
 
-### Task 4: Create `PlayerAnimationEventReceiver`
+### Task 4: Create `PlayerExplorationAnimator`
 
 **Files:**
-- Create: `Assets/Scripts/Platformer/PlayerAnimationEventReceiver.cs`
+
+- Create: `Assets/Scripts/Platformer/PlayerExplorationAnimator.cs`
 
 - [ ] **Step 1: Create the script**
 
-  Create `Assets/Scripts/Platformer/PlayerAnimationEventReceiver.cs` with the following content:
+  Create `Assets/Scripts/Platformer/PlayerExplorationAnimator.cs` with the following content:
 
   ```csharp
   using UnityEngine;
@@ -218,7 +228,7 @@ The spec covers two independent subsystems. They share no runtime state and can 
   /// Unity Animation Events fire on MonoBehaviours on the same GameObject as the Animator,
   /// not on the root. This component delegates the event to PlayerController on the parent.
   /// </summary>
-  public class PlayerAnimationEventReceiver : MonoBehaviour
+  public class PlayerExplorationAnimator : MonoBehaviour
   {
       private PlayerController _controller;
 
@@ -226,14 +236,15 @@ The spec covers two independent subsystems. They share no runtime state and can 
       {
           _controller = GetComponentInParent<PlayerController>();
           Debug.Assert(_controller != null,
-              "PlayerAnimationEventReceiver: no PlayerController found in parent hierarchy. " +
+              "PlayerExplorationAnimator: no PlayerController found in parent hierarchy. " +
               "This component must be on the Animator child of the Player root.", this);
       }
 
       /// <summary>
       /// Called by Animation Event on the last frame of playerAttackLeft.anim and playerAttackRight.anim.
+      /// Naming mirrors PlayerBattleAnimator.AnimEvent_OnHit — prefix signals Animation Event origin.
       /// </summary>
-      public void OnAttackEnd()
+      public void AnimEvent_OnAttackEnd()
       {
           _controller?.OnAttackAnimationEnd();
       }
@@ -246,15 +257,17 @@ The spec covers two independent subsystems. They share no runtime state and can 
 
 - [ ] **Step 3: Check in (UVCS + Git)**
 
-  **UVCS (primary):** Unity Version Control → Pending Changes → select `PlayerAnimationEventReceiver.cs` → Check in with message:
+  **UVCS (primary):** Unity Version Control → Pending Changes → select `PlayerExplorationAnimator.cs` → Check in with message:
+
   ```
-  feat(DEV-60): create PlayerAnimationEventReceiver bridge
+  feat(DEV-60): create PlayerExplorationAnimator bridge
   ```
 
   **Git (mirror):**
+
   ```
-  git add Assets/Scripts/Platformer/PlayerAnimationEventReceiver.cs
-  git commit -m "feat(DEV-60): create PlayerAnimationEventReceiver bridge"
+  git add Assets/Scripts/Platformer/PlayerExplorationAnimator.cs
+  git commit -m "feat(DEV-60): create PlayerExplorationAnimator bridge"
   ```
 
 ---
@@ -262,6 +275,7 @@ The spec covers two independent subsystems. They share no runtime state and can 
 ### Task 5: Update `PlayerExplorationAttack` to defer via `BeginAttack`
 
 **Files:**
+
 - Modify: `Assets/Scripts/Platformer/PlayerExplorationAttack.cs`
 
 - [ ] **Step 1: Replace `TriggerAdvantagedBattle` call with `BeginAttack`**
@@ -292,11 +306,13 @@ The spec covers two independent subsystems. They share no runtime state and can 
 - [ ] **Step 4: Check in (UVCS + Git)**
 
   **UVCS (primary):** Unity Version Control → Pending Changes → select `PlayerExplorationAttack.cs` → Check in with message:
+
   ```
   feat(DEV-60): defer battle trigger through BeginAttack in PlayerExplorationAttack
   ```
 
   **Git (mirror):**
+
   ```
   git add Assets/Scripts/Platformer/PlayerExplorationAttack.cs
   git commit -m "feat(DEV-60): defer battle trigger through BeginAttack in PlayerExplorationAttack"
@@ -307,6 +323,7 @@ The spec covers two independent subsystems. They share no runtime state and can 
 ### Task 6: Set up Attack states in `Player.controller` (Unity Editor)
 
 **Files:**
+
 - Modify (Unity Editor): `Assets/Animations/Player/Player.controller`
 
 - [ ] **Step 1: Open the Animator Controller**
@@ -341,14 +358,14 @@ The spec covers two independent subsystems. They share no runtime state and can 
 
   Repeat Step 5 for `AttackLeft`, but set the `IsFacingRight` condition to `false`.
 
-- [ ] **Step 7: Add transition AttackRight → blend tree (return)**
+- [ ] **Step 7: Add transition AttackRight → Grounded_R (return)**
 
   Right-click `AttackRight` → **Make Transition** → click the default blend tree (the entry state with movement). Select the transition:
   - **Has Exit Time:** checked, **Exit Time:** `1.0` (fires at end of clip)
   - **Transition Duration:** `0`
   - No conditions needed.
 
-- [ ] **Step 8: Add transition AttackLeft → blend tree (return)**
+- [ ] **Step 8: Add transition AttackLeft → Grounded_L (return)**
 
   Repeat Step 7 from `AttackLeft` to the blend tree.
 
@@ -358,9 +375,46 @@ The spec covers two independent subsystems. They share no runtime state and can 
 
 ---
 
-### Task 7: Add Animation Events to attack clips (Unity Editor)
+### Task 7: Add `PlayerExplorationAnimator` to the Animator child (Unity Editor)
 
 **Files:**
+
+- Modify (Unity Editor): Player prefab or Platformer scene — `Animator` child GameObject
+
+> **Why this comes before Task 8:** Animation Events call `AnimEvent_OnAttackEnd` by name on MonoBehaviours on the Animator child. The component must exist on that child before the events are added, otherwise Unity logs "No receiver for Animation Event" warnings during any Play Mode test.
+
+- [ ] **Step 1: Locate the Animator child**
+
+  In the Hierarchy (with Platformer scene open), expand the Player GameObject. Find the child named `Animator` (this is the child that holds the `Animator` component — confirm by selecting it and checking the Inspector).
+
+- [ ] **Step 2: Add the component**
+
+  With the `Animator` child selected, click **Add Component** in the Inspector and search for `PlayerExplorationAnimator`. Add it.
+
+- [ ] **Step 3: If Player is a prefab, apply the change**
+
+  If the Player object in the scene shows prefab overrides (blue bar in Inspector), click **Overrides → Apply All** to persist the component addition to the prefab.
+
+- [ ] **Step 4: Check in (UVCS + Git)**
+
+  **UVCS (primary):** Unity Version Control → Pending Changes → select the Player prefab or scene file → Check in with message:
+
+  ```
+  feat(DEV-60): add PlayerExplorationAnimator to Player Animator child
+  ```
+
+  **Git (mirror — if tracked):**
+
+  ```
+  git commit -m "feat(DEV-60): add PlayerExplorationAnimator to Player Animator child"
+  ```
+
+---
+
+### Task 8: Add Animation Events to attack clips (Unity Editor)
+
+**Files:**
+
 - Modify (Unity Editor): `Assets/Animations/Player/playerAttackRight.anim`
 - Modify (Unity Editor): `Assets/Animations/Player/playerAttackLeft.anim`
 
@@ -376,58 +430,39 @@ The spec covers two independent subsystems. They share no runtime state and can 
 
   Click the **Add Event** button (envelope icon in the Animation window toolbar) at the current playhead position.
   In the Inspector under the Animation Event:
-  - **Function:** `OnAttackEnd`
+  - **Function:** `AnimEvent_OnAttackEnd`
   - Leave all parameters empty.
 
 - [ ] **Step 4: Repeat for `playerAttackLeft.anim`**
 
   Switch the clip dropdown to `playerAttackLeft`. Repeat Steps 2–3.
 
-- [ ] **Step 5: Save**
-
-  Press **Ctrl+S** (or **Cmd+S** on Mac) to save the scene/asset. Unity will persist the Animation Events in the `.anim` files.
-
----
-
-### Task 8: Add `PlayerAnimationEventReceiver` to the Animator child (Unity Editor)
-
-**Files:**
-- Modify (Unity Editor): Player prefab or Platformer scene — `Animator` child GameObject
-
-- [ ] **Step 1: Locate the Animator child**
-
-  In the Hierarchy (with Platformer scene open), expand the Player GameObject. Find the child named `Animator` (this is the child that holds the `Animator` component — confirm by selecting it and checking the Inspector).
-
-- [ ] **Step 2: Add the component**
-
-  With the `Animator` child selected, click **Add Component** in the Inspector and search for `PlayerAnimationEventReceiver`. Add it.
-
-- [ ] **Step 3: If Player is a prefab, apply the change**
-
-  If the Player object in the scene shows prefab overrides (blue bar in Inspector), click **Overrides → Apply All** to persist the component addition to the prefab.
-
-- [ ] **Step 4: Full end-to-end verification in Play Mode**
+- [ ] **Step 5: Full end-to-end verification in Play Mode**
 
   Enter Play Mode in the Platformer scene. Walk near an enemy and press Attack.
 
   Expected sequence:
   1. Player freezes horizontally.
   2. Attack animation plays to completion.
-  3. `OnAttackEnd` Animation Event fires.
-  4. `PlayerAnimationEventReceiver.OnAttackEnd()` is called.
+  3. `AnimEvent_OnAttackEnd` Animation Event fires.
+  4. `PlayerExplorationAnimator.AnimEvent_OnAttackEnd()` is called.
   5. `PlayerController.OnAttackAnimationEnd()` unlocks movement and calls `TriggerAdvantagedBattle()`.
   6. Battle scene loads.
 
-  Console must show no errors. If `PlayerAnimationEventReceiver` logs its assert, the component is on the wrong GameObject.
+  Console must show no errors. If `PlayerExplorationAnimator` logs its assert, the component is on the wrong GameObject.
 
-- [ ] **Step 5: Check in (UVCS + Git)**
+- [ ] **Step 6: Save and check in (UVCS + Git)**
+
+  Press **Ctrl+S** (or **Cmd+S** on Mac) to save the scene/asset. Unity will persist the Animation Events in the `.anim` files.
 
   **UVCS (primary):** Unity Version Control → Pending Changes → select `Player.controller`, `playerAttackRight.anim`, `playerAttackLeft.anim`, and the Player prefab/scene if modified → Check in with message:
+
   ```
   feat(DEV-60): wire player attack animation — controller states, events, receiver
   ```
 
   **Git (mirror — if these files are tracked):**
+
   ```
   git add Assets/Animations/Player/Player.controller
   git add Assets/Animations/Player/playerAttackRight.anim
@@ -444,6 +479,7 @@ The spec covers two independent subsystems. They share no runtime state and can 
 ### Task 9: Create `EnemyAnimator`
 
 **Files:**
+
 - Create: `Assets/Scripts/Platformer/EnemyAnimator.cs`
 
 - [ ] **Step 1: Create the script**
@@ -493,11 +529,13 @@ The spec covers two independent subsystems. They share no runtime state and can 
 - [ ] **Step 3: Check in (UVCS + Git)**
 
   **UVCS (primary):** Unity Version Control → Pending Changes → select `EnemyAnimator.cs` → Check in with message:
+
   ```
   feat(DEV-60): create EnemyAnimator plain C# driver
   ```
 
   **Git (mirror):**
+
   ```
   git add Assets/Scripts/Platformer/EnemyAnimator.cs
   git commit -m "feat(DEV-60): create EnemyAnimator plain C# driver"
@@ -508,6 +546,7 @@ The spec covers two independent subsystems. They share no runtime state and can 
 ### Task 10: Wire `EnemyAnimator` into `EnemyController`
 
 **Files:**
+
 - Modify: `Assets/Scripts/Platformer/EnemyController.cs`
 
 - [ ] **Step 1: Add the `_animator` serialized field**
@@ -572,11 +611,13 @@ The spec covers two independent subsystems. They share no runtime state and can 
 - [ ] **Step 6: Check in (UVCS + Git)**
 
   **UVCS (primary):** Unity Version Control → Pending Changes → select `EnemyController.cs` → Check in with message:
+
   ```
   feat(DEV-60): wire EnemyAnimator into EnemyController
   ```
 
   **Git (mirror):**
+
   ```
   git add Assets/Scripts/Platformer/EnemyController.cs
   git commit -m "feat(DEV-60): wire EnemyAnimator into EnemyController"
@@ -587,6 +628,7 @@ The spec covers two independent subsystems. They share no runtime state and can 
 ### Task 11: Create `IceSlimeExploration.controller` (Unity Editor)
 
 **Files:**
+
 - Create (Unity Editor): `Assets/Animations/Enemies/Ice Slime/IceSlimeExploration.controller`
 
 - [ ] **Step 1: Create the Animator Controller asset**
@@ -633,6 +675,7 @@ The spec covers two independent subsystems. They share no runtime state and can 
 ### Task 12: Update `Enemy.prefab` (Unity Editor)
 
 **Files:**
+
 - Modify (Unity Editor): `Assets/Prefabs/Enemies/Enemy.prefab`
 
 - [ ] **Step 1: Open the prefab**
@@ -672,11 +715,13 @@ The spec covers two independent subsystems. They share no runtime state and can 
 - [ ] **Step 8: Check in (UVCS + Git)**
 
   **UVCS (primary):** Unity Version Control → Pending Changes → select `IceSlimeExploration.controller` and `Enemy.prefab` → Check in with message:
+
   ```
   feat(DEV-60): wire Ice Slime exploration animations — controller and prefab setup
   ```
 
   **Git (mirror — if these files are tracked):**
+
   ```
   git add Assets/Animations/Enemies/Ice\ Slime/IceSlimeExploration.controller
   git add Assets/Prefabs/Enemies/Enemy.prefab
@@ -689,29 +734,30 @@ The spec covers two independent subsystems. They share no runtime state and can 
 
 **Spec coverage check:**
 
-| Spec requirement | Task |
-|-----------------|------|
-| `Attack` trigger parameter on Player.controller | Task 6 |
-| `AttackRight` / `AttackLeft` states, trigger-driven, no exit-time entry | Task 6 |
-| Return transitions on clip end | Task 6 |
-| `PlayerAnimationEventReceiver` on Animator child, delegates to `PlayerController` | Tasks 4, 8 |
-| Animation Events on last frame of both attack clips → `OnAttackEnd` | Task 7 |
-| `PlayerAnimator.TriggerAttack()` | Task 2 |
-| `PlayerMovement.SetMovementLocked(bool)` | Task 1 |
-| `PlayerController.BeginAttack(pending)` — lock + trigger + store | Task 3 |
-| `PlayerController.OnAttackAnimationEnd()` — unlock + transition | Task 3 |
-| `PlayerExplorationAttack` calls `BeginAttack` instead of direct `TriggerAdvantagedBattle` | Task 5 |
-| `EnemyAnimator` plain C# with `Tick(xVelocity)` | Task 9 |
-| `EnemyController` wired: `_animator` field, `_enemyAnimator` creation and `Tick` call | Task 10 |
-| `IceSlimeExploration.controller` with `IsMoving` bool, Idle/Move states | Task 11 |
-| Enemy.prefab renamed Visual→Animator, Animator component, controller assigned | Task 12 |
-| Doc comment updated in EnemyController | Task 10 |
+| Spec requirement                                                                          | Task       |
+| ----------------------------------------------------------------------------------------- | ---------- |
+| `Attack` trigger parameter on Player.controller                                           | Task 6     |
+| `AttackRight` / `AttackLeft` states, trigger-driven, no exit-time entry                   | Task 6     |
+| Return transitions on clip end                                                            | Task 6     |
+| `PlayerExplorationAnimator` on Animator child, delegates to `PlayerController`         | Tasks 4, 7 |
+| Animation Events on last frame of both attack clips → `AnimEvent_OnAttackEnd`           | Task 8     |
+| `PlayerAnimator.TriggerAttack()`                                                          | Task 2     |
+| `PlayerMovement.SetMovementLocked(bool)`                                                  | Task 1     |
+| `PlayerController.BeginAttack(pending)` — lock + trigger + store                          | Task 3     |
+| `PlayerController.OnAttackAnimationEnd()` — unlock + transition                           | Task 3     |
+| `PlayerExplorationAttack` calls `BeginAttack` instead of direct `TriggerAdvantagedBattle` | Task 5     |
+| `EnemyAnimator` plain C# with `Tick(xVelocity)`                                           | Task 9     |
+| `EnemyController` wired: `_animator` field, `_enemyAnimator` creation and `Tick` call     | Task 10    |
+| `IceSlimeExploration.controller` with `IsMoving` bool, Idle/Move states                   | Task 11    |
+| Enemy.prefab renamed Visual→Animator, Animator component, controller assigned             | Task 12    |
+| Doc comment updated in EnemyController                                                    | Task 10    |
 
 All requirements covered.
 
 **Placeholder scan:** No TBDs, no vague "handle edge cases" statements — every step has exact code or exact Editor click path.
 
 **Type consistency:**
+
 - `_pendingAttackTrigger` declared and used as `Axiom.Platformer.ExplorationEnemyCombatTrigger` throughout Tasks 3 and 5. ✓
 - `TriggerAttack()` defined in Task 2, called in Task 3. ✓
 - `SetMovementLocked(bool)` defined in Task 1, called in Task 3. ✓
