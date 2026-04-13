@@ -6,16 +6,16 @@ using Axiom.Data;
 namespace Axiom.Platformer
 {
     /// <summary>
-    /// Attach to an overworld enemy. Handles both combat engagement paths:
+    /// Attach to an exploration enemy. Handles both combat engagement paths:
     ///
     ///   Surprised  — enemy body trigger overlaps the Player tag → enemy acts first.
-    ///   Advantaged — PlayerOverworldAttack calls TriggerAdvantagedBattle() → player acts first.
+    ///   Advantaged — PlayerExplorationAttack calls TriggerAdvantagedBattle() → player acts first.
     ///
     /// Sets GameManager.PendingBattle then loads the Battle scene.
     /// Requires a Collider2D on this GameObject with Is Trigger enabled for the Surprised path.
     /// Requires the player GameObject to have the "Player" tag.
     /// </summary>
-    public class OverworldEnemyCombatTrigger : MonoBehaviour
+    public class ExplorationEnemyCombatTrigger : MonoBehaviour
     {
         [SerializeField]
         [Tooltip("EnemyData ScriptableObject for this enemy. Passed to BattleController at battle load.")]
@@ -25,7 +25,7 @@ namespace Axiom.Platformer
         private bool _triggered;
 
         /// <summary>
-        /// Called by PlayerOverworldAttack when the player attacks this enemy first.
+        /// Called by PlayerExplorationAttack when the player attacks this enemy first.
         /// Produces CombatStartState.Advantaged — player takes the first turn.
         /// No-op if a battle trigger is already in progress.
         /// </summary>
@@ -53,7 +53,7 @@ namespace Axiom.Platformer
             else
             {
                 Debug.LogWarning(
-                    "[OverworldEnemyCombatTrigger] GameManager not found — Battle scene will " +
+                    "[ExplorationEnemyCombatTrigger] GameManager not found — Battle scene will " +
                     "use BattleController Inspector fallback values.",
                     this);
             }

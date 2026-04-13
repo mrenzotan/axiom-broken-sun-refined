@@ -5,22 +5,22 @@ namespace Axiom.Platformer
 {
     /// <summary>
     /// Attach to the Player. Reads the "Player/Attack" input action.
-    /// When Attack is pressed and an OverworldEnemyCombatTrigger is within range,
+    /// When Attack is pressed and an ExplorationEnemyCombatTrigger is within range,
     /// calls TriggerAdvantagedBattle() — the player acts first in the resulting battle.
     ///
     /// Requires:
     ///   - "Attack" action in the "Player" action map of the project's Input Actions asset.
-    ///   - _enemyLayer set to the layer used by overworld enemy GameObjects.
-    ///   - OverworldEnemyCombatTrigger component present on enemy GameObjects.
+    ///   - _enemyLayer set to the layer used by exploration enemy GameObjects.
+    ///   - ExplorationEnemyCombatTrigger component present on enemy GameObjects.
     /// </summary>
-    public class PlayerOverworldAttack : MonoBehaviour
+    public class PlayerExplorationAttack : MonoBehaviour
     {
         [SerializeField]
         [Tooltip("Radius around the player's position to search for attackable enemies.")]
         private float _attackRange = 1.5f;
 
         [SerializeField]
-        [Tooltip("Layer mask for overworld enemy GameObjects. Set to your enemy layer in the Inspector.")]
+        [Tooltip("Layer mask for exploration enemy GameObjects. Set to your enemy layer in the Inspector.")]
         private LayerMask _enemyLayer;
 
         private InputSystem_Actions _actions;
@@ -43,7 +43,7 @@ namespace Axiom.Platformer
             Collider2D hit = Physics2D.OverlapCircle(transform.position, _attackRange, _enemyLayer);
             if (hit == null) return;
 
-            var trigger = hit.GetComponent<OverworldEnemyCombatTrigger>();
+            var trigger = hit.GetComponent<ExplorationEnemyCombatTrigger>();
             trigger?.TriggerAdvantagedBattle();
         }
 

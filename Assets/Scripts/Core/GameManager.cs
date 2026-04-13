@@ -24,7 +24,7 @@ namespace Axiom.Core
         public PlayerState PlayerState { get; private set; }
 
         /// <summary>
-        /// Set by OverworldEnemyCombatTrigger before loading the Battle scene.
+        /// Set by ExplorationEnemyCombatTrigger before loading the Battle scene.
         /// Consumed and cleared by BattleController.Start() on Battle scene load.
         /// Null when no battle transition is pending (normal state).
         /// </summary>
