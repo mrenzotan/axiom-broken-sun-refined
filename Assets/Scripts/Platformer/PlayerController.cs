@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Axiom.Core;
 
 /// <summary>
 /// MonoBehaviour — Unity lifecycle and input only.
@@ -64,6 +65,36 @@ public class PlayerController : MonoBehaviour
         _input.Player.Jump.performed -= OnJumpPerformed;
         _input.Player.Jump.canceled -= OnJumpCanceled;
         _input.Player.Disable();
+    }
+
+    private void Start()
+    {
+        if (GameManager.Instance?.SceneTransition?.IsTransitioning == true)
+        {
+            // Disable input and lock movement until the transition reveal completes.
+            // (OnEnable already ran and enabled input — we override that here.)
+            _input.Player.Disable();
+            _movement.SetMovementLocked(true);
+            GameManager.Instance.OnSceneReady += InitializeFromTransition;
+        }
+        else
+        {
+            InitializeFromTransition();
+        }
+    }
+
+    private void InitializeFromTransition()
+    {
+        if (GameManager.Instance != null)
+            GameManager.Instance.OnSceneReady -= InitializeFromTransition;
+        _input.Player.Enable();
+        _movement.SetMovementLocked(false);
+    }
+
+    private void OnDestroy()
+    {
+        if (GameManager.Instance != null)
+            GameManager.Instance.OnSceneReady -= InitializeFromTransition;
     }
 
     private void Update()
