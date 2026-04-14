@@ -60,6 +60,12 @@ git add Assets/Scripts/Core/TransitionStyle.cs
 git commit -m "feat(DEV-34): add TransitionStyle enum"
 ```
 
+- [ ] **Step 3: UVCS check-in**
+
+In Unity Editor → Plastic SCM panel:
+1. Check in `Assets/Scripts/Core/TransitionStyle.cs` (and its `.meta`).
+2. Message: `feat(DEV-34): add TransitionStyle enum`
+
 ---
 
 ## Task 2: SceneTransitionService + Editor Tests
@@ -201,6 +207,12 @@ Expected: 9 tests PASS.
 git add Assets/Scripts/Core/SceneTransitionService.cs Assets/Tests/Editor/Core/SceneTransitionServiceTests.cs
 git commit -m "feat(DEV-34): add SceneTransitionService with timing/color config"
 ```
+
+- [ ] **Step 6: UVCS check-in**
+
+In Unity Editor → Plastic SCM panel:
+1. Check in `Assets/Scripts/Core/SceneTransitionService.cs`, `Assets/Tests/Editor/Core/SceneTransitionServiceTests.cs`, and their `.meta` files.
+2. Message: `feat(DEV-34): add SceneTransitionService with timing/color config`
 
 ---
 
@@ -390,6 +402,12 @@ Also run `GameManagerPendingBattleTests` to confirm no regression — all should
 git add Assets/Scripts/Core/GameManager.cs Assets/Tests/Editor/Core/GameManagerTransitionTests.cs
 git commit -m "feat(DEV-34): add SceneTransition property and OnSceneReady event to GameManager"
 ```
+
+- [ ] **Step 6: UVCS check-in**
+
+In Unity Editor → Plastic SCM panel:
+1. Check in `Assets/Scripts/Core/GameManager.cs`, `Assets/Tests/Editor/Core/GameManagerTransitionTests.cs`, and their `.meta` files.
+2. Message: `feat(DEV-34): add SceneTransition property and OnSceneReady event to GameManager`
 
 ---
 
@@ -596,6 +614,12 @@ git add Assets/Scripts/Core/SceneTransitionController.cs Assets/Tests/PlayMode/C
 git commit -m "feat(DEV-34): add SceneTransitionController coroutine driver"
 ```
 
+- [ ] **Step 6: UVCS check-in**
+
+In Unity Editor → Plastic SCM panel:
+1. Check in `Assets/Scripts/Core/SceneTransitionController.cs`, `Assets/Tests/PlayMode/Core/SceneTransitionControllerTests.cs`, and their `.meta` files.
+2. Message: `feat(DEV-34): add SceneTransitionController coroutine driver`
+
 ---
 
 ## Task 5: ExplorationEnemyCombatTrigger Call Site
@@ -643,6 +667,12 @@ Switch to the Unity Editor and confirm no compile errors in the Console.
 git add Assets/Scripts/Platformer/ExplorationEnemyCombatTrigger.cs
 git commit -m "feat(DEV-34): replace direct LoadScene with BeginTransition in ExplorationEnemyCombatTrigger"
 ```
+
+- [ ] **Step 4: UVCS check-in**
+
+In Unity Editor → Plastic SCM panel:
+1. Check in `Assets/Scripts/Platformer/ExplorationEnemyCombatTrigger.cs`.
+2. Message: `feat(DEV-34): replace direct LoadScene with BeginTransition in ExplorationEnemyCombatTrigger`
 
 ---
 
@@ -740,6 +770,12 @@ git add Assets/Scripts/Battle/BattleController.cs
 git commit -m "feat(DEV-34): add transition call site and Start gate to BattleController"
 ```
 
+- [ ] **Step 7: UVCS check-in**
+
+In Unity Editor → Plastic SCM panel:
+1. Check in `Assets/Scripts/Battle/BattleController.cs`.
+2. Message: `feat(DEV-34): add transition call site and Start gate to BattleController`
+
 ---
 
 ## Task 7: PlayerController Start Gate
@@ -809,6 +845,12 @@ Switch to Unity Editor and confirm the Console has no errors. Also verify the ex
 git add Assets/Scripts/Platformer/PlayerController.cs
 git commit -m "feat(DEV-34): add Start gate to PlayerController — blocks input until OnSceneReady"
 ```
+
+- [ ] **Step 6: UVCS check-in**
+
+In Unity Editor → Plastic SCM panel:
+1. Check in `Assets/Scripts/Platformer/PlayerController.cs`.
+2. Message: `feat(DEV-34): add Start gate to PlayerController — blocks input until OnSceneReady`
 
 ---
 
