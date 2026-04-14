@@ -56,7 +56,7 @@ Save as `Assets/Scripts/Core/TransitionStyle.cs`.
 - [ ] **Step 2: Commit**
 
 ```
-git add Assets/Scripts/Core/TransitionStyle.cs
+git add Assets/Scripts/Core/TransitionStyle.cs Assets/Scripts/Core/TransitionStyle.cs.meta
 git commit -m "feat(DEV-34): add TransitionStyle enum"
 ```
 
@@ -204,7 +204,7 @@ Expected: 9 tests PASS.
 - [ ] **Step 5: Commit**
 
 ```
-git add Assets/Scripts/Core/SceneTransitionService.cs Assets/Tests/Editor/Core/SceneTransitionServiceTests.cs
+git add Assets/Scripts/Core/SceneTransitionService.cs Assets/Scripts/Core/SceneTransitionService.cs.meta Assets/Tests/Editor/Core/SceneTransitionServiceTests.cs Assets/Tests/Editor/Core/SceneTransitionServiceTests.cs.meta
 git commit -m "feat(DEV-34): add SceneTransitionService with timing/color config"
 ```
 
@@ -399,7 +399,7 @@ Also run `GameManagerPendingBattleTests` to confirm no regression — all should
 - [ ] **Step 5: Commit**
 
 ```
-git add Assets/Scripts/Core/GameManager.cs Assets/Tests/Editor/Core/GameManagerTransitionTests.cs
+git add Assets/Scripts/Core/GameManager.cs Assets/Tests/Editor/Core/GameManagerTransitionTests.cs Assets/Tests/Editor/Core/GameManagerTransitionTests.cs.meta
 git commit -m "feat(DEV-34): add SceneTransition property and OnSceneReady event to GameManager"
 ```
 
@@ -610,7 +610,7 @@ Expected: 3 tests PASS. (Unity will log a warning about the nonexistent scene na
 - [ ] **Step 5: Commit**
 
 ```
-git add Assets/Scripts/Core/SceneTransitionController.cs Assets/Tests/PlayMode/Core/SceneTransitionControllerTests.cs
+git add Assets/Scripts/Core/SceneTransitionController.cs Assets/Scripts/Core/SceneTransitionController.cs.meta Assets/Tests/PlayMode/Core/SceneTransitionControllerTests.cs Assets/Tests/PlayMode/Core/SceneTransitionControllerTests.cs.meta
 git commit -m "feat(DEV-34): add SceneTransitionController coroutine driver"
 ```
 
