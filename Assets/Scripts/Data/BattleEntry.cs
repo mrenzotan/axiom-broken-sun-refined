@@ -11,11 +11,13 @@ namespace Axiom.Data
     {
         public CombatStartState StartState { get; }
         public EnemyData EnemyData { get; }
+        public string EnemyId { get; }
 
-        public BattleEntry(CombatStartState startState, EnemyData enemyData)
+        public BattleEntry(CombatStartState startState, EnemyData enemyData, string enemyId = null)
         {
             StartState = startState;
             EnemyData = enemyData;
+            EnemyId = enemyId;
         }
     }
 }

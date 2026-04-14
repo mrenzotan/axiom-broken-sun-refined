@@ -26,7 +26,20 @@ namespace Axiom.Core
 
         public static GameManager Instance { get; private set; }
 
-        public PlayerState PlayerState { get; private set; }
+        private PlayerState _playerState;
+
+        /// <summary>
+        /// Lazily creates default state on first access so Edit Mode tests work without Awake running.
+        /// </summary>
+        public PlayerState PlayerState
+        {
+            get
+            {
+                EnsurePlayerState();
+                return _playerState;
+            }
+            private set => _playerState = value;
+        }
 
         /// <summary>The scene transition controller on this prefab's child hierarchy.</summary>
         private SceneTransitionController _sceneTransition;
@@ -57,6 +70,41 @@ namespace Axiom.Core
         /// Safe to call when PendingBattle is already null.
         /// </summary>
         public void ClearPendingBattle() => PendingBattle = null;
+
+        /// <summary>
+        /// Snapshot of the Platformer world state captured immediately before a battle.
+        /// Non-null only between the battle transition and the first Platformer scene restore.
+        /// Set by <see cref="SetWorldSnapshot"/>; cleared by PlatformerWorldRestoreController
+        /// after restoration completes.
+        /// </summary>
+        public WorldSnapshot CurrentWorldSnapshot { get; private set; }
+
+        /// <summary>Sets the world snapshot. Replaces any existing snapshot.</summary>
+        public void SetWorldSnapshot(WorldSnapshot snapshot) => CurrentWorldSnapshot = snapshot;
+
+        /// <summary>Clears the world snapshot. Safe to call when already null.</summary>
+        public void ClearWorldSnapshot() => CurrentWorldSnapshot = null;
+
+        /// <summary>
+        /// Enemies defeated in the current playthrough. Populated by BattleController on
+        /// Victory; consulted by PlatformerWorldRestoreController to destroy defeated
+        /// enemies after a battle-return scene load, preventing them from re-triggering
+        /// combat when the player is restored into their prior position (which sits
+        /// inside the enemy's trigger).
+        /// </summary>
+        private readonly HashSet<string> _defeatedEnemyIds =
+            new HashSet<string>(StringComparer.Ordinal);
+
+        public bool IsEnemyDefeated(string enemyId) =>
+            !string.IsNullOrEmpty(enemyId) && _defeatedEnemyIds.Contains(enemyId);
+
+        public void MarkEnemyDefeated(string enemyId)
+        {
+            if (!string.IsNullOrEmpty(enemyId))
+                _defeatedEnemyIds.Add(enemyId);
+        }
+
+        public void ClearDefeatedEnemies() => _defeatedEnemyIds.Clear();
 
         public bool HasSaveFile() => _saveService != null && _saveService.HasSave();
 
@@ -142,8 +190,19 @@ namespace Axiom.Core
                 ? DefaultContinueScene
                 : PlayerState.ActiveSceneName;
 
-            SceneManager.LoadScene(sceneToLoad);
+            LoadScene(sceneToLoad);
             return true;
+        }
+
+        /// <summary>
+        /// Resets all player state to new-game defaults and loads the first scene.
+        /// Called by MainMenuUI when the player begins a fresh playthrough.
+        /// </summary>
+        public void StartNewGame()
+        {
+            PlayerState = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            ClearPendingBattle();
+            LoadScene("Platformer");
         }
 
         /// <summary>
@@ -205,13 +264,29 @@ private void Awake()
 
         private void EnsurePlayerState()
         {
-            if (PlayerState == null)
-                PlayerState = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            if (_playerState == null)
+                _playerState = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
         }
 
         private void EnsureSaveService()
         {
             _saveService ??= new SaveService();
+        }
+
+        /// <summary>
+        /// Single entry point for scene loads from GameManager. Uses DEV-34
+        /// <see cref="SceneTransitionController"/> when present; otherwise falls back to an immediate load.
+        /// </summary>
+        private void LoadScene(string sceneName)
+        {
+            if (!Application.isPlaying)
+                return;
+
+            SceneTransitionController transition = SceneTransition;
+            if (transition != null)
+                transition.BeginTransition(sceneName, TransitionStyle.BlackFade);
+            else
+                SceneManager.LoadScene(sceneName);
         }
 
         private static string[] CopyStringList(List<string> values)

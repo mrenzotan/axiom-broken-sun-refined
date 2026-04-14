@@ -202,6 +202,16 @@ namespace CoreTests
 
             Assert.AreEqual(10.5f, state.WorldPositionX);
             Assert.AreEqual(-2.25f, state.WorldPositionY);
+            Assert.IsTrue(state.HasPendingWorldPositionApply);
+            state.ClearPendingWorldPositionApply();
+            Assert.IsFalse(state.HasPendingWorldPositionApply);
+        }
+
+        [Test]
+        public void NewPlayerState_HasNoPendingWorldPositionApply()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            Assert.IsFalse(state.HasPendingWorldPositionApply);
         }
 
         [Test]

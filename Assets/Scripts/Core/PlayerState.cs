@@ -17,6 +17,12 @@ namespace Axiom.Core
         public float WorldPositionX { get; private set; }
         public float WorldPositionY { get; private set; }
         public string ActiveSceneName { get; private set; }
+
+        /// <summary>
+        /// True after <see cref="SetWorldPosition"/> (save capture or load). Consumed by the platformer
+        /// player spawn so fresh <see cref="PlayerState"/> (new game) keeps the scene default transform.
+        /// </summary>
+        public bool HasPendingWorldPositionApply { get; private set; }
         public List<string> UnlockedSpellIds { get; }
 
         // Phase 5 (Data Layer) will replace List<string> with proper ItemData references.
@@ -81,7 +87,11 @@ namespace Axiom.Core
         {
             WorldPositionX = x;
             WorldPositionY = y;
+            HasPendingWorldPositionApply = true;
         }
+
+        /// <summary>Clears <see cref="HasPendingWorldPositionApply"/> after the platformer has applied the snapshot.</summary>
+        public void ClearPendingWorldPositionApply() => HasPendingWorldPositionApply = false;
 
         public void SetUnlockedSpellIds(IEnumerable<string> spellIds)
         {

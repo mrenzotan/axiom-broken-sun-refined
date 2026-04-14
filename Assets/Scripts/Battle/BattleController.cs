@@ -191,13 +191,19 @@ namespace Axiom.Battle
 
         private Coroutine _spellFireTimeoutCoroutine;
 
+        // EnemyId of the enemy triggering this battle. Propagated from BattleEntry;
+        // used on Victory to mark the enemy defeated so the Platformer restore step
+        // can destroy it, preventing an infinite re-trigger loop.
+        private string _battleEnemyId;
+
         private void Start()
         {
             var pending = GameManager.Instance?.PendingBattle;
             if (pending != null)
             {
-                _startState = pending.StartState;
-                _enemyData  = pending.EnemyData;
+                _startState    = pending.StartState;
+                _enemyData     = pending.EnemyData;
+                _battleEnemyId = pending.EnemyId;
                 GameManager.Instance.ClearPendingBattle();
             }
 
@@ -502,6 +508,17 @@ namespace Axiom.Battle
                 ProcessEnemyTurnStart();
             else if (state == BattleState.Fled)
             {
+                GameManager.Instance?.PersistToDisk();
+                if (GameManager.Instance?.SceneTransition != null)
+                    GameManager.Instance.SceneTransition.BeginTransition("Platformer", TransitionStyle.BlackFade);
+                else
+                    SceneManager.LoadScene("Platformer"); // Standalone Battle scene testing fallback
+            }
+            else if (state == BattleState.Victory)
+            {
+                // Placeholder — DEV-37 will insert XP/loot screen before this transition.
+                if (GameManager.Instance != null && !string.IsNullOrEmpty(_battleEnemyId))
+                    GameManager.Instance.MarkEnemyDefeated(_battleEnemyId);
                 GameManager.Instance?.PersistToDisk();
                 if (GameManager.Instance?.SceneTransition != null)
                     GameManager.Instance.SceneTransition.BeginTransition("Platformer", TransitionStyle.BlackFade);

@@ -6,6 +6,7 @@ using Axiom.Core;
 /// MonoBehaviour — Unity lifecycle and input only.
 /// All movement logic is delegated to PlayerMovement.
 /// </summary>
+[DefaultExecutionOrder(-200)]
 [RequireComponent(typeof(Rigidbody2D))]
 public class PlayerController : MonoBehaviour
 {
@@ -51,6 +52,10 @@ public class PlayerController : MonoBehaviour
         _playerAnimator = new PlayerAnimator(_animator, _movement);
 
         _input = new InputSystem_Actions();
+
+        // Before first render / transition fade reveals the scene — not in Start/OnSceneReady
+        // (that ran after the fade and caused a visible spawn-then-teleport).
+        ApplyPersistedWorldPositionIfNeeded();
     }
 
     private void OnEnable()
@@ -87,8 +92,27 @@ public class PlayerController : MonoBehaviour
     {
         if (GameManager.Instance != null)
             GameManager.Instance.OnSceneReady -= InitializeFromTransition;
+
         _input.Player.Enable();
         _movement.SetMovementLocked(false);
+    }
+
+    /// <summary>
+    /// After Continue, battle return, or any load, <see cref="PlayerState"/> holds the last saved
+    /// world position — the scene prefab spawn is ignored in that case.
+    /// </summary>
+    private void ApplyPersistedWorldPositionIfNeeded()
+    {
+        PlayerState state = GameManager.Instance?.PlayerState;
+        if (state == null || !state.HasPendingWorldPositionApply)
+            return;
+
+        float z = transform.position.z;
+        var world = new Vector3(state.WorldPositionX, state.WorldPositionY, z);
+        transform.SetPositionAndRotation(world, transform.rotation);
+        _rb.position = world;
+        _rb.linearVelocity = Vector2.zero;
+        state.ClearPendingWorldPositionApply();
     }
 
     private void OnDestroy()

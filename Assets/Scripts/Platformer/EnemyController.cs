@@ -12,6 +12,15 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody2D))]
 public class EnemyController : MonoBehaviour
 {
+    [Header("World State")]
+    [SerializeField]
+    [Tooltip("Stable unique ID used to match this enemy to its captured world position. " +
+             "Must be non-empty and unique within the Platformer scene. Assign in Inspector.")]
+    private string _enemyId = string.Empty;
+
+    /// <summary>Stable unique ID for this enemy. Assigned in the Inspector.</summary>
+    public string EnemyId => _enemyId;
+
     [Header("Patrol")]
     [SerializeField] private Transform[] patrolPoints;
     [SerializeField] private float patrolSpeed        = 3f;
@@ -89,6 +98,17 @@ public class EnemyController : MonoBehaviour
         float ahead = _behavior.FacingDirectionX * ledgeCheckOffsetX;
         Vector2 origin = (Vector2)transform.position + new Vector2(ahead, 0f);
         return !Physics2D.Raycast(origin, Vector2.down, ledgeCheckDepth, groundLayer);
+    }
+
+    /// <summary>
+    /// Teleports the enemy to the given world position and zeroes velocity.
+    /// Called by PlatformerWorldRestoreController when restoring world state after a battle.
+    /// </summary>
+    public void RestoreWorldPosition(float positionX, float positionY)
+    {
+        transform.position = new Vector3(positionX, positionY, transform.position.z);
+        if (_rb != null)
+            _rb.linearVelocity = Vector2.zero;
     }
 
     private void OnDrawGizmosSelected()

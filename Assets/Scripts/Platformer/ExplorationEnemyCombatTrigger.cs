@@ -26,6 +26,11 @@ namespace Axiom.Platformer
         // attack animation plays so the enemy walking into the player can't override
         // the Advantaged state before OnAttackAnimationEnd fires.
         private bool _reservedForAdvantaged;
+        // False until one WaitForFixedUpdate after OnSceneReady when returning from a
+        // transition. Prevents the restored player position (which is inside this
+        // trigger zone — exactly where the battle started) from immediately re-triggering
+        // battle in the first physics step after restoration.
+        private bool _triggerEnabled;
 
         /// <summary>
         /// Called by PlayerController.BeginAttack when the player commits to attacking
@@ -47,9 +52,36 @@ namespace Axiom.Platformer
             TriggerBattle(CombatStartState.Advantaged);
         }
 
+        private void Start()
+        {
+            if (GameManager.Instance?.SceneTransition?.IsTransitioning == true)
+                GameManager.Instance.OnSceneReady += HandleSceneReady;
+            else
+                _triggerEnabled = true;
+        }
+
+        private void OnDestroy()
+        {
+            if (GameManager.Instance != null)
+                GameManager.Instance.OnSceneReady -= HandleSceneReady;
+        }
+
+        private void HandleSceneReady()
+        {
+            if (GameManager.Instance != null)
+                GameManager.Instance.OnSceneReady -= HandleSceneReady;
+            StartCoroutine(EnableAfterPhysics());
+        }
+
+        private System.Collections.IEnumerator EnableAfterPhysics()
+        {
+            yield return new WaitForFixedUpdate();
+            _triggerEnabled = true;
+        }
+
         private void OnTriggerEnter2D(Collider2D other)
         {
-            if (_triggered || _reservedForAdvantaged) return;
+            if (!_triggerEnabled || _triggered || _reservedForAdvantaged) return;
             if (!other.CompareTag("Player")) return;
             TriggerBattle(CombatStartState.Surprised, other);
         }
@@ -80,8 +112,18 @@ namespace Axiom.Platformer
                 return;
             }
 
-            GameManager.Instance.SetPendingBattle(new BattleEntry(startState, _enemyData));
-            
+            // Build world snapshot: capture every enemy's current position by stable ID.
+            // Enemies without an _enemyId assigned in the Inspector are silently skipped.
+            var snapshot = new WorldSnapshot();
+            var enemies = UnityEngine.Object.FindObjectsByType<EnemyController>();
+            foreach (EnemyController enemy in enemies)
+                snapshot.CaptureEnemy(enemy.EnemyId, enemy.transform.position.x, enemy.transform.position.y);
+
+            GameManager.Instance.SetWorldSnapshot(snapshot);
+
+            string enemyId = GetComponent<EnemyController>()?.EnemyId;
+            GameManager.Instance.SetPendingBattle(new BattleEntry(startState, _enemyData, enemyId));
+
             Vector2 playerWorldPosition = ResolvePlayerWorldPosition(playerCollider);
             
             GameManager.Instance.CaptureWorldSnapshot(playerWorldPosition);
