@@ -13,6 +13,11 @@ namespace Axiom.Tests.Editor.Core
         [SetUp]
         public void SetUp()
         {
+            // Destroy any stale Instance from an interrupted previous run so the
+            // singleton guard in Awake never fires unexpectedly.
+            if (GameManager.Instance != null)
+                Object.DestroyImmediate(GameManager.Instance.gameObject);
+
             // AddComponent triggers Awake, which sets GameManager.Instance.
             _go = new GameObject("GameManager");
             _gm = _go.AddComponent<GameManager>();
