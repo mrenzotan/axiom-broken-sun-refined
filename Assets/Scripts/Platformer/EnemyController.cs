@@ -14,9 +14,10 @@ public class EnemyController : MonoBehaviour
 {
     [Header("Patrol")]
     [SerializeField] private Transform[] patrolPoints;
-    [SerializeField] private float patrolSpeed      = 3f;
-    [SerializeField] private float chaseSpeed       = 5f;
-    [SerializeField] private float waypointThreshold = 0.2f;
+    [SerializeField] private float patrolSpeed        = 3f;
+    [SerializeField] private float chaseSpeed         = 5f;
+    [SerializeField] private float waypointThreshold  = 0.2f;
+    [SerializeField] private float waypointPauseDuration = 1f;
 
     [Header("Aggro")]
     [SerializeField] private float aggroRadius        = 5f;
@@ -51,7 +52,8 @@ public class EnemyController : MonoBehaviour
             patrolSpeed,
             chaseSpeed,
             waypointThreshold,
-            deaggroGracePeriod);
+            deaggroGracePeriod,
+            waypointPauseDuration);
 
         if (_animator != null)
             _enemyAnimator = new EnemyAnimator(_animator);
