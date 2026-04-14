@@ -1,5 +1,4 @@
 using UnityEngine;
-using UnityEngine.SceneManagement;
 using Axiom.Core;
 using Axiom.Data;
 
@@ -62,16 +61,15 @@ namespace Axiom.Platformer
             if (GameManager.Instance != null)
             {
                 GameManager.Instance.SetPendingBattle(new BattleEntry(startState, _enemyData));
+                GameManager.Instance.SceneTransition.BeginTransition("Battle", TransitionStyle.WhiteFlash);
             }
             else
             {
                 Debug.LogWarning(
-                    "[ExplorationEnemyCombatTrigger] GameManager not found — Battle scene will " +
-                    "use BattleController Inspector fallback values.",
+                    "[ExplorationEnemyCombatTrigger] GameManager not found — cannot start transition. " +
+                    "Add the GameManager prefab to the Platformer scene.",
                     this);
             }
-
-            SceneManager.LoadScene("Battle");
         }
     }
 }
