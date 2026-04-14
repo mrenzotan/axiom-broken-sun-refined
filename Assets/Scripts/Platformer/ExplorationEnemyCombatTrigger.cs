@@ -58,18 +58,26 @@ namespace Axiom.Platformer
         {
             _triggered = true;
 
-            if (GameManager.Instance != null)
-            {
-                GameManager.Instance.SetPendingBattle(new BattleEntry(startState, _enemyData));
-                GameManager.Instance.SceneTransition.BeginTransition("Battle", TransitionStyle.WhiteFlash);
-            }
-            else
+            if (GameManager.Instance == null)
             {
                 Debug.LogWarning(
-                    "[ExplorationEnemyCombatTrigger] GameManager not found — cannot start transition. " +
+                    "[ExplorationEnemyCombatTrigger] GameManager not found — battle cannot start and trigger is now consumed. " +
                     "Add the GameManager prefab to the Platformer scene.",
                     this);
+                return;
             }
+
+            if (GameManager.Instance.SceneTransition == null)
+            {
+                Debug.LogWarning(
+                    "[ExplorationEnemyCombatTrigger] SceneTransitionController not found on GameManager " +
+                    "— battle cannot start. Check the GameManager prefab has a SceneTransitionController child.",
+                    this);
+                return;
+            }
+
+            GameManager.Instance.SetPendingBattle(new BattleEntry(startState, _enemyData));
+            GameManager.Instance.SceneTransition.BeginTransition("Battle", TransitionStyle.WhiteFlash);
         }
     }
 }
