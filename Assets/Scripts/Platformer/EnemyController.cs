@@ -6,8 +6,7 @@ using UnityEngine;
 ///
 /// Required prefab structure:
 ///   Enemy (root — Rigidbody2D, Collider2D, EnemyController)
-///   └── Visual (child — SpriteRenderer, Animator)
-///          EnemyController sets Visual's Transform.localScale.x for sprite flipping.
+///   └── Animator (child — SpriteRenderer, Animator, EnemyController sets localScale.x for flipping)
 ///          Never use SpriteRenderer.FlipX — see GAME_PLAN.md §6 Sprite Flipping.
 /// </summary>
 [RequireComponent(typeof(Rigidbody2D))]
@@ -31,10 +30,12 @@ public class EnemyController : MonoBehaviour
 
     [Header("Visual")]
     [SerializeField] private Transform visualTransform;
+    [SerializeField] private Animator _animator;
 
     private Rigidbody2D _rb;
     private EnemyPatrolBehavior _behavior;
     private float _visualOffsetX;
+    private EnemyAnimator _enemyAnimator;
 
     private void Awake()
     {
@@ -51,6 +52,9 @@ public class EnemyController : MonoBehaviour
             chaseSpeed,
             waypointThreshold,
             deaggroGracePeriod);
+
+        if (_animator != null)
+            _enemyAnimator = new EnemyAnimator(_animator);
     }
 
     private void FixedUpdate()
@@ -64,6 +68,7 @@ public class EnemyController : MonoBehaviour
 
         float xVel = _behavior.Tick((Vector2)transform.position, detected, playerPos, Time.fixedDeltaTime);
         _rb.linearVelocity = new Vector2(xVel, _rb.linearVelocity.y);
+        _enemyAnimator?.Tick(xVel);
 
         if (visualTransform != null)
         {
