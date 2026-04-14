@@ -58,6 +58,10 @@ namespace Axiom.Platformer
         {
             _triggered = true;
 
+            // No standalone fallback: without GameManager, PendingBattle cannot be set,
+            // so BattleController would start with Inspector defaults and no correct enemy data.
+            // Unlike BattleController.Fled (which can safely load Platformer without GameManager),
+            // this path has no safe degraded mode.
             if (GameManager.Instance == null)
             {
                 Debug.LogWarning(

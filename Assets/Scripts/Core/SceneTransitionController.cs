@@ -42,6 +42,15 @@ namespace Axiom.Core
 
         private IEnumerator RunTransition(string sceneName, TransitionStyle style)
         {
+            if (_overlayImage == null)
+            {
+                Debug.LogError(
+                    "[SceneTransitionController] _overlayImage is not assigned. " +
+                    "Assign the full-screen Image in the Inspector on the GameManager prefab.",
+                    this);
+                yield break;
+            }
+
             _service.SetTransitioning(true);
 
             Color baseColor       = _service.GetColor(style);

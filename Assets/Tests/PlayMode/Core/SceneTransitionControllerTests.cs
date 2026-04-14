@@ -48,8 +48,9 @@ namespace Axiom.Tests.PlayMode.Core
         [UnityTest]
         public IEnumerator BeginTransition_SetsIsTransitioning_True_Immediately()
         {
-            // NOTE: Passing a non-existent scene name causes LoadSceneAsync to log a warning
-            // and stall at progress < 0.9 — IsTransitioning stays true while we observe it.
+            // NOTE: After one frame the coroutine is still in the Phase 1 fade-out loop
+            // (0.5s for BlackFade), so IsTransitioning is guaranteed true regardless of
+            // scene load behavior.
             _controller.BeginTransition("__nonexistent_test_scene__", TransitionStyle.BlackFade);
 
             // IsTransitioning should be true before the coroutine's first yield returns.
