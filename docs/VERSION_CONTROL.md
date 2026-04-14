@@ -10,17 +10,22 @@ This project uses two version control systems with clearly separated roles. **Al
 | -------------------- | ---------------------------------------------------------- | --------------------------------------------------------- |
 | **Purpose**          | Collaborative development — source of truth for everything | GitHub activity tracking only                             |
 | **Tracks**           | Everything: scripts, scenes, art, audio, Vosk model, DLLs  | Scripts, docs, and config only — no binary files          |
-| **Workflow**         | Check in here for all changes — this is how the team syncs | One-way push only — mirrors your UVCS check-ins to GitHub |
+| **Workflow**         | Check in here for all changes — this is how the team syncs | Optional push after feature merges; required at promotions |
 | **Binary files**     | Yes — handles them natively                                | No — excluded via `.gitignore`                            |
 | **Conflict merging** | Yes — use UVCS for all merge decisions                     | Never pull from GitHub — UVCS is your sync mechanism      |
 
-### Why not use GitHub for collaboration?
+---
 
-Unity projects have binary assets (scenes, prefabs, art, audio) that git cannot merge. UVCS understands Unity's file formats, supports file locking for scenes, and keeps all three developers in sync including assets. Git is text-only and not suitable for Unity collaboration.
+## Branch Structure
 
-### Why not Git LFS for binaries?
+| Branch | UVCS | Git → GitHub |
+| --- | --- | --- |
+| `main` | Stable, build-ready. Never commit directly. | Mirrors UVCS `main`. Push only at promotion events. |
+| `main/dev` (UVCS) / `dev` (git) | Primary integration branch. All feature work lands here. | Mirrors UVCS `main/dev`. Optional push after each feature merge. |
+| `main/dev/DEV-###-short-desc` | Feature branches, one per Jira ticket. Created from `main/dev`. | Not mirrored. UVCS only. |
 
-The Vosk model alone (~50 MB) burns Git LFS bandwidth on every clone and pull. With three developers and a monthly reset, the free-tier cap runs out quickly. The solution: **UVCS owns all binary files, git never touches them.**
+**Feature branch naming:** `main/dev/DEV-###-short-desc`
+Example: `main/dev/DEV-41-save-load-system`
 
 ---
 
@@ -78,7 +83,7 @@ git config --global user.email "your.github@email.com"
 
 ```bash
 git init
-git checkout -b main
+git checkout -b dev
 ```
 
 **4. Add the GitHub remote**
@@ -89,19 +94,15 @@ Ask the project lead for the GitHub repository URL, then:
 git remote add origin https://github.com/mrenzotan/axiom-broken-sun-refined.git
 ```
 
-**5. Push your first commit**
+**5. Fetch both branches**
 
 ```bash
-git add -A
-git commit -m "chore: initial mirror setup for [your name]"
-git push -u origin main
+git fetch origin
+git branch --track main origin/main
+git push -u origin dev
 ```
 
-`git add -A` is safe here — `.gitignore` (synced from UVCS) automatically blocks all binary and generated files. If you see thousands of untracked files, it means `.gitignore` is missing from your workspace. Re-sync UVCS before continuing.
-
-Do **not** run `git pull`. Your UVCS workspace already has the latest files — pulling from GitHub is unnecessary and risks conflicts.
-
-Your workspace is ready.
+Your default working branch is `dev`. Only touch `main` at promotion time.
 
 ---
 
@@ -111,34 +112,71 @@ Your workspace is ready.
 
 Always sync your UVCS workspace first. This gives you all teammates' latest changes — scripts, scenes, art, everything. Do not run `git pull`; UVCS sync already covers the files git tracks.
 
-### Step 2 — Do all your work and check in via UVCS
+### Step 2 — Create a feature branch in UVCS
 
-Unity Version Control → **Pending Changes** → select all relevant files → **Check in**
+For each Jira ticket you're working on, create a branch in UVCS from `main/dev`:
 
-UVCS is where collaboration happens. All changes — code, scenes, art, audio — go here first.
-
-### Step 3 — Mirror code changes to GitHub
-
-After a UVCS check-in that includes any `.cs`, `.asmdef`, doc, or config changes:
-
-```bash
-git add -A
-git commit -m "same message you used in UVCS"
-git push
+```
+main/dev/DEV-###-short-desc
 ```
 
-`git add -A` is safe — `.gitignore` blocks all binary and generated files automatically.
+Example: `main/dev/DEV-41-save-load-system`
+
+Check in to your feature branch as you work. This is where UVCS collaboration happens.
+
+### Step 3 — Merge your feature branch to main/dev in UVCS
+
+When the feature is complete, merge your UVCS feature branch → `main/dev` via the UVCS panel.
+
+### Step 4 — [Optional] Mirror to git dev
+
+After merging to `main/dev`, each developer can optionally push to git `dev` to record a GitHub contribution:
+
+```bash
+git checkout dev
+git add -A
+git commit -m "feat(DEV-###): short description"
+git push origin dev
+```
+
+This step is optional but encouraged — it ties your GitHub activity to meaningful events (completed features).
 
 ### When to skip the git push
 
-Skip the GitHub push if your UVCS check-in contained **only**:
+Skip the `dev` push if your feature contained **only**:
 
 - Scene edits (`.unity`)
 - Art or audio changes
 - Prefab-only changes
 - Binary asset changes
 
-If there's no code or text file change, there's nothing meaningful to push to GitHub.
+If there's no code or text file change, there's nothing meaningful to push.
+
+---
+
+## Promoting main/dev → main
+
+When `main/dev` is stable and tested, one team member promotes it to `main`. **Whoever performs the UVCS merge is also responsible for mirroring it to git.**
+
+**1. UVCS:** merge `main/dev` → `main` via the UVCS panel.
+
+**2. Mirror to git — both branches must be updated:**
+
+```bash
+# Sync dev first (only if there are uncommitted changes)
+git checkout dev
+git add -A
+git diff --cached --quiet || git commit -m "chore: sync dev before promotion to main"
+git push origin dev
+
+# Merge dev into main and push
+git checkout main
+git merge dev
+git push origin main
+
+# Return to dev for continued work
+git checkout dev
+```
 
 ---
 
@@ -162,7 +200,7 @@ Use the same message in both UVCS and git. Always include the Jira ticket ID:
 Examples:
 
 ```
-feat(DEV-20): add SpellResultMatcher for Vosk JSON parsing
+feat(DEV-41): add SaveService with JSON persistence
 fix(DEV-34): resolve NullReferenceException when BattleController not injected
 chore(DEV-12): update Packages/manifest.json for Cinemachine 2.9
 docs(DEV-5): add voice architecture notes to GAME_PLAN.md
@@ -188,6 +226,7 @@ Git conflicts should almost never happen because:
 
 1. Git only tracks text files (scripts, docs, config)
 2. Binary files that would cause unresolvable conflicts are excluded
+3. Feature branches only exist in UVCS — git has only `main` and `dev`
 
 If a conflict does occur on a `.cs` file:
 
@@ -204,13 +243,11 @@ git push
 ## Quick Reference Card
 
 ```
-UVCS check-in → always, for all files
-git push      → after check-ins that include code or docs
-
-git add -A && git commit -m "message" && git push
+UVCS feature branch  →  merge to main/dev  →  [optional] git push origin dev
+UVCS main/dev        →  promote to main    →  git merge dev && push both
 ```
 
-Do not use `git add <specific-file>` for routine pushes — `git add -A` is correct here because `.gitignore` is already protecting you from adding binaries.
+**Never push directly to git `main`.** Only `git merge dev` at promotion time.
 
 ---
 
@@ -246,34 +283,27 @@ git config --global user.email "your.github@email.com"
 
 Future commits will count. Past commits authored under the wrong email won't appear retroactively.
 
-### "I forgot to push after a UVCS check-in"
+### "I forgot to push after merging a feature"
 
 No problem — just push now. All unpushed commits will go up at once:
 
 ```bash
+git checkout dev
 git add -A
-git commit -m "catch-up: sync recent UVCS check-ins to GitHub"
-git push
+git commit -m "chore: catch-up sync of recent feature merges"
+git push origin dev
 ```
 
-### "git push is rejected after syncing UVCS — local branch is behind origin/main"
+### "git push is rejected — local branch is behind origin"
 
-This happens when teammates have pushed to GitHub since your last push, and you've accumulated UVCS check-ins without mirroring them. Your local files are correct (UVCS is the source of truth) — only the git histories have diverged.
+This happens when another developer has pushed to the same git branch. Your local files are correct (UVCS is the source of truth) — only the git histories have diverged.
 
 **Do not run `git pull`.** Pulling from GitHub is never correct — it risks overwriting your UVCS-synced files with stale history.
 
-Instead, stage and commit your changes, then force-push:
-
-```bash
-git add -A
-git commit -m "chore: catch-up sync of recent UVCS check-ins to GitHub"
-git push
-```
-
-If git rejects the push (non-fast-forward error):
+Instead, force-push with lease:
 
 ```bash
 git push --force-with-lease
 ```
 
-This is safe because GitHub is a write-only mirror — no one on the team pulls from it. Force-pushing rewrites the remote git history to match your correct local state. `--force-with-lease` is preferred over `--force`: it only overwrites the remote if the remote tip matches what your git client last fetched, so it fails safely if another team member pushed a catch-up sync at the same time. To avoid this situation, push to GitHub after every UVCS check-in that includes code or docs.
+This is safe because GitHub is a write-only mirror — no one on the team pulls from it. `--force-with-lease` only overwrites the remote if it matches what your git client last fetched, so it fails safely if someone else pushed at the same time.

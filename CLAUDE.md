@@ -96,7 +96,7 @@ Vosk speech recognition runs on a **producer/consumer threaded pattern** — the
 - **Serialization:** `System.IO` JSON (save/load)
 - **Animation:** 2D Sprite Animation + Animator
 - **Tilemaps:** Unity 2D Tilemap + Rule Tiles
-- **Version Control:** UVCS (Unity Version Control) — primary, tracks all files including binary assets and scenes · Git (scripts-only mirror → GitHub) — secondary, tracks `Assets/Scripts/`, docs, and config only; no Git LFS; see `docs/VERSION_CONTROL.md`
+- **Version Control:** UVCS (Unity Version Control) — primary, tracks all files including binary assets and scenes · Git (scripts-only mirror → GitHub) — secondary, tracks `Assets/Scripts/`, docs, and config only; no Git LFS; branches: `main` (stable) and `dev` (integration); see `docs/VERSION_CONTROL.md`
 
 ## Development Phases
 
