@@ -28,6 +28,8 @@ namespace Axiom.Core
         private void Awake()
         {
             _service = new SceneTransitionService();
+            if (_overlayImage != null)
+                _overlayImage.raycastTarget = false;
         }
 
         /// <summary>
@@ -52,6 +54,7 @@ namespace Axiom.Core
             }
 
             _service.SetTransitioning(true);
+            _overlayImage.raycastTarget = true;
 
             Color baseColor       = _service.GetColor(style);
             float fadeOutDuration = _service.GetFadeOutDuration(style);
@@ -93,6 +96,7 @@ namespace Axiom.Core
                 yield return null;
             }
             _overlayImage.color = new Color(baseColor.r, baseColor.g, baseColor.b, 0f);
+            _overlayImage.raycastTarget = false;
 
             // Fire OnSceneReady first (subscribers may check IsTransitioning),
             // then clear the flag.
