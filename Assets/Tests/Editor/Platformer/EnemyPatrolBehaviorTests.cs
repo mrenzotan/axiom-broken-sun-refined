@@ -108,7 +108,7 @@ namespace PlatformerTests
             // waypoints[0] at (0.1, 0) — within default threshold 0.2 of spawn (0, 0)
             // After advancing, waypoints[1] at (5, 0) — should produce positive velocity
             var waypoints = new[] { new Vector2(0.1f, 0f), new Vector2(5f, 0f) };
-            var behavior = new EnemyPatrolBehavior(waypoints, patrolSpeed: 3f, chaseSpeed: 5f);
+            var behavior = new EnemyPatrolBehavior(waypoints, patrolSpeed: 3f, chaseSpeed: 5f, waypointPauseDuration: 0f);
             behavior.Tick(Vector2.zero, false, Vector2.zero, 0.016f); // reach waypoints[0], index advances to 1
             float vel = behavior.Tick(Vector2.zero, false, Vector2.zero, 0.016f); // now heading to waypoints[1]
             Assert.Greater(vel, 0f);
