@@ -502,6 +502,7 @@ namespace Axiom.Battle
                 ProcessEnemyTurnStart();
             else if (state == BattleState.Fled)
             {
+                GameManager.Instance?.PersistToDisk();
                 if (GameManager.Instance?.SceneTransition != null)
                     GameManager.Instance.SceneTransition.BeginTransition("Platformer", TransitionStyle.BlackFade);
                 else

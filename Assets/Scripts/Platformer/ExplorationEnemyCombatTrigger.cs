@@ -51,10 +51,10 @@ namespace Axiom.Platformer
         {
             if (_triggered || _reservedForAdvantaged) return;
             if (!other.CompareTag("Player")) return;
-            TriggerBattle(CombatStartState.Surprised);
+            TriggerBattle(CombatStartState.Surprised, other);
         }
 
-        private void TriggerBattle(CombatStartState startState)
+        private void TriggerBattle(CombatStartState startState, Collider2D playerCollider = null)
         {
             _triggered = true;
 
@@ -81,7 +81,26 @@ namespace Axiom.Platformer
             }
 
             GameManager.Instance.SetPendingBattle(new BattleEntry(startState, _enemyData));
+            
+            Vector2 playerWorldPosition = ResolvePlayerWorldPosition(playerCollider);
+            
+            GameManager.Instance.CaptureWorldSnapshot(playerWorldPosition);
+            
+            GameManager.Instance.PersistToDisk();
+            
             GameManager.Instance.SceneTransition.BeginTransition("Battle", TransitionStyle.WhiteFlash);
+        }
+
+        private Vector2 ResolvePlayerWorldPosition(Collider2D playerCollider)
+        {
+            if (playerCollider != null)
+                return playerCollider.transform.position;
+
+            PlayerController playerController = FindAnyObjectByType<PlayerController>();
+            if (playerController != null)
+                return playerController.transform.position;
+
+            return transform.position;
         }
     }
 }

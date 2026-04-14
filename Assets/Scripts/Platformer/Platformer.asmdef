@@ -3,7 +3,8 @@
     "references": [
         "Axiom.Core",
         "Axiom.Data",
-        "Unity.InputSystem"
+        "Unity.InputSystem",
+        "Unity.TextMeshPro"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

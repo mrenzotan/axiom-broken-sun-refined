@@ -46,6 +46,21 @@ namespace CoreTests
         }
 
         [Test]
+        public void Constructor_ProgressionDefaultsInitialized()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            Assert.AreEqual(1, state.Level);
+            Assert.AreEqual(0, state.Xp);
+        }
+
+        [Test]
+        public void Constructor_UnlockedSpellIdsIsEmpty()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            Assert.AreEqual(0, state.UnlockedSpellIds.Count);
+        }
+
+        [Test]
         public void Constructor_ThrowsOnZeroMaxHp()
         {
             Assert.Throws<ArgumentOutOfRangeException>(
@@ -139,6 +154,78 @@ namespace CoreTests
             Assert.AreEqual(0, state.CurrentMp);
         }
 
+        // ── ApplyVitals ───────────────────────────────────────────────────────
+
+        [Test]
+        public void ApplyVitals_UpdatesMaxAndCurrentValues()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            state.ApplyVitals(maxHp: 140, maxMp: 80, currentHp: 90, currentMp: 20);
+
+            Assert.AreEqual(140, state.MaxHp);
+            Assert.AreEqual(80, state.MaxMp);
+            Assert.AreEqual(90, state.CurrentHp);
+            Assert.AreEqual(20, state.CurrentMp);
+        }
+
+        [Test]
+        public void ApplyVitals_ThrowsOnInvalidMaxHp()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            Assert.Throws<ArgumentOutOfRangeException>(() => state.ApplyVitals(maxHp: 0, maxMp: 50, currentHp: 1, currentMp: 1));
+        }
+
+        [Test]
+        public void ApplyVitals_ThrowsOnNegativeMaxMp()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            Assert.Throws<ArgumentOutOfRangeException>(() => state.ApplyVitals(maxHp: 100, maxMp: -1, currentHp: 1, currentMp: 1));
+        }
+
+        // ── Progression and world state ──────────────────────────────────────
+
+        [Test]
+        public void ApplyProgression_ClampsToMinimums()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            state.ApplyProgression(level: 0, xp: -5);
+
+            Assert.AreEqual(1, state.Level);
+            Assert.AreEqual(0, state.Xp);
+        }
+
+        [Test]
+        public void SetWorldPosition_StoresCoordinates()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            state.SetWorldPosition(10.5f, -2.25f);
+
+            Assert.AreEqual(10.5f, state.WorldPositionX);
+            Assert.AreEqual(-2.25f, state.WorldPositionY);
+        }
+
+        [Test]
+        public void SetUnlockedSpellIds_ReplacesList()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            state.SetUnlockedSpellIds(new[] { "spell_a", "", "spell_b" });
+
+            Assert.AreEqual(2, state.UnlockedSpellIds.Count);
+            Assert.AreEqual("spell_a", state.UnlockedSpellIds[0]);
+            Assert.AreEqual("spell_b", state.UnlockedSpellIds[1]);
+        }
+
+        [Test]
+        public void SetInventoryItemIds_ReplacesList()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            state.SetInventoryItemIds(new[] { "potion", null, "ether" });
+
+            Assert.AreEqual(2, state.InventoryItemIds.Count);
+            Assert.AreEqual("potion", state.InventoryItemIds[0]);
+            Assert.AreEqual("ether", state.InventoryItemIds[1]);
+        }
+
         // ── SetActiveScene ────────────────────────────────────────────────────
 
         [Test]
@@ -164,6 +251,94 @@ namespace CoreTests
             state.SetActiveScene("Platformer");
             state.SetActiveScene("World_01");
             Assert.AreEqual("World_01", state.ActiveSceneName);
+        }
+
+        // ── Checkpoint APIs ───────────────────────────────────────────────────
+
+        [Test]
+        public void MarkCheckpointActivated_ReturnsTrueOnFirstCall()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            Assert.IsTrue(state.MarkCheckpointActivated("cp_01"));
+        }
+
+        [Test]
+        public void HasActivatedCheckpoint_ReturnsTrueAfterMark()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            state.MarkCheckpointActivated("cp_01");
+            Assert.IsTrue(state.HasActivatedCheckpoint("cp_01"));
+        }
+
+        [Test]
+        public void MarkCheckpointActivated_ReturnsFalseOnDuplicate()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            state.MarkCheckpointActivated("cp_01");
+            Assert.IsFalse(state.MarkCheckpointActivated("cp_01"));
+        }
+
+        [Test]
+        public void MarkCheckpointActivated_DoesNotAddDuplicate_CollectionUnchanged()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            state.MarkCheckpointActivated("cp_01");
+            state.MarkCheckpointActivated("cp_01");
+            Assert.AreEqual(1, state.ActivatedCheckpointIds.Count);
+        }
+
+        [Test]
+        public void MarkCheckpointActivated_IgnoresNullId()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            Assert.IsFalse(state.MarkCheckpointActivated(null));
+            Assert.AreEqual(0, state.ActivatedCheckpointIds.Count);
+        }
+
+        [Test]
+        public void MarkCheckpointActivated_IgnoresEmptyId()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            Assert.IsFalse(state.MarkCheckpointActivated(string.Empty));
+            Assert.AreEqual(0, state.ActivatedCheckpointIds.Count);
+        }
+
+        [Test]
+        public void MarkCheckpointActivated_IgnoresWhitespaceId()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            Assert.IsFalse(state.MarkCheckpointActivated("   "));
+            Assert.AreEqual(0, state.ActivatedCheckpointIds.Count);
+        }
+
+        [Test]
+        public void SetActivatedCheckpointIds_ReplacesCollection()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            state.MarkCheckpointActivated("cp_old");
+            state.SetActivatedCheckpointIds(new[] { "cp_a", "cp_b" });
+            Assert.AreEqual(2, state.ActivatedCheckpointIds.Count);
+            Assert.AreEqual("cp_a", state.ActivatedCheckpointIds[0]);
+            Assert.AreEqual("cp_b", state.ActivatedCheckpointIds[1]);
+        }
+
+        [Test]
+        public void SetActivatedCheckpointIds_NullClearsCollection()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            state.MarkCheckpointActivated("cp_01");
+            state.SetActivatedCheckpointIds(null);
+            Assert.AreEqual(0, state.ActivatedCheckpointIds.Count);
+        }
+
+        [Test]
+        public void SetActivatedCheckpointIds_SkipsInvalidIds()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            state.SetActivatedCheckpointIds(new[] { "cp_valid", null, "", "   ", "cp_also_valid" });
+            Assert.AreEqual(2, state.ActivatedCheckpointIds.Count);
+            Assert.AreEqual("cp_valid", state.ActivatedCheckpointIds[0]);
+            Assert.AreEqual("cp_also_valid", state.ActivatedCheckpointIds[1]);
         }
     }
 }

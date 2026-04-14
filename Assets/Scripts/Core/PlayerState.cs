@@ -12,10 +12,21 @@ namespace Axiom.Core
         public int Attack { get; private set; }
         public int Defense { get; private set; }
         public int Speed { get; private set; }
+        public int Level { get; private set; }
+        public int Xp { get; private set; }
+        public float WorldPositionX { get; private set; }
+        public float WorldPositionY { get; private set; }
         public string ActiveSceneName { get; private set; }
+        public List<string> UnlockedSpellIds { get; }
 
         // Phase 5 (Data Layer) will replace List<string> with proper ItemData references.
         public List<string> InventoryItemIds { get; }
+
+        private readonly HashSet<string> _activatedCheckpointIds = new HashSet<string>(StringComparer.Ordinal);
+        private readonly List<string> _activatedCheckpointIdsList = new List<string>();
+
+        /// <summary>Ordered list of activated checkpoint IDs.</summary>
+        public IReadOnlyList<string> ActivatedCheckpointIds => _activatedCheckpointIdsList;
 
         public PlayerState(int maxHp, int maxMp, int attack, int defense, int speed)
         {
@@ -32,7 +43,12 @@ namespace Axiom.Core
             Attack = attack;
             Defense = defense;
             Speed = speed;
+            Level = 1;
+            Xp = 0;
+            WorldPositionX = 0f;
+            WorldPositionY = 0f;
             ActiveSceneName = string.Empty;
+            UnlockedSpellIds = new List<string>();
             InventoryItemIds = new List<string>();
         }
 
@@ -42,7 +58,109 @@ namespace Axiom.Core
         public void SetCurrentMp(int value) =>
             CurrentMp = Math.Clamp(value, 0, MaxMp);
 
+        public void ApplyVitals(int maxHp, int maxMp, int currentHp, int currentMp)
+        {
+            if (maxHp <= 0)
+                throw new ArgumentOutOfRangeException(nameof(maxHp), "maxHp must be greater than zero.");
+            if (maxMp < 0)
+                throw new ArgumentOutOfRangeException(nameof(maxMp), "maxMp cannot be negative.");
+
+            MaxHp = maxHp;
+            MaxMp = maxMp;
+            SetCurrentHp(currentHp);
+            SetCurrentMp(currentMp);
+        }
+
+        public void ApplyProgression(int level, int xp)
+        {
+            Level = Math.Max(1, level);
+            Xp = Math.Max(0, xp);
+        }
+
+        public void SetWorldPosition(float x, float y)
+        {
+            WorldPositionX = x;
+            WorldPositionY = y;
+        }
+
+        public void SetUnlockedSpellIds(IEnumerable<string> spellIds)
+        {
+            UnlockedSpellIds.Clear();
+            if (spellIds == null)
+                return;
+
+            foreach (string spellId in spellIds)
+            {
+                if (string.IsNullOrWhiteSpace(spellId))
+                    continue;
+
+                UnlockedSpellIds.Add(spellId);
+            }
+        }
+
+        public void SetInventoryItemIds(IEnumerable<string> itemIds)
+        {
+            InventoryItemIds.Clear();
+            if (itemIds == null)
+                return;
+
+            foreach (string itemId in itemIds)
+            {
+                if (string.IsNullOrWhiteSpace(itemId))
+                    continue;
+
+                InventoryItemIds.Add(itemId);
+            }
+        }
+
         public void SetActiveScene(string sceneName) =>
             ActiveSceneName = sceneName ?? string.Empty;
+
+        /// <summary>Returns true if the given checkpoint has been activated this session.</summary>
+        public bool HasActivatedCheckpoint(string checkpointId)
+        {
+            if (string.IsNullOrWhiteSpace(checkpointId))
+                return false;
+
+            return _activatedCheckpointIds.Contains(checkpointId);
+        }
+
+        /// <summary>
+        /// Marks the checkpoint as activated. Returns true on first activation, false if already activated or ID is invalid.
+        /// Invalid IDs (null/empty/whitespace) are silently ignored and return false.
+        /// </summary>
+        public bool MarkCheckpointActivated(string checkpointId)
+        {
+            if (string.IsNullOrWhiteSpace(checkpointId))
+                return false;
+
+            if (!_activatedCheckpointIds.Add(checkpointId))
+                return false;
+
+            _activatedCheckpointIdsList.Add(checkpointId);
+            return true;
+        }
+
+        /// <summary>
+        /// Replaces the entire activated checkpoint set. Null or empty input clears the set.
+        /// Invalid IDs (null/empty/whitespace) are silently skipped.
+        /// </summary>
+        public void SetActivatedCheckpointIds(IEnumerable<string> checkpointIds)
+        {
+            _activatedCheckpointIds.Clear();
+            _activatedCheckpointIdsList.Clear();
+
+            if (checkpointIds == null)
+                return;
+
+            foreach (string id in checkpointIds)
+            {
+                if (string.IsNullOrWhiteSpace(id))
+                    continue;
+
+                if (_activatedCheckpointIds.Add(id))
+                    _activatedCheckpointIdsList.Add(id);
+            }
+        }
     }
 }
