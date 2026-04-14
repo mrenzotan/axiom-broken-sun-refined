@@ -62,6 +62,11 @@ namespace Axiom.Core
 
             // Phase 2: Async load — held until overlay is fully opaque, then activated
             AsyncOperation op = SceneManager.LoadSceneAsync(sceneName);
+            if (op == null)
+            {
+                _service.SetTransitioning(false);
+                yield break;
+            }
             op.allowSceneActivation = false;
             while (op.progress < 0.9f)
                 yield return null;
