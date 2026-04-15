@@ -95,6 +95,9 @@ namespace Axiom.Core
         private readonly HashSet<string> _defeatedEnemyIds =
             new HashSet<string>(StringComparer.Ordinal);
 
+        private readonly Dictionary<string, int> _damagedEnemyHp =
+            new Dictionary<string, int>(StringComparer.Ordinal);
+
         public bool IsEnemyDefeated(string enemyId) =>
             !string.IsNullOrEmpty(enemyId) && _defeatedEnemyIds.Contains(enemyId);
 
@@ -131,6 +134,39 @@ namespace Axiom.Core
             }
         }
 
+        /// <summary>
+        /// Returns the persisted current HP for a damaged enemy, or -1 if the enemy
+        /// has no damage override (meaning it should start at full HP).
+        /// </summary>
+        public int GetDamagedEnemyHp(string enemyId)
+        {
+            if (string.IsNullOrEmpty(enemyId)) return -1;
+            return _damagedEnemyHp.TryGetValue(enemyId, out int hp) ? hp : -1;
+        }
+
+        /// <summary>
+        /// Records a damaged enemy's current HP. Called by BattleController on Fled.
+        /// Null/empty IDs are silently ignored.
+        /// </summary>
+        public void SetDamagedEnemyHp(string enemyId, int currentHp)
+        {
+            if (!string.IsNullOrEmpty(enemyId))
+                _damagedEnemyHp[enemyId] = currentHp;
+        }
+
+        /// <summary>
+        /// Removes a single enemy's damage override. Called on Victory (enemy is dead,
+        /// no HP to persist). Null/empty IDs are silently ignored.
+        /// </summary>
+        public void ClearDamagedEnemyHp(string enemyId)
+        {
+            if (!string.IsNullOrEmpty(enemyId))
+                _damagedEnemyHp.Remove(enemyId);
+        }
+
+        /// <summary>Clears all damaged enemy HP overrides.</summary>
+        public void ClearAllDamagedEnemyHp() => _damagedEnemyHp.Clear();
+
         public bool HasSaveFile() => _saveService != null && _saveService.HasSave();
 
         public void CaptureWorldSnapshot(Vector2 worldPosition)
@@ -165,7 +201,8 @@ namespace Axiom.Core
                 worldPositionY = PlayerState.WorldPositionY,
                 activeSceneName = sceneName ?? string.Empty,
                 activatedCheckpointIds = CopyReadOnlyStringList(PlayerState.ActivatedCheckpointIds),
-                defeatedEnemyIds = CopyHashSet(_defeatedEnemyIds)
+                defeatedEnemyIds = CopyHashSet(_defeatedEnemyIds),
+                damagedEnemyHp = BuildEnemyHpEntries(_damagedEnemyHp)
             };
         }
 
@@ -187,6 +224,7 @@ namespace Axiom.Core
             PlayerState.SetActiveScene(data.activeSceneName ?? string.Empty);
             PlayerState.SetActivatedCheckpointIds(data.activatedCheckpointIds ?? Array.Empty<string>());
             RestoreDefeatedEnemies(data.defeatedEnemyIds);
+            RestoreDamagedEnemyHp(data.damagedEnemyHp);
         }
 
         public void PersistToDisk()
@@ -231,6 +269,7 @@ namespace Axiom.Core
             ClearPendingBattle();
             ClearWorldSnapshot();
             ClearDefeatedEnemies();
+            ClearAllDamagedEnemyHp();
 
             EnsureSaveService();
             _saveService.DeleteSave();
@@ -410,6 +449,32 @@ private void Awake()
 
                 for (int i = 0; i < entry.quantity; i++)
                     yield return entry.itemId;
+            }
+        }
+
+        private static EnemyHpSaveEntry[] BuildEnemyHpEntries(Dictionary<string, int> damagedHp)
+        {
+            if (damagedHp == null || damagedHp.Count == 0)
+                return Array.Empty<EnemyHpSaveEntry>();
+
+            var entries = new EnemyHpSaveEntry[damagedHp.Count];
+            int i = 0;
+            foreach (var kvp in damagedHp)
+            {
+                entries[i++] = new EnemyHpSaveEntry { enemyId = kvp.Key, currentHp = kvp.Value };
+            }
+            return entries;
+        }
+
+        private void RestoreDamagedEnemyHp(EnemyHpSaveEntry[] entries)
+        {
+            _damagedEnemyHp.Clear();
+            if (entries == null) return;
+
+            foreach (EnemyHpSaveEntry entry in entries)
+            {
+                if (!string.IsNullOrWhiteSpace(entry.enemyId) && entry.currentHp >= 0)
+                    _damagedEnemyHp[entry.enemyId] = entry.currentHp;
             }
         }
     }

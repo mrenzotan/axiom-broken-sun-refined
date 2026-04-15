@@ -32,14 +32,22 @@ public class SpellEffectResolverTests
         int transformDuration = 0)
     {
         var spell = ScriptableObject.CreateInstance<SpellData>();
-        spell.effectType          = effect;
-        spell.power               = power;
-        spell.mpCost              = mpCost;
-        spell.inflictsCondition   = inflicts;
-        spell.reactsWith          = reactsWith;
-        spell.reactionBonusDamage = reactionBonus;
-        spell.transformsTo        = transformsTo;
-        spell.transformationDuration = transformDuration;
+        spell.effectType        = effect;
+        spell.power             = power;
+        spell.mpCost            = mpCost;
+        spell.inflictsCondition = inflicts;
+
+        if (reactsWith != ChemicalCondition.None)
+        {
+            spell.reactions.Add(new ReactionEntry
+            {
+                reactsWith             = reactsWith,
+                reactionBonusDamage    = reactionBonus,
+                transformsTo           = transformsTo,
+                transformationDuration = transformDuration
+            });
+        }
+
         return spell;
     }
 

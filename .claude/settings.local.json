@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__atlassian__getAccessibleAtlassianResources",
+      "mcp__atlassian__searchJiraIssuesUsingJql",
+      "Bash(cm status *)",
+      "Bash(dir C:\\\\unity-projects\\\\axiom-broken-sun-refined\\\\Assets\\\\Tests\\\\Editor\\\\Data *)",
+      "Bash(cm find *)",
+      "Bash(cm add *)"
+    ]
+  }
+}

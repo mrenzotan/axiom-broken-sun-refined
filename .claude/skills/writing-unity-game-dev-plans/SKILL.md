@@ -27,14 +27,25 @@ Skill: unity-developer    → Unity 6 API idioms, MonoBehaviour rules, component
 Use `mcp__atlassian__getJiraIssue` with `responseContentFormat: "markdown"`.
 Read the **Acceptance Criteria** carefully — edge cases and constraints are often only there.
 
-### 3. Query context7 for current Unity docs
-```
+### 3. Query current Unity docs and examples (Context7 + Exa MCP)
+Use both paths together when possible:
+
+```text
+Context7 (official docs/API surface)
 Step A: mcp__context7__resolve-library-id  →  libraryName: "Unity"
         Pick /websites/unity3d_manual (highest snippet count + High reputation)
 
 Step B: mcp__context7__query-docs  →  query: [the specific system you're implementing]
         Examples: "state machine C# Unity", "ScriptableObject event channel", "Unity Test Framework EditMode"
 ```
+
+```text
+Exa MCP (fresh examples, blog posts, issue discussions)
+Step A: use Exa search to find recent Unity 6 / C# patterns for the feature
+Step B: extract the top sources and keep only guidance that aligns with official Unity docs and project architecture
+```
+
+Context7 remains the source of truth for API behavior. Exa is used to broaden implementation options and discover up-to-date community patterns.
 
 ### 4. Read the Game Design doc
 `docs/GAME_PLAN.md` — contains non-negotiable architecture rules, naming conventions, and phase exit criteria that override all generic advice.
@@ -109,7 +120,7 @@ From GAME_PLAN.md architecture standards:
 | Using `git add` / `git commit` | **UVCS only.** CLAUDE.md may mention "Git (local)" — that is stale. Every commit step must use Unity Version Control → Pending Changes → Check in. |
 | Mixing Unity Editor steps with code steps | Separate them with explicit `> Unity Editor task (user):` callouts |
 | Putting logic in MonoBehaviour | Move logic to plain C# class; MonoBehaviour only wires lifecycle |
-| Skipping context7 | Game-engine APIs change between versions — always fetch current docs |
+| Skipping Context7 and Exa research | Game-engine APIs and ecosystem patterns change quickly — always pull current docs plus recent implementation references |
 | Not reading the Jira ticket's Acceptance Criteria | AC contains guard clauses and edge cases not in the story title |
 
 ---

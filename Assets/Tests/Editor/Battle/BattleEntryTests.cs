@@ -41,5 +41,32 @@ namespace Axiom.Tests.Editor.Battle
 
             UnityEngine.Object.DestroyImmediate(data);
         }
+
+        [Test]
+        public void Constructor_DefaultEnemyCurrentHp_IsNegativeOne()
+        {
+            var entry = new BattleEntry(CombatStartState.Advantaged, enemyData: null);
+
+            Assert.AreEqual(-1, entry.EnemyCurrentHp);
+        }
+
+        [Test]
+        public void Constructor_StoresEnemyCurrentHp_WhenProvided()
+        {
+            var entry = new BattleEntry(CombatStartState.Advantaged, enemyData: null,
+                                        enemyId: "e1", enemyCurrentHp: 42);
+
+            Assert.AreEqual(42, entry.EnemyCurrentHp);
+        }
+
+        [Test]
+        public void Constructor_StoresEnemyId_WithEnemyCurrentHp()
+        {
+            var entry = new BattleEntry(CombatStartState.Surprised, enemyData: null,
+                                        enemyId: "e2", enemyCurrentHp: 10);
+
+            Assert.AreEqual("e2", entry.EnemyId);
+            Assert.AreEqual(10, entry.EnemyCurrentHp);
+        }
     }
 }

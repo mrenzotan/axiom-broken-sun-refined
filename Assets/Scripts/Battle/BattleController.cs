@@ -24,7 +24,11 @@ namespace Axiom.Battle
         private CombatStartState _startState = CombatStartState.Advantaged;
 
         [SerializeField]
-        [Tooltip("Player stats. Set values in Inspector for Battle scene testing.")]
+        [Tooltip("CharacterData ScriptableObject for the player. Provides base stats at Level 1. Assign CD_Player_Kaelen from Assets/Data/Characters/.")]
+        private Axiom.Data.CharacterData _playerData;
+
+        [SerializeField]
+        [Tooltip("Player stats. Populated from _playerData at Initialize(); fallback Inspector values used when _playerData is unassigned (standalone testing only).")]
         private CharacterStats _playerStats = new CharacterStats
             { Name = "Kael", MaxHP = 100, MaxMP = 30, ATK = 12, DEF = 6, SPD = 8 };
 
@@ -195,6 +199,7 @@ namespace Axiom.Battle
         // used on Victory to mark the enemy defeated so the Platformer restore step
         // can destroy it, preventing an infinite re-trigger loop.
         private string _battleEnemyId;
+        private int _enemyStartHp = -1;
 
         private void Start()
         {
@@ -204,6 +209,7 @@ namespace Axiom.Battle
                 _startState    = pending.StartState;
                 _enemyData     = pending.EnemyData;
                 _battleEnemyId = pending.EnemyId;
+                _enemyStartHp  = pending.EnemyCurrentHp;
                 GameManager.Instance.ClearPendingBattle();
             }
 
@@ -248,6 +254,16 @@ namespace Axiom.Battle
             if (_playerAnimator != null)
                 OnSpellChargeAborted -= _playerAnimator.TriggerResetCharge;
 
+            if (_playerData != null)
+            {
+                _playerStats.Name  = _playerData.characterName;
+                _playerStats.MaxHP = _playerData.baseMaxHP;
+                _playerStats.MaxMP = _playerData.baseMaxMP;
+                _playerStats.ATK   = _playerData.baseATK;
+                _playerStats.DEF   = _playerData.baseDEF;
+                _playerStats.SPD   = _playerData.baseSPD;
+            }
+
             if (_enemyData != null)
             {
                 _enemyStats.Name  = _enemyData.enemyName;
@@ -258,8 +274,26 @@ namespace Axiom.Battle
                 _enemyStats.SPD   = _enemyData.spd;
             }
 
-            _playerStats.Initialize();
-            _enemyStats.Initialize(_enemyData != null ? _enemyData.innateConditions : null);
+            if (GameManager.Instance != null)
+            {
+                PlayerState ps = GameManager.Instance.PlayerState;
+                _playerStats.MaxHP = ps.MaxHp;
+                _playerStats.MaxMP = ps.MaxMp;
+            }
+
+            int? playerStartHp = GameManager.Instance != null
+                ? GameManager.Instance.PlayerState.CurrentHp
+                : (int?)null;
+            int? playerStartMp = GameManager.Instance != null
+                ? GameManager.Instance.PlayerState.CurrentMp
+                : (int?)null;
+
+            _playerStats.Initialize(startHp: playerStartHp, startMp: playerStartMp);
+
+            int? enemyStartHp = _enemyStartHp >= 0 ? _enemyStartHp : (int?)null;
+            _enemyStats.Initialize(
+                _enemyData != null ? _enemyData.innateConditions : null,
+                startHp: enemyStartHp);
 
             _isProcessingAction   = false;
             _isAwaitingVoiceSpell = false;
@@ -508,6 +542,9 @@ namespace Axiom.Battle
                 ProcessEnemyTurnStart();
             else if (state == BattleState.Fled)
             {
+                SyncBattleHpToPlayerState();
+                if (GameManager.Instance != null && !string.IsNullOrEmpty(_battleEnemyId))
+                    GameManager.Instance.SetDamagedEnemyHp(_battleEnemyId, _enemyStats.CurrentHP);
                 GameManager.Instance?.PersistToDisk();
                 if (GameManager.Instance?.SceneTransition != null)
                     GameManager.Instance.SceneTransition.BeginTransition("Platformer", TransitionStyle.BlackFade);
@@ -516,15 +553,37 @@ namespace Axiom.Battle
             }
             else if (state == BattleState.Victory)
             {
+                SyncBattleHpToPlayerState();
                 // Placeholder — DEV-37 will insert XP/loot screen before this transition.
                 if (GameManager.Instance != null && !string.IsNullOrEmpty(_battleEnemyId))
+                {
                     GameManager.Instance.MarkEnemyDefeated(_battleEnemyId);
+                    GameManager.Instance.ClearDamagedEnemyHp(_battleEnemyId);
+                }
                 GameManager.Instance?.PersistToDisk();
                 if (GameManager.Instance?.SceneTransition != null)
                     GameManager.Instance.SceneTransition.BeginTransition("Platformer", TransitionStyle.BlackFade);
                 else
                     SceneManager.LoadScene("Platformer"); // Standalone Battle scene testing fallback
             }
+            else if (state == BattleState.Defeat)
+            {
+                SyncBattleHpToPlayerState();
+                if (GameManager.Instance != null && !string.IsNullOrEmpty(_battleEnemyId))
+                    GameManager.Instance.SetDamagedEnemyHp(_battleEnemyId, _enemyStats.CurrentHP);
+            }
+        }
+
+        /// <summary>
+        /// Copies the player's current battle HP/MP back into the persistent GameManager.PlayerState.
+        /// Called before PersistToDisk on every terminal battle state (Victory, Defeat, Fled).
+        /// No-op when GameManager is absent (standalone Battle scene testing).
+        /// </summary>
+        private void SyncBattleHpToPlayerState()
+        {
+            if (GameManager.Instance == null) return;
+            GameManager.Instance.PlayerState.SetCurrentHp(_playerStats.CurrentHP);
+            GameManager.Instance.PlayerState.SetCurrentMp(_playerStats.CurrentMP);
         }
 
         private void ProcessPlayerTurnStart()

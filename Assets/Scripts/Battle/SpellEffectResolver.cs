@@ -49,23 +49,26 @@ namespace Axiom.Battle
             bool materialTransformed = false;
             int  bonusDamage         = 0;
 
-            // ── 2. Reaction check ────────────────────────────────────────────
-            if (spell.reactsWith != ChemicalCondition.None
-                && effectTarget.HasCondition(spell.reactsWith))
+            // ── 2. Reaction check (first-match-wins iteration) ───────────────
+            foreach (ReactionEntry reaction in spell.reactions)
             {
+                if (reaction.reactsWith == ChemicalCondition.None) continue;
+                if (!effectTarget.HasCondition(reaction.reactsWith)) continue;
+
                 reactionTriggered = true;
-                bonusDamage       = spell.reactionBonusDamage;
+                bonusDamage       = reaction.reactionBonusDamage;
 
-                effectTarget.ConsumeCondition(spell.reactsWith);
+                effectTarget.ConsumeCondition(reaction.reactsWith);
 
-                if (spell.transformsTo != ChemicalCondition.None)
+                if (reaction.transformsTo != ChemicalCondition.None)
                 {
                     effectTarget.ApplyMaterialTransformation(
-                        spell.transformsTo,
-                        spell.reactsWith,
-                        spell.transformationDuration);
+                        reaction.transformsTo,
+                        reaction.reactsWith,
+                        reaction.transformationDuration);
                     materialTransformed = true;
                 }
+                break; // first-match-wins
             }
 
             // ── 3. Primary effect ────────────────────────────────────────────

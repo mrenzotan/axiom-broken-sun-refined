@@ -25,6 +25,83 @@ public class CharacterStatsTests
         Assert.AreEqual(40, stats.CurrentMP);
     }
 
+    // ---- Initialize with optional startHp/startMp ----
+
+    [Test]
+    public void Initialize_WithStartHp_UsesProvidedValue()
+    {
+        var stats = MakeStats(maxHp: 100);
+        stats.Initialize(startHp: 75);
+        Assert.AreEqual(75, stats.CurrentHP);
+    }
+
+    [Test]
+    public void Initialize_WithStartHp_ClampsToMaxHP()
+    {
+        var stats = MakeStats(maxHp: 100);
+        stats.Initialize(startHp: 999);
+        Assert.AreEqual(100, stats.CurrentHP);
+    }
+
+    [Test]
+    public void Initialize_WithStartHp_ClampsToZero()
+    {
+        var stats = MakeStats(maxHp: 100);
+        stats.Initialize(startHp: -5);
+        Assert.AreEqual(0, stats.CurrentHP);
+    }
+
+    [Test]
+    public void Initialize_WithStartMp_UsesProvidedValue()
+    {
+        var stats = MakeStats(maxMp: 30);
+        stats.Initialize(startMp: 20);
+        Assert.AreEqual(20, stats.CurrentMP);
+    }
+
+    [Test]
+    public void Initialize_WithStartMp_ClampsToMaxMP()
+    {
+        var stats = MakeStats(maxMp: 30);
+        stats.Initialize(startMp: 999);
+        Assert.AreEqual(30, stats.CurrentMP);
+    }
+
+    [Test]
+    public void Initialize_WithStartMp_ClampsToZero()
+    {
+        var stats = MakeStats(maxMp: 30);
+        stats.Initialize(startMp: -1);
+        Assert.AreEqual(0, stats.CurrentMP);
+    }
+
+    [Test]
+    public void Initialize_WithStartHpAndInnateConditions_BothApply()
+    {
+        var stats = MakeStats(maxHp: 100);
+        var innate = new System.Collections.Generic.List<Axiom.Data.ChemicalCondition>
+            { Axiom.Data.ChemicalCondition.Liquid };
+        stats.Initialize(innateConditions: innate, startHp: 60);
+        Assert.AreEqual(60, stats.CurrentHP);
+        Assert.IsTrue(stats.HasCondition(Axiom.Data.ChemicalCondition.Liquid));
+    }
+
+    [Test]
+    public void Initialize_WithNullStartHp_DefaultsToMaxHP()
+    {
+        var stats = MakeStats(maxHp: 80);
+        stats.Initialize(startHp: null);
+        Assert.AreEqual(80, stats.CurrentHP);
+    }
+
+    [Test]
+    public void Initialize_WithNullStartMp_DefaultsToMaxMP()
+    {
+        var stats = MakeStats(maxMp: 40);
+        stats.Initialize(startMp: null);
+        Assert.AreEqual(40, stats.CurrentMP);
+    }
+
     // ---- TakeDamage ----
 
     [Test]

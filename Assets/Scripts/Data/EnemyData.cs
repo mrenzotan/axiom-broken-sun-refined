@@ -20,7 +20,13 @@ namespace Axiom.Data
         public int def;
         public int spd;
 
+        [Tooltip("XP awarded to the player on defeat.")]
+        [Min(0)] public int xpReward;
+
         [Tooltip("1–2 material conditions the enemy starts every combat with. Defines what the enemy is made of — determines physical immunity, reaction targets, and other combat interactions.")]
         public List<ChemicalCondition> innateConditions = new List<ChemicalCondition>();
+
+        [Tooltip("Possible item drops. Each entry rolls independently against its dropChance.")]
+        public List<LootEntry> loot = new List<LootEntry>();
     }
 }

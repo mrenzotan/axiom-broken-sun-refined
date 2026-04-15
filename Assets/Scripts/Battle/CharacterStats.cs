@@ -94,11 +94,13 @@ namespace Axiom.Battle
         /// <summary>
         /// Resets all runtime state for a new battle.
         /// Pass innateConditions from EnemyData for enemies; omit (null) for the player.
+        /// Optional startHp/startMp override persisted vitals; omit (null) to use max.
         /// </summary>
-        public void Initialize(List<ChemicalCondition> innateConditions = null)
+        public void Initialize(List<ChemicalCondition> innateConditions = null,
+                               int? startHp = null, int? startMp = null)
         {
-            CurrentHP = MaxHP;
-            CurrentMP = MaxMP;
+            CurrentHP = startHp.HasValue ? Math.Clamp(startHp.Value, 0, MaxHP) : MaxHP;
+            CurrentMP = startMp.HasValue ? Math.Clamp(startMp.Value, 0, MaxMP) : MaxMP;
             ShieldHP  = 0;
 
             _innateConditions          = innateConditions ?? new List<ChemicalCondition>();
