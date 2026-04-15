@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using Axiom.Core;
 
 /// <summary>
 /// MonoBehaviour — Unity lifecycle and input only.
@@ -28,6 +29,7 @@ public class PlayerController : MonoBehaviour
     private PlayerAnimator _playerAnimator;
     private InputSystem_Actions _input;
     private float _moveInput;
+    private Axiom.Platformer.ExplorationEnemyCombatTrigger _pendingAttackTrigger;
 
     private void Awake()
     {
@@ -65,6 +67,36 @@ public class PlayerController : MonoBehaviour
         _input.Player.Disable();
     }
 
+    private void Start()
+    {
+        if (GameManager.Instance?.SceneTransition?.IsTransitioning == true)
+        {
+            // Disable input and lock movement until the transition reveal completes.
+            // (OnEnable already ran and enabled input — we override that here.)
+            _input.Player.Disable();
+            _movement.SetMovementLocked(true);
+            GameManager.Instance.OnSceneReady += InitializeFromTransition;
+        }
+        else
+        {
+            InitializeFromTransition();
+        }
+    }
+
+    private void InitializeFromTransition()
+    {
+        if (GameManager.Instance != null)
+            GameManager.Instance.OnSceneReady -= InitializeFromTransition;
+        _input.Player.Enable();
+        _movement.SetMovementLocked(false);
+    }
+
+    private void OnDestroy()
+    {
+        if (GameManager.Instance != null)
+            GameManager.Instance.OnSceneReady -= InitializeFromTransition;
+    }
+
     private void Update()
     {
         _moveInput = _input.Player.Move.ReadValue<Vector2>().x;
@@ -87,5 +119,32 @@ public class PlayerController : MonoBehaviour
     private void OnJumpCanceled(InputAction.CallbackContext ctx)
     {
         _movement.CutJump();
+    }
+
+    public bool IsFacingRight => _playerAnimator.IsFacingRight;
+
+    /// <summary>
+    /// Initiates the attack sequence: reserves the enemy trigger (blocking the Surprised
+    /// path), locks movement, and starts the attack animation.
+    /// Called by PlayerExplorationAttack. No-op if the player is airborne.
+    /// </summary>
+    public void BeginAttack(Axiom.Platformer.ExplorationEnemyCombatTrigger pending)
+    {
+        if (!_movement.IsGrounded) return;
+        if (pending != null) pending.ReserveForAdvantagedBattle();
+        _movement.SetMovementLocked(true);
+        _playerAnimator.TriggerAttack();
+        _pendingAttackTrigger = pending;
+    }
+
+    /// <summary>
+    /// Called by PlayerExplorationAnimator when the attack animation clip ends.
+    /// Unlocks movement and triggers the Advantaged battle scene transition.
+    /// </summary>
+    public void OnAttackAnimationEnd()
+    {
+        _movement.SetMovementLocked(false);
+        if (_pendingAttackTrigger != null) _pendingAttackTrigger.TriggerAdvantagedBattle();
+        _pendingAttackTrigger = null;
     }
 }

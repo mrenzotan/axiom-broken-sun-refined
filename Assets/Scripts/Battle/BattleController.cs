@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Axiom.Core;
 using Axiom.Data;
 
 namespace Axiom.Battle
@@ -192,6 +193,24 @@ namespace Axiom.Battle
 
         private void Start()
         {
+            var pending = GameManager.Instance?.PendingBattle;
+            if (pending != null)
+            {
+                _startState = pending.StartState;
+                _enemyData  = pending.EnemyData;
+                GameManager.Instance.ClearPendingBattle();
+            }
+
+            if (GameManager.Instance?.SceneTransition?.IsTransitioning == true)
+                GameManager.Instance.OnSceneReady += InitializeFromTransition;
+            else
+                InitializeFromTransition();
+        }
+
+        private void InitializeFromTransition()
+        {
+            if (GameManager.Instance != null)
+                GameManager.Instance.OnSceneReady -= InitializeFromTransition;
             Initialize(_startState);
         }
 
@@ -482,7 +501,12 @@ namespace Axiom.Battle
             else if (state == BattleState.EnemyTurn)
                 ProcessEnemyTurnStart();
             else if (state == BattleState.Fled)
-                SceneManager.LoadScene("Platformer");
+            {
+                if (GameManager.Instance?.SceneTransition != null)
+                    GameManager.Instance.SceneTransition.BeginTransition("Platformer", TransitionStyle.BlackFade);
+                else
+                    SceneManager.LoadScene("Platformer"); // Standalone Battle scene testing fallback
+            }
         }
 
         private void ProcessPlayerTurnStart()
@@ -601,6 +625,9 @@ namespace Axiom.Battle
 
         private void OnDestroy()
         {
+            if (GameManager.Instance != null)
+                GameManager.Instance.OnSceneReady -= InitializeFromTransition;
+
             if (_battleManager != null)
                 _battleManager.OnStateChanged -= HandleStateChanged;
 

@@ -17,9 +17,10 @@ public class EnemyActionHandlerTests
     public void ExecuteAttack_DealsDamage_UsingATKMinusDEF()
     {
         // enemy ATK=10, player DEF=4 → 6 damage; 50 - 6 = 44 HP remaining
+        // randomSource fixed above CritChance so no crit fires
         var enemy  = MakeStats(maxHp: 60, atk: 10, def: 0);
         var player = MakeStats(maxHp: 50, atk: 0,  def: 4);
-        var handler = new EnemyActionHandler(enemy, player);
+        var handler = new EnemyActionHandler(enemy, player, () => 1f);
 
         handler.ExecuteAttack();
 
@@ -30,9 +31,10 @@ public class EnemyActionHandlerTests
     public void ExecuteAttack_DealsMinimumOneDamage_WhenATKLessOrEqualDEF()
     {
         // enemy ATK=3 <= player DEF=10 → clamped to 1 damage; 50 - 1 = 49 HP remaining
+        // randomSource fixed above CritChance so no crit fires
         var enemy  = MakeStats(maxHp: 60, atk: 3,  def: 0);
         var player = MakeStats(maxHp: 50, atk: 0,  def: 10);
-        var handler = new EnemyActionHandler(enemy, player);
+        var handler = new EnemyActionHandler(enemy, player, () => 1f);
 
         handler.ExecuteAttack();
 

@@ -21,6 +21,7 @@ public class PlayerMovement
     private float _coyoteTimeCounter;
     private float _jumpBufferCounter;
     private bool _isGrounded;
+    private bool _movementLocked;
 
     public bool IsGrounded => _isGrounded;
     public float VelocityY => _rb.linearVelocity.y;
@@ -74,7 +75,8 @@ public class PlayerMovement
     /// <summary>Apply horizontal velocity. Called from FixedUpdate.</summary>
     public void Move(float horizontalInput)
     {
-        _rb.linearVelocity = new Vector2(horizontalInput * _moveSpeed, _rb.linearVelocity.y);
+        float velocity = _movementLocked ? 0f : horizontalInput * _moveSpeed;
+        _rb.linearVelocity = new Vector2(velocity, _rb.linearVelocity.y);
     }
 
     /// <summary>Store jump intent. Called when jump button is pressed.</summary>
@@ -90,6 +92,15 @@ public class PlayerMovement
         {
             ExecuteJump();
         }
+    }
+
+    /// <summary>
+    /// Lock or unlock horizontal movement. When locked, Move() applies zero horizontal velocity.
+    /// Called by PlayerController during attack animation playback.
+    /// </summary>
+    public void SetMovementLocked(bool locked)
+    {
+        _movementLocked = locked;
     }
 
     /// <summary>Cut jump height early. Called when jump button is released.</summary>

@@ -22,22 +22,26 @@ public class EnemyPatrolBehavior
     private readonly float _chaseSpeed;
     private readonly float _waypointThreshold;
     private readonly float _deaggroGracePeriod;
+    private readonly float _waypointPauseDuration;
 
     private int _currentWaypointIndex;
     private float _deaggroTimer;
+    private float _waypointPauseTimer;
 
     public EnemyPatrolBehavior(
         Vector2[] waypoints,
         float patrolSpeed,
         float chaseSpeed,
         float waypointThreshold = 0.2f,
-        float deaggroGracePeriod = 0.5f)
+        float deaggroGracePeriod = 0.5f,
+        float waypointPauseDuration = 1f)
     {
         _waypoints = waypoints ?? new Vector2[0];
         _patrolSpeed = patrolSpeed;
         _chaseSpeed = chaseSpeed;
         _waypointThreshold = waypointThreshold;
         _deaggroGracePeriod = deaggroGracePeriod;
+        _waypointPauseDuration = waypointPauseDuration;
         CurrentState = State.Patrol;
         FacingDirectionX = 1f;
     }
@@ -61,9 +65,16 @@ public class EnemyPatrolBehavior
     {
         if (playerDetected)
         {
+            _waypointPauseTimer = 0f;
             CurrentState = State.Aggro;
             _deaggroTimer = _deaggroGracePeriod;
             return TickAggro(currentPosition, playerDetected, playerPosition, deltaTime);
+        }
+
+        if (_waypointPauseTimer > 0f)
+        {
+            _waypointPauseTimer -= deltaTime;
+            return 0f;
         }
 
         if (_waypoints.Length == 0)
@@ -75,6 +86,7 @@ public class EnemyPatrolBehavior
         if (Mathf.Abs(dx) <= _waypointThreshold)
         {
             _currentWaypointIndex = (_currentWaypointIndex + 1) % _waypoints.Length;
+            _waypointPauseTimer = _waypointPauseDuration;
             return 0f;
         }
 

@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using Axiom.Battle;
+using Axiom.Data;
 
 public class BattleManagerTests
 {

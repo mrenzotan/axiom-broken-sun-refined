@@ -1,6 +1,8 @@
 {
     "name": "Axiom.Platformer",
     "references": [
+        "Axiom.Core",
+        "Axiom.Data",
         "Unity.InputSystem"
     ],
     "includePlatforms": [],

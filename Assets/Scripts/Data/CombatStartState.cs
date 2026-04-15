@@ -1,4 +1,4 @@
-namespace Axiom.Battle
+namespace Axiom.Data
 {
     /// <summary>
     /// Passed to BattleManager.StartBattle() to determine who acts first.
