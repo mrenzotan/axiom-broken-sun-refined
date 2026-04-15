@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
 using Axiom.Core;
 using NUnit.Framework;
 using UnityEngine;
@@ -8,12 +11,13 @@ namespace Axiom.Tests.Editor.Core
     {
         private GameObject _gameManagerObject;
         private GameManager _gameManager;
+        private readonly List<string> _tempDirectories = new List<string>();
 
         [SetUp]
         public void SetUp()
         {
             if (GameManager.Instance != null)
-                Object.DestroyImmediate(GameManager.Instance.gameObject);
+                UnityEngine.Object.DestroyImmediate(GameManager.Instance.gameObject);
 
             _gameManagerObject = new GameObject("GameManager");
             _gameManager = _gameManagerObject.AddComponent<GameManager>();
@@ -23,7 +27,22 @@ namespace Axiom.Tests.Editor.Core
         public void TearDown()
         {
             if (_gameManagerObject != null)
-                Object.DestroyImmediate(_gameManagerObject);
+                UnityEngine.Object.DestroyImmediate(_gameManagerObject);
+
+            foreach (string tempDirectory in _tempDirectories)
+            {
+                if (Directory.Exists(tempDirectory))
+                    Directory.Delete(tempDirectory, recursive: true);
+            }
+
+            _tempDirectories.Clear();
+        }
+
+        private SaveService CreateTempSaveService()
+        {
+            string tempDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+            _tempDirectories.Add(tempDirectory);
+            return new SaveService(tempDirectory);
         }
 
         [Test]
@@ -92,6 +111,43 @@ namespace Axiom.Tests.Editor.Core
             _gameManager.StartNewGame();
 
             Assert.AreEqual(100, _gameManager.PlayerState.MaxHp);
+        }
+
+        [Test]
+        public void StartNewGame_ClearsDefeatedEnemies()
+        {
+            _gameManager.MarkEnemyDefeated("enemy_a");
+            _gameManager.MarkEnemyDefeated("enemy_b");
+
+            _gameManager.StartNewGame();
+
+            Assert.IsFalse(_gameManager.IsEnemyDefeated("enemy_a"));
+            Assert.IsFalse(_gameManager.IsEnemyDefeated("enemy_b"));
+        }
+
+        [Test]
+        public void StartNewGame_ClearsWorldSnapshot()
+        {
+            _gameManager.SetWorldSnapshot(new WorldSnapshot());
+
+            _gameManager.StartNewGame();
+
+            Assert.IsNull(_gameManager.CurrentWorldSnapshot);
+        }
+
+        [Test]
+        public void StartNewGame_DeletesExistingSaveFile()
+        {
+            SaveService tempSaveService = CreateTempSaveService();
+            _gameManager.SetSaveServiceForTests(tempSaveService);
+
+            _gameManager.MarkEnemyDefeated("enemy_a");
+            _gameManager.PersistToDisk();
+            Assert.IsTrue(tempSaveService.HasSave());
+
+            _gameManager.StartNewGame();
+
+            Assert.IsFalse(tempSaveService.HasSave());
         }
     }
 }

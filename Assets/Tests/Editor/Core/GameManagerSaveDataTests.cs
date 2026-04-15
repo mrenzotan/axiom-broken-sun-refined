@@ -198,6 +198,139 @@ namespace CoreTests
             Assert.AreEqual(0, mp2);
         }
 
+        [Test]
+        public void DefeatedEnemyIds_IsEmpty_ByDefault()
+        {
+            Assert.IsNotNull(_gameManager.DefeatedEnemyIds);
+            using var enumerator = _gameManager.DefeatedEnemyIds.GetEnumerator();
+            Assert.IsFalse(enumerator.MoveNext());
+        }
+
+        [Test]
+        public void DefeatedEnemyIds_ReflectsMarkEnemyDefeated()
+        {
+            _gameManager.MarkEnemyDefeated("enemy_a");
+            _gameManager.MarkEnemyDefeated("enemy_b");
+
+            var ids = new List<string>(_gameManager.DefeatedEnemyIds);
+            CollectionAssert.AreEquivalent(new[] { "enemy_a", "enemy_b" }, ids);
+        }
+
+        [Test]
+        public void RestoreDefeatedEnemies_ReplacesExistingSet()
+        {
+            _gameManager.MarkEnemyDefeated("stale_enemy");
+
+            _gameManager.RestoreDefeatedEnemies(new[] { "enemy_x", "enemy_y" });
+
+            Assert.IsFalse(_gameManager.IsEnemyDefeated("stale_enemy"));
+            Assert.IsTrue(_gameManager.IsEnemyDefeated("enemy_x"));
+            Assert.IsTrue(_gameManager.IsEnemyDefeated("enemy_y"));
+        }
+
+        [Test]
+        public void RestoreDefeatedEnemies_WithNull_ClearsSet()
+        {
+            _gameManager.MarkEnemyDefeated("enemy_a");
+
+            _gameManager.RestoreDefeatedEnemies(null);
+
+            Assert.IsFalse(_gameManager.IsEnemyDefeated("enemy_a"));
+            using var enumerator = _gameManager.DefeatedEnemyIds.GetEnumerator();
+            Assert.IsFalse(enumerator.MoveNext());
+        }
+
+        [Test]
+        public void RestoreDefeatedEnemies_SkipsNullAndEmptyIds()
+        {
+            _gameManager.RestoreDefeatedEnemies(new[] { "enemy_a", null, string.Empty, "enemy_b" });
+
+            Assert.IsTrue(_gameManager.IsEnemyDefeated("enemy_a"));
+            Assert.IsTrue(_gameManager.IsEnemyDefeated("enemy_b"));
+            var ids = new List<string>(_gameManager.DefeatedEnemyIds);
+            Assert.AreEqual(2, ids.Count);
+        }
+
+        [Test]
+        public void BuildSaveData_IncludesDefeatedEnemyIds()
+        {
+            _gameManager.MarkEnemyDefeated("enemy_slime_01");
+            _gameManager.MarkEnemyDefeated("enemy_bat_02");
+
+            SaveData data = _gameManager.BuildSaveData();
+
+            Assert.IsNotNull(data.defeatedEnemyIds);
+            Assert.AreEqual(2, data.defeatedEnemyIds.Length);
+            CollectionAssert.AreEquivalent(
+                new[] { "enemy_slime_01", "enemy_bat_02" },
+                data.defeatedEnemyIds);
+        }
+
+        [Test]
+        public void BuildSaveData_DefeatedEnemyIds_IsEmptyArray_WhenNoneDefeated()
+        {
+            SaveData data = _gameManager.BuildSaveData();
+
+            Assert.IsNotNull(data.defeatedEnemyIds);
+            Assert.AreEqual(0, data.defeatedEnemyIds.Length);
+        }
+
+        [Test]
+        public void ApplySaveData_RestoresDefeatedEnemyIds()
+        {
+            _gameManager.MarkEnemyDefeated("stale_enemy");
+
+            var saveData = new SaveData
+            {
+                maxHp = 100,
+                maxMp = 50,
+                defeatedEnemyIds = new[] { "enemy_a", "enemy_b" }
+            };
+
+            _gameManager.ApplySaveData(saveData);
+
+            Assert.IsFalse(_gameManager.IsEnemyDefeated("stale_enemy"));
+            Assert.IsTrue(_gameManager.IsEnemyDefeated("enemy_a"));
+            Assert.IsTrue(_gameManager.IsEnemyDefeated("enemy_b"));
+        }
+
+        [Test]
+        public void ApplySaveData_NullDefeatedEnemyIds_ClearsSet()
+        {
+            _gameManager.MarkEnemyDefeated("stale_enemy");
+
+            var saveData = new SaveData
+            {
+                maxHp = 100,
+                maxMp = 50,
+                defeatedEnemyIds = null
+            };
+
+            _gameManager.ApplySaveData(saveData);
+
+            Assert.IsFalse(_gameManager.IsEnemyDefeated("stale_enemy"));
+        }
+
+        [Test]
+        public void PersistAndLoad_RoundTrip_RestoresDefeatedEnemyIds()
+        {
+            SaveService tempSaveService = CreateTempSaveService();
+            _gameManager.SetSaveServiceForTests(tempSaveService);
+
+            _gameManager.MarkEnemyDefeated("enemy_slime_01");
+            _gameManager.MarkEnemyDefeated("enemy_bat_02");
+            _gameManager.PersistToDisk();
+
+            _gameManager.ClearDefeatedEnemies();
+            Assert.IsFalse(_gameManager.IsEnemyDefeated("enemy_slime_01"));
+
+            bool loaded = _gameManager.TryLoadFromDiskIntoGame();
+
+            Assert.IsTrue(loaded);
+            Assert.IsTrue(_gameManager.IsEnemyDefeated("enemy_slime_01"));
+            Assert.IsTrue(_gameManager.IsEnemyDefeated("enemy_bat_02"));
+        }
+
         private SaveService CreateTempSaveService()
         {
             string tempDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));

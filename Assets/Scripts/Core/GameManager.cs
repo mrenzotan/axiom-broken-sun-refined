@@ -106,6 +106,31 @@ namespace Axiom.Core
 
         public void ClearDefeatedEnemies() => _defeatedEnemyIds.Clear();
 
+        /// <summary>
+        /// Read-only view of the defeated-enemy set. Used by BuildSaveData to
+        /// project the set into the SaveData DTO. Do not cast and mutate — use
+        /// MarkEnemyDefeated / ClearDefeatedEnemies / RestoreDefeatedEnemies.
+        /// </summary>
+        public IEnumerable<string> DefeatedEnemyIds => _defeatedEnemyIds;
+
+        /// <summary>
+        /// Replaces the defeated-enemy set with the provided IDs. Null or whitespace
+        /// IDs in the input are skipped. A null input clears the set.
+        /// Called on Continue after ApplySaveData to restore cross-session state.
+        /// </summary>
+        public void RestoreDefeatedEnemies(IEnumerable<string> enemyIds)
+        {
+            _defeatedEnemyIds.Clear();
+            if (enemyIds == null)
+                return;
+
+            foreach (string id in enemyIds)
+            {
+                if (!string.IsNullOrWhiteSpace(id))
+                    _defeatedEnemyIds.Add(id);
+            }
+        }
+
         public bool HasSaveFile() => _saveService != null && _saveService.HasSave();
 
         public void CaptureWorldSnapshot(Vector2 worldPosition)
@@ -139,7 +164,8 @@ namespace Axiom.Core
                 worldPositionX = PlayerState.WorldPositionX,
                 worldPositionY = PlayerState.WorldPositionY,
                 activeSceneName = sceneName ?? string.Empty,
-                activatedCheckpointIds = CopyReadOnlyStringList(PlayerState.ActivatedCheckpointIds)
+                activatedCheckpointIds = CopyReadOnlyStringList(PlayerState.ActivatedCheckpointIds),
+                defeatedEnemyIds = CopyHashSet(_defeatedEnemyIds)
             };
         }
 
@@ -160,6 +186,7 @@ namespace Axiom.Core
             PlayerState.SetWorldPosition(data.worldPositionX, data.worldPositionY);
             PlayerState.SetActiveScene(data.activeSceneName ?? string.Empty);
             PlayerState.SetActivatedCheckpointIds(data.activatedCheckpointIds ?? Array.Empty<string>());
+            RestoreDefeatedEnemies(data.defeatedEnemyIds);
         }
 
         public void PersistToDisk()
@@ -202,6 +229,12 @@ namespace Axiom.Core
         {
             PlayerState = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
             ClearPendingBattle();
+            ClearWorldSnapshot();
+            ClearDefeatedEnemies();
+
+            EnsureSaveService();
+            _saveService.DeleteSave();
+
             LoadScene("Platformer");
         }
 
@@ -307,6 +340,16 @@ private void Awake()
             string[] copy = new string[values.Count];
             for (int i = 0; i < values.Count; i++)
                 copy[i] = values[i];
+            return copy;
+        }
+
+        private static string[] CopyHashSet(HashSet<string> values)
+        {
+            if (values == null || values.Count == 0)
+                return Array.Empty<string>();
+
+            string[] copy = new string[values.Count];
+            values.CopyTo(copy);
             return copy;
         }
 

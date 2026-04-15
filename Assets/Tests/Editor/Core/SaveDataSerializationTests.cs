@@ -68,5 +68,45 @@ namespace CoreTests
             var data = new SaveData();
             Assert.AreEqual(0, data.activatedCheckpointIds.Length);
         }
+
+        [Test]
+        public void SaveData_JsonUtility_RoundTrip_PreservesDefeatedEnemyIds()
+        {
+            var original = new SaveData
+            {
+                defeatedEnemyIds = new[] { "enemy_slime_01", "enemy_bat_02" }
+            };
+
+            string json = JsonUtility.ToJson(original, prettyPrint: true);
+            SaveData copy = JsonUtility.FromJson<SaveData>(json);
+
+            Assert.AreEqual(2, copy.defeatedEnemyIds.Length);
+            Assert.AreEqual("enemy_slime_01", copy.defeatedEnemyIds[0]);
+            Assert.AreEqual("enemy_bat_02", copy.defeatedEnemyIds[1]);
+        }
+
+        [Test]
+        public void SaveData_DefaultDefeatedEnemyIds_IsEmpty()
+        {
+            var data = new SaveData();
+            Assert.AreEqual(0, data.defeatedEnemyIds.Length);
+        }
+
+        [Test]
+        public void SaveData_JsonUtility_BackwardCompat_MissingDefeatedEnemyIds_DeserializesAsEmpty()
+        {
+            // Legacy JSON written before DEV-61 — has no defeatedEnemyIds field.
+            string legacyJson = "{\"saveVersion\":1,\"playerLevel\":3,\"playerXp\":0,\"currentHp\":50," +
+                                "\"currentMp\":20,\"maxHp\":100,\"maxMp\":50," +
+                                "\"unlockedSpellIds\":[],\"inventory\":[]," +
+                                "\"worldPositionX\":0.0,\"worldPositionY\":0.0," +
+                                "\"activeSceneName\":\"Platformer\",\"activatedCheckpointIds\":[]}";
+
+            SaveData copy = JsonUtility.FromJson<SaveData>(legacyJson);
+
+            Assert.IsNotNull(copy.defeatedEnemyIds);
+            Assert.AreEqual(0, copy.defeatedEnemyIds.Length);
+            Assert.AreEqual(3, copy.playerLevel);
+        }
     }
 }

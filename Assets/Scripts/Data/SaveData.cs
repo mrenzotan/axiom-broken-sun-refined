@@ -33,5 +33,7 @@ namespace Axiom.Data
         public string activeSceneName = string.Empty;
 
         public string[] activatedCheckpointIds = Array.Empty<string>();
+
+        public string[] defeatedEnemyIds = Array.Empty<string>();
     }
 }
