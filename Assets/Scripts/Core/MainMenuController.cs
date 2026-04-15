@@ -12,25 +12,50 @@ namespace Axiom.Core
         private readonly Func<bool> _hasSaveFile;
         private readonly Action _startNewGame;
         private readonly Action _continueGame;
+        private readonly Action _requestNewGameConfirmation;
         private readonly Action _quit;
 
         /// <param name="hasSaveFile">Returns true when a valid save file exists on disk.</param>
         /// <param name="startNewGame">Resets state and loads Platformer for a fresh playthrough.</param>
         /// <param name="continueGame">Loads save data then loads the saved scene.</param>
+        /// <param name="requestNewGameConfirmation">
+        /// Optional — invoked instead of <paramref name="startNewGame"/> when a save exists,
+        /// so the UI can present a modal confirmation dialog. Null means skip confirmation
+        /// (legacy/test behaviour: New Game always runs immediately).
+        /// </param>
         /// <param name="quit">Optional — exits the application when the Quit button is used.</param>
-        public MainMenuController(Func<bool> hasSaveFile, Action startNewGame, Action continueGame, Action quit = null)
+        public MainMenuController(
+            Func<bool> hasSaveFile,
+            Action startNewGame,
+            Action continueGame,
+            Action requestNewGameConfirmation = null,
+            Action quit = null)
         {
             _hasSaveFile  = hasSaveFile  ?? throw new ArgumentNullException(nameof(hasSaveFile));
             _startNewGame = startNewGame ?? throw new ArgumentNullException(nameof(startNewGame));
             _continueGame = continueGame ?? throw new ArgumentNullException(nameof(continueGame));
+            _requestNewGameConfirmation = requestNewGameConfirmation;
             _quit = quit;
         }
 
         /// <summary>Returns true when a valid save file exists on disk.</summary>
         public bool CanContinue() => _hasSaveFile();
 
-        /// <summary>Starts a fresh playthrough. Always callable regardless of save state.</summary>
-        public void OnNewGameClicked() => _startNewGame();
+        /// <summary>
+        /// Starts a new playthrough. When a save file exists and a confirmation delegate was
+        /// supplied, the confirmation is requested instead — the UI is responsible for
+        /// invoking startNewGame later if the player confirms.
+        /// </summary>
+        public void OnNewGameClicked()
+        {
+            if (_requestNewGameConfirmation != null && _hasSaveFile())
+            {
+                _requestNewGameConfirmation();
+                return;
+            }
+
+            _startNewGame();
+        }
 
         /// <summary>Resumes from save. No-op when <see cref="CanContinue"/> is false.</summary>
         public void OnContinueClicked()

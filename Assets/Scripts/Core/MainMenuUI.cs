@@ -22,6 +22,11 @@ namespace Axiom.Core
         [Tooltip("The Quit button on the main menu Canvas.")]
         private Button _quitButton;
 
+        [SerializeField]
+        [Tooltip("Modal dialog shown before StartNewGame when a save file exists. " +
+                 "Optional — when null, New Game runs immediately with no confirmation (legacy behaviour).")]
+        private ConfirmNewGameDialogUI _confirmNewGameDialog;
+
         private MainMenuController _controller;
 
         private void Start()
@@ -30,6 +35,7 @@ namespace Axiom.Core
                 hasSaveFile:  () => GameManager.Instance?.HasSaveFile() ?? false,
                 startNewGame: () => GameManager.Instance?.StartNewGame(),
                 continueGame: () => GameManager.Instance?.TryContinueGame(),
+                requestNewGameConfirmation: BuildConfirmationDelegate(),
                 quit: QuitApplication);
 
             _continueButton.interactable = _controller.CanContinue();
@@ -38,6 +44,15 @@ namespace Axiom.Core
             _continueButton.onClick.AddListener(_controller.OnContinueClicked);
             if (_quitButton != null)
                 _quitButton.onClick.AddListener(_controller.OnQuitClicked);
+        }
+
+        private System.Action BuildConfirmationDelegate()
+        {
+            if (_confirmNewGameDialog == null)
+                return null;
+
+            return () => _confirmNewGameDialog.Show(
+                onConfirm: () => GameManager.Instance?.StartNewGame());
         }
 
         private void OnDestroy()

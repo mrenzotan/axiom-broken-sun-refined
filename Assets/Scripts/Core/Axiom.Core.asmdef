@@ -2,7 +2,8 @@
     "name": "Axiom.Core",
     "references": [
         "Axiom.Data",
-        "UnityEngine.UI"
+        "UnityEngine.UI",
+        "Unity.InputSystem"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

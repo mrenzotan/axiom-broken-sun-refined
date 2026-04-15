@@ -132,5 +132,80 @@ namespace Axiom.Tests.Editor.Core
 
             Assert.IsTrue(called);
         }
+
+        // ── OnNewGameClicked confirmation branching tests (DEV-62) ───────────
+
+        [Test]
+        public void OnNewGameClicked_RequestsConfirmation_WhenSaveExistsAndDelegateProvided()
+        {
+            bool confirmationRequested = false;
+            bool startNewGameCalled = false;
+
+            var controller = new MainMenuController(
+                hasSaveFile:  () => true,
+                startNewGame: () => startNewGameCalled = true,
+                continueGame: () => { },
+                requestNewGameConfirmation: () => confirmationRequested = true);
+
+            controller.OnNewGameClicked();
+
+            Assert.IsTrue(confirmationRequested, "Confirmation delegate should be invoked when a save exists.");
+            Assert.IsFalse(startNewGameCalled, "StartNewGame must not fire directly — wait for the UI to confirm.");
+        }
+
+        [Test]
+        public void OnNewGameClicked_StartsImmediately_WhenNoSaveExists_EvenWithConfirmationDelegate()
+        {
+            bool confirmationRequested = false;
+            bool startNewGameCalled = false;
+
+            var controller = new MainMenuController(
+                hasSaveFile:  () => false,
+                startNewGame: () => startNewGameCalled = true,
+                continueGame: () => { },
+                requestNewGameConfirmation: () => confirmationRequested = true);
+
+            controller.OnNewGameClicked();
+
+            Assert.IsFalse(confirmationRequested, "No save means no confirmation needed.");
+            Assert.IsTrue(startNewGameCalled, "StartNewGame should run immediately when no save exists.");
+        }
+
+        [Test]
+        public void OnNewGameClicked_StartsImmediately_WhenSaveExistsButNoConfirmationDelegate()
+        {
+            bool startNewGameCalled = false;
+
+            var controller = new MainMenuController(
+                hasSaveFile:  () => true,
+                startNewGame: () => startNewGameCalled = true,
+                continueGame: () => { },
+                requestNewGameConfirmation: null);
+
+            controller.OnNewGameClicked();
+
+            Assert.IsTrue(startNewGameCalled, "With no confirmation delegate, controller preserves legacy direct-start behaviour.");
+        }
+
+        [Test]
+        public void OnNewGameClicked_EachCallReEvaluatesSaveExistence()
+        {
+            bool hasSave = true;
+            int confirmationCount = 0;
+            int startCount = 0;
+
+            var controller = new MainMenuController(
+                hasSaveFile:  () => hasSave,
+                startNewGame: () => startCount++,
+                continueGame: () => { },
+                requestNewGameConfirmation: () => confirmationCount++);
+
+            controller.OnNewGameClicked();    // save exists → confirmation
+            hasSave = false;                  // save cleared externally
+            controller.OnNewGameClicked();    // no save → direct start
+
+            Assert.AreEqual(1, confirmationCount);
+            Assert.AreEqual(1, startCount);
+        }
     }
 }
