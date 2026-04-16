@@ -3,6 +3,7 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 using Axiom.Core;
+using Axiom.Data;
 
 namespace CoreTests.PlayMode
 {
@@ -16,26 +17,39 @@ namespace CoreTests.PlayMode
             yield return null;
         }
 
+        private static CharacterData CreateTestCharacterData()
+        {
+            var cd = ScriptableObject.CreateInstance<CharacterData>();
+            cd.characterName = "TestPlayer";
+            cd.baseMaxHP = 100;
+            cd.baseMaxMP = 50;
+            cd.baseATK   = 10;
+            cd.baseDEF   = 5;
+            cd.baseSPD   = 8;
+            return cd;
+        }
+
         [UnityTest]
         public IEnumerator Awake_SetsSingletonInstance()
         {
             var go = new GameObject("GameManager");
             var gm = go.AddComponent<GameManager>();
-            yield return null; // wait one frame for Awake
+            yield return null;
 
             Assert.AreEqual(gm, GameManager.Instance);
         }
 
         [UnityTest]
-        public IEnumerator Awake_InitializesPlayerState()
+        public IEnumerator PlayerState_IsLazilyInitialized_FromCharacterData()
         {
             var go = new GameObject("GameManager");
-            go.AddComponent<GameManager>();
+            var gm = go.AddComponent<GameManager>();
+            gm.SetPlayerCharacterDataForTests(CreateTestCharacterData());
             yield return null;
 
-            Assert.IsNotNull(GameManager.Instance.PlayerState);
-            Assert.Greater(GameManager.Instance.PlayerState.MaxHp, 0);
-            Assert.Greater(GameManager.Instance.PlayerState.MaxMp, 0);
+            Assert.IsNotNull(gm.PlayerState);
+            Assert.Greater(gm.PlayerState.MaxHp, 0);
+            Assert.Greater(gm.PlayerState.MaxMp, 0);
         }
 
         [UnityTest]
@@ -49,9 +63,7 @@ namespace CoreTests.PlayMode
             go2.AddComponent<GameManager>();
             yield return null;
 
-            // First instance must still be the singleton
             Assert.AreEqual(first, GameManager.Instance);
-            // First GameObject must not have been destroyed
             Assert.IsTrue(go1 != null);
         }
 

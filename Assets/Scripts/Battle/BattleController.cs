@@ -27,10 +27,7 @@ namespace Axiom.Battle
         [Tooltip("CharacterData ScriptableObject for the player. Provides base stats at Level 1. Assign CD_Player_Kaelen from Assets/Data/Characters/.")]
         private Axiom.Data.CharacterData _playerData;
 
-        [SerializeField]
-        [Tooltip("Player stats. Populated from _playerData at Initialize(); fallback Inspector values used when _playerData is unassigned (standalone testing only).")]
-        private CharacterStats _playerStats = new CharacterStats
-            { Name = "Kael", MaxHP = 100, MaxMP = 30, ATK = 12, DEF = 6, SPD = 8 };
+        private CharacterStats _playerStats;
 
         [SerializeField]
         [Tooltip("Enemy stats. Set values in Inspector for Battle scene testing.")]
@@ -254,9 +251,35 @@ namespace Axiom.Battle
             if (_playerAnimator != null)
                 OnSpellChargeAborted -= _playerAnimator.TriggerResetCharge;
 
-            if (_playerData != null)
+            if (_playerData == null)
             {
-                _playerStats.Name  = _playerData.characterName;
+                Debug.LogError(
+                    "[Battle] _playerData is null. Assign CD_Player_Kaelen on the BattleController in the Battle scene.",
+                    this);
+                return;
+            }
+
+            _playerStats = new CharacterStats { Name = _playerData.characterName };
+
+            if (GameManager.Instance != null)
+            {
+                PlayerState ps = GameManager.Instance.PlayerState;
+                if (ps == null)
+                {
+                    Debug.LogError(
+                        "[Battle] GameManager.PlayerState is null — check that CharacterData is assigned on the GameManager prefab.",
+                        this);
+                    return;
+                }
+                _playerStats.MaxHP = ps.MaxHp;
+                _playerStats.MaxMP = ps.MaxMp;
+                _playerStats.ATK   = ps.Attack;
+                _playerStats.DEF   = ps.Defense;
+                _playerStats.SPD   = ps.Speed;
+            }
+            else
+            {
+                // Standalone Battle scene testing (no GameManager in scene).
                 _playerStats.MaxHP = _playerData.baseMaxHP;
                 _playerStats.MaxMP = _playerData.baseMaxMP;
                 _playerStats.ATK   = _playerData.baseATK;
@@ -272,13 +295,6 @@ namespace Axiom.Battle
                 _enemyStats.ATK   = _enemyData.atk;
                 _enemyStats.DEF   = _enemyData.def;
                 _enemyStats.SPD   = _enemyData.spd;
-            }
-
-            if (GameManager.Instance != null)
-            {
-                PlayerState ps = GameManager.Instance.PlayerState;
-                _playerStats.MaxHP = ps.MaxHp;
-                _playerStats.MaxMP = ps.MaxMp;
             }
 
             int? playerStartHp = GameManager.Instance != null

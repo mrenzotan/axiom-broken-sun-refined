@@ -2,6 +2,7 @@
 using NUnit.Framework;
 using UnityEngine;
 using Axiom.Core;
+using Axiom.Data;
 
 namespace Axiom.Tests.Editor.Core
 {
@@ -20,12 +21,25 @@ namespace Axiom.Tests.Editor.Core
 
             _go = new GameObject("GameManager");
             _gm = _go.AddComponent<GameManager>(); // triggers Awake → sets Instance
+            _gm.SetPlayerCharacterDataForTests(CreateTestCharacterData());
         }
 
         [TearDown]
         public void TearDown()
         {
             Object.DestroyImmediate(_go); // triggers OnDestroy → clears Instance
+        }
+
+        private CharacterData CreateTestCharacterData()
+        {
+            var cd = ScriptableObject.CreateInstance<CharacterData>();
+            cd.characterName = "TestPlayer";
+            cd.baseMaxHP = 100;
+            cd.baseMaxMP = 50;
+            cd.baseATK   = 10;
+            cd.baseDEF   = 5;
+            cd.baseSPD   = 8;
+            return cd;
         }
 
         [Test]

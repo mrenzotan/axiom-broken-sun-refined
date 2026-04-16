@@ -27,6 +27,10 @@ namespace Axiom.Core
         public static GameManager Instance { get; private set; }
 
         [SerializeField]
+        [Tooltip("CharacterData for the player. Seeds PlayerState base stats on new game and lazy initialization. Assign CD_Player_Kaelen on the GameManager prefab.")]
+        private Axiom.Data.CharacterData _playerCharacterData;
+
+        [SerializeField]
         [Tooltip("Master catalog of every SpellData in the game. Required for level-up spell grants and save-load ID resolution.")]
         private SpellCatalog _spellCatalog;
 
@@ -288,7 +292,20 @@ namespace Axiom.Core
         /// </summary>
         public void StartNewGame()
         {
-            PlayerState = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            if (_playerCharacterData == null)
+            {
+                Debug.LogError(
+                    "[GameManager] _playerCharacterData is not assigned. Cannot start a new game without base stats.",
+                    this);
+                return;
+            }
+
+            PlayerState = new PlayerState(
+                maxHp:   _playerCharacterData.baseMaxHP,
+                maxMp:   _playerCharacterData.baseMaxMP,
+                attack:  _playerCharacterData.baseATK,
+                defense: _playerCharacterData.baseDEF,
+                speed:   _playerCharacterData.baseSPD);
             ClearPendingBattle();
             ClearWorldSnapshot();
             ClearDefeatedEnemies();
@@ -342,22 +359,32 @@ namespace Axiom.Core
         {
             _saveService = saveService ?? throw new ArgumentNullException(nameof(saveService));
         }
+
+        /// <summary>
+        /// Test-only injector for the player CharacterData. Must be called after
+        /// <c>AddComponent&lt;GameManager&gt;()</c> and before the first <see cref="PlayerState"/>
+        /// access so the lazy <see cref="EnsurePlayerState"/> path can read base stats.
+        /// </summary>
+        public void SetPlayerCharacterDataForTests(Axiom.Data.CharacterData characterData)
+        {
+            _playerCharacterData = characterData
+                ?? throw new ArgumentNullException(nameof(characterData));
+        }
 #endif
 
-private void Awake()
-{
-    if (Instance != null)
-    {
-        Destroy(gameObject);
-        return;
-    }
+        private void Awake()
+        {
+            if (Instance != null)
+            {
+                Destroy(gameObject);
+                return;
+            }
 
-    Instance = this;
-    if (Application.isPlaying)
-        DontDestroyOnLoad(gameObject);
-    EnsurePlayerState();
-    EnsureSaveService();
-}
+            Instance = this;
+            if (Application.isPlaying)
+                DontDestroyOnLoad(gameObject);
+            EnsureSaveService();
+        }
 
         private void OnDestroy()
         {
@@ -370,8 +397,21 @@ private void Awake()
 
         private void EnsurePlayerState()
         {
-            if (_playerState == null)
-                _playerState = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            if (_playerState != null) return;
+            if (_playerCharacterData == null)
+            {
+                Debug.LogError(
+                    "[GameManager] _playerCharacterData is not assigned. Assign CD_Player_Kaelen on the GameManager prefab.",
+                    this);
+                return;
+            }
+
+            _playerState = new PlayerState(
+                maxHp:   _playerCharacterData.baseMaxHP,
+                maxMp:   _playerCharacterData.baseMaxMP,
+                attack:  _playerCharacterData.baseATK,
+                defense: _playerCharacterData.baseDEF,
+                speed:   _playerCharacterData.baseSPD);
         }
 
         private void EnsureSaveService()

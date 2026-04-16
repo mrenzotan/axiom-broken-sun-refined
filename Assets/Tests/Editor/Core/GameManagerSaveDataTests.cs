@@ -19,6 +19,7 @@ namespace CoreTests
         {
             _gameManagerObject = new GameObject("GameManager");
             _gameManager = _gameManagerObject.AddComponent<GameManager>();
+            _gameManager.SetPlayerCharacterDataForTests(CreateTestCharacterData());
         }
 
         [TearDown]
@@ -509,6 +510,24 @@ namespace CoreTests
             _gameManager.StartNewGame();
 
             Assert.AreEqual(-1, _gameManager.GetDamagedEnemyHp("enemy_a"));
+        }
+
+        private CharacterData CreateTestCharacterData(
+            int maxHp = 100,
+            int maxMp = 50,
+            int atk = 10,
+            int def = 5,
+            int spd = 8,
+            string name = "TestPlayer")
+        {
+            var cd = ScriptableObject.CreateInstance<CharacterData>();
+            cd.characterName = name;
+            cd.baseMaxHP = maxHp;
+            cd.baseMaxMP = maxMp;
+            cd.baseATK   = atk;
+            cd.baseDEF   = def;
+            cd.baseSPD   = spd;
+            return cd;
         }
 
         private SaveService CreateTempSaveService()
