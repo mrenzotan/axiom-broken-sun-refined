@@ -9,6 +9,13 @@ namespace Axiom.Data
         public int quantity;
     }
 
+    [Serializable]
+    public struct EnemyHpSaveEntry
+    {
+        public string enemyId;
+        public int currentHp;
+    }
+
     /// <summary>
     /// Disk-serializable snapshot only. No UnityEngine.Object references.
     /// Field names are stable for JSON on disk.
@@ -35,5 +42,7 @@ namespace Axiom.Data
         public string[] activatedCheckpointIds = Array.Empty<string>();
 
         public string[] defeatedEnemyIds = Array.Empty<string>();
+
+        public EnemyHpSaveEntry[] damagedEnemyHp = Array.Empty<EnemyHpSaveEntry>();
     }
 }

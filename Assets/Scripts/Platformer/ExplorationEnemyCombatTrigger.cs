@@ -122,7 +122,9 @@ namespace Axiom.Platformer
             GameManager.Instance.SetWorldSnapshot(snapshot);
 
             string enemyId = GetComponent<EnemyController>()?.EnemyId;
-            GameManager.Instance.SetPendingBattle(new BattleEntry(startState, _enemyData, enemyId));
+            int enemyCurrentHp = GameManager.Instance.GetDamagedEnemyHp(enemyId);
+            GameManager.Instance.SetPendingBattle(
+                new BattleEntry(startState, _enemyData, enemyId, enemyCurrentHp));
 
             Vector2 playerWorldPosition = ResolvePlayerWorldPosition(playerCollider);
             

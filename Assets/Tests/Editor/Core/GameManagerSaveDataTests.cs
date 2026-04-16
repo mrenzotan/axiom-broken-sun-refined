@@ -331,6 +331,186 @@ namespace CoreTests
             Assert.IsTrue(_gameManager.IsEnemyDefeated("enemy_bat_02"));
         }
 
+        // ---- Damaged Enemy HP ----
+
+        [Test]
+        public void GetDamagedEnemyHp_ReturnsNegativeOne_WhenNotTracked()
+        {
+            Assert.AreEqual(-1, _gameManager.GetDamagedEnemyHp("unknown_enemy"));
+        }
+
+        [Test]
+        public void GetDamagedEnemyHp_ReturnsNegativeOne_ForNullId()
+        {
+            Assert.AreEqual(-1, _gameManager.GetDamagedEnemyHp(null));
+        }
+
+        [Test]
+        public void GetDamagedEnemyHp_ReturnsNegativeOne_ForEmptyId()
+        {
+            Assert.AreEqual(-1, _gameManager.GetDamagedEnemyHp(string.Empty));
+        }
+
+        [Test]
+        public void SetDamagedEnemyHp_ThenGet_ReturnsStoredValue()
+        {
+            _gameManager.SetDamagedEnemyHp("enemy_slime", 35);
+            Assert.AreEqual(35, _gameManager.GetDamagedEnemyHp("enemy_slime"));
+        }
+
+        [Test]
+        public void SetDamagedEnemyHp_OverwritesPreviousValue()
+        {
+            _gameManager.SetDamagedEnemyHp("enemy_slime", 35);
+            _gameManager.SetDamagedEnemyHp("enemy_slime", 10);
+            Assert.AreEqual(10, _gameManager.GetDamagedEnemyHp("enemy_slime"));
+        }
+
+        [Test]
+        public void SetDamagedEnemyHp_NullId_IsNoOp()
+        {
+            _gameManager.SetDamagedEnemyHp(null, 50);
+            Assert.AreEqual(-1, _gameManager.GetDamagedEnemyHp(null));
+        }
+
+        [Test]
+        public void ClearDamagedEnemyHp_RemovesEntry()
+        {
+            _gameManager.SetDamagedEnemyHp("enemy_bat", 20);
+            _gameManager.ClearDamagedEnemyHp("enemy_bat");
+            Assert.AreEqual(-1, _gameManager.GetDamagedEnemyHp("enemy_bat"));
+        }
+
+        [Test]
+        public void ClearDamagedEnemyHp_NullId_IsNoOp()
+        {
+            _gameManager.SetDamagedEnemyHp("enemy_bat", 20);
+            _gameManager.ClearDamagedEnemyHp(null);
+            Assert.AreEqual(20, _gameManager.GetDamagedEnemyHp("enemy_bat"));
+        }
+
+        [Test]
+        public void ClearAllDamagedEnemyHp_RemovesAllEntries()
+        {
+            _gameManager.SetDamagedEnemyHp("enemy_a", 10);
+            _gameManager.SetDamagedEnemyHp("enemy_b", 20);
+            _gameManager.ClearAllDamagedEnemyHp();
+            Assert.AreEqual(-1, _gameManager.GetDamagedEnemyHp("enemy_a"));
+            Assert.AreEqual(-1, _gameManager.GetDamagedEnemyHp("enemy_b"));
+        }
+
+        [Test]
+        public void BuildSaveData_IncludesDamagedEnemyHp()
+        {
+            _gameManager.SetDamagedEnemyHp("enemy_slime_01", 25);
+            _gameManager.SetDamagedEnemyHp("enemy_bat_02", 40);
+
+            SaveData data = _gameManager.BuildSaveData();
+
+            Assert.IsNotNull(data.damagedEnemyHp);
+            Assert.AreEqual(2, data.damagedEnemyHp.Length);
+
+            var lookup = new System.Collections.Generic.Dictionary<string, int>();
+            foreach (var entry in data.damagedEnemyHp)
+                lookup[entry.enemyId] = entry.currentHp;
+            Assert.AreEqual(25, lookup["enemy_slime_01"]);
+            Assert.AreEqual(40, lookup["enemy_bat_02"]);
+        }
+
+        [Test]
+        public void BuildSaveData_DamagedEnemyHp_IsEmptyArray_WhenNoneDamaged()
+        {
+            SaveData data = _gameManager.BuildSaveData();
+
+            Assert.IsNotNull(data.damagedEnemyHp);
+            Assert.AreEqual(0, data.damagedEnemyHp.Length);
+        }
+
+        [Test]
+        public void ApplySaveData_RestoresDamagedEnemyHp()
+        {
+            _gameManager.SetDamagedEnemyHp("stale_enemy", 99);
+
+            var saveData = new SaveData
+            {
+                maxHp = 100,
+                maxMp = 50,
+                damagedEnemyHp = new[]
+                {
+                    new EnemyHpSaveEntry { enemyId = "enemy_a", currentHp = 30 },
+                    new EnemyHpSaveEntry { enemyId = "enemy_b", currentHp = 15 }
+                }
+            };
+
+            _gameManager.ApplySaveData(saveData);
+
+            Assert.AreEqual(-1, _gameManager.GetDamagedEnemyHp("stale_enemy"));
+            Assert.AreEqual(30, _gameManager.GetDamagedEnemyHp("enemy_a"));
+            Assert.AreEqual(15, _gameManager.GetDamagedEnemyHp("enemy_b"));
+        }
+
+        [Test]
+        public void ApplySaveData_NullDamagedEnemyHp_ClearsDictionary()
+        {
+            _gameManager.SetDamagedEnemyHp("stale", 50);
+
+            var saveData = new SaveData
+            {
+                maxHp = 100,
+                maxMp = 50,
+                damagedEnemyHp = null
+            };
+
+            _gameManager.ApplySaveData(saveData);
+
+            Assert.AreEqual(-1, _gameManager.GetDamagedEnemyHp("stale"));
+        }
+
+        [Test]
+        public void PersistAndLoad_RoundTrip_RestoresDamagedEnemyHp()
+        {
+            SaveService tempSaveService = CreateTempSaveService();
+            _gameManager.SetSaveServiceForTests(tempSaveService);
+
+            _gameManager.SetDamagedEnemyHp("enemy_slime_01", 25);
+            _gameManager.SetDamagedEnemyHp("enemy_bat_02", 40);
+            _gameManager.PersistToDisk();
+
+            _gameManager.ClearAllDamagedEnemyHp();
+            Assert.AreEqual(-1, _gameManager.GetDamagedEnemyHp("enemy_slime_01"));
+
+            bool loaded = _gameManager.TryLoadFromDiskIntoGame();
+
+            Assert.IsTrue(loaded);
+            Assert.AreEqual(25, _gameManager.GetDamagedEnemyHp("enemy_slime_01"));
+            Assert.AreEqual(40, _gameManager.GetDamagedEnemyHp("enemy_bat_02"));
+        }
+
+        [Test]
+        public void ApplySaveData_MissingDamagedEnemyHp_DefaultsToEmpty()
+        {
+            var saveData = new SaveData
+            {
+                maxHp = 100,
+                maxMp = 50,
+                damagedEnemyHp = null
+            };
+
+            _gameManager.ApplySaveData(saveData);
+
+            Assert.AreEqual(-1, _gameManager.GetDamagedEnemyHp("any_enemy"));
+        }
+
+        [Test]
+        public void StartNewGame_ClearsDamagedEnemyHp()
+        {
+            _gameManager.SetDamagedEnemyHp("enemy_a", 30);
+
+            _gameManager.StartNewGame();
+
+            Assert.AreEqual(-1, _gameManager.GetDamagedEnemyHp("enemy_a"));
+        }
+
         private SaveService CreateTempSaveService()
         {
             string tempDirectory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
