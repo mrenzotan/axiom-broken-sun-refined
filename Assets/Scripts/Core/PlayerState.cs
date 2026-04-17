@@ -24,9 +24,7 @@ namespace Axiom.Core
         /// </summary>
         public bool HasPendingWorldPositionApply { get; private set; }
         public List<string> UnlockedSpellIds { get; }
-
-        // Phase 5 (Data Layer) will replace List<string> with proper ItemData references.
-        public List<string> InventoryItemIds { get; }
+        public Inventory Inventory { get; }
 
         private readonly HashSet<string> _activatedCheckpointIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly List<string> _activatedCheckpointIdsList = new List<string>();
@@ -55,7 +53,7 @@ namespace Axiom.Core
             WorldPositionY = 0f;
             ActiveSceneName = string.Empty;
             UnlockedSpellIds = new List<string>();
-            InventoryItemIds = new List<string>();
+            Inventory = new Inventory();
         }
 
         public void SetCurrentHp(int value) =>
@@ -83,6 +81,31 @@ namespace Axiom.Core
             Xp = Math.Max(0, xp);
         }
 
+        /// <summary>
+        /// Applies additive stat growth (level-up). All deltas must be non-negative.
+        /// Current HP/MP are healed up to the new max — classic JRPG level-up behavior.
+        /// </summary>
+        public void GrowStats(int deltaMaxHp, int deltaMaxMp, int deltaAttack, int deltaDefense, int deltaSpeed)
+        {
+            if (deltaMaxHp   < 0) throw new ArgumentOutOfRangeException(nameof(deltaMaxHp),   "deltaMaxHp cannot be negative.");
+            if (deltaMaxMp   < 0) throw new ArgumentOutOfRangeException(nameof(deltaMaxMp),   "deltaMaxMp cannot be negative.");
+            if (deltaAttack  < 0) throw new ArgumentOutOfRangeException(nameof(deltaAttack),  "deltaAttack cannot be negative.");
+            if (deltaDefense < 0) throw new ArgumentOutOfRangeException(nameof(deltaDefense), "deltaDefense cannot be negative.");
+            if (deltaSpeed   < 0) throw new ArgumentOutOfRangeException(nameof(deltaSpeed),   "deltaSpeed cannot be negative.");
+
+            if (deltaMaxHp == 0 && deltaMaxMp == 0 && deltaAttack == 0 && deltaDefense == 0 && deltaSpeed == 0)
+                return;
+
+            MaxHp   += deltaMaxHp;
+            MaxMp   += deltaMaxMp;
+            Attack  += deltaAttack;
+            Defense += deltaDefense;
+            Speed   += deltaSpeed;
+
+            CurrentHp = MaxHp;
+            CurrentMp = MaxMp;
+        }
+
         public void SetWorldPosition(float x, float y)
         {
             WorldPositionX = x;
@@ -105,21 +128,6 @@ namespace Axiom.Core
                     continue;
 
                 UnlockedSpellIds.Add(spellId);
-            }
-        }
-
-        public void SetInventoryItemIds(IEnumerable<string> itemIds)
-        {
-            InventoryItemIds.Clear();
-            if (itemIds == null)
-                return;
-
-            foreach (string itemId in itemIds)
-            {
-                if (string.IsNullOrWhiteSpace(itemId))
-                    continue;
-
-                InventoryItemIds.Add(itemId);
             }
         }
 

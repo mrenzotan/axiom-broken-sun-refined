@@ -26,6 +26,47 @@ namespace Axiom.Core
 
         public static GameManager Instance { get; private set; }
 
+        [SerializeField]
+        [Tooltip("CharacterData for the player. Seeds PlayerState base stats on new game and lazy initialization. Assign CD_Player_Kaelen on the GameManager prefab.")]
+        private Axiom.Data.CharacterData _playerCharacterData;
+
+        [SerializeField]
+        [Tooltip("Master catalog of every SpellData in the game. Required for level-up spell grants and save-load ID resolution.")]
+        private SpellCatalog _spellCatalog;
+
+        private SpellUnlockService _spellUnlockService;
+
+        /// <summary>
+        /// Runtime-owned spell unlock service. Lazily constructed on first access so
+        /// Edit Mode tests work without Awake running.
+        /// Subscribes: BattleVoiceBootstrap listens to OnSpellUnlocked for live grammar rebuild.
+        /// </summary>
+        public SpellUnlockService SpellUnlockService
+        {
+            get
+            {
+                EnsureSpellUnlockService();
+                return _spellUnlockService;
+            }
+        }
+
+        private ProgressionService _progressionService;
+
+        /// <summary>
+        /// Runtime-owned progression service. Lazily constructed on first access so
+        /// Edit Mode tests work without Awake running.
+        /// On level-up it fires OnLevelUp, which GameManager forwards into
+        /// <see cref="SpellUnlockService.NotifyPlayerLevel"/> to grant new spells.
+        /// </summary>
+        public ProgressionService ProgressionService
+        {
+            get
+            {
+                EnsureProgressionService();
+                return _progressionService;
+            }
+        }
+
         private PlayerState _playerState;
 
         /// <summary>
@@ -39,6 +80,17 @@ namespace Axiom.Core
                 return _playerState;
             }
             private set => _playerState = value;
+        }
+
+        /// <summary>
+        /// DEV-36 calls this after a victorious battle. Negative amounts throw;
+        /// zero is a no-op. Level-up events propagate to <see cref="SpellUnlockService"/>.
+        /// </summary>
+        public void AwardXp(int amount)
+        {
+            EnsurePlayerState();
+            EnsureProgressionService();
+            _progressionService?.AwardXp(amount);
         }
 
         /// <summary>The scene transition controller on this prefab's child hierarchy.</summary>
@@ -196,7 +248,7 @@ namespace Axiom.Core
                 maxHp = PlayerState.MaxHp,
                 maxMp = PlayerState.MaxMp,
                 unlockedSpellIds = CopyStringList(PlayerState.UnlockedSpellIds),
-                inventory = BuildInventoryEntries(PlayerState.InventoryItemIds),
+                inventory = PlayerState.Inventory.ToSaveEntries(),
                 worldPositionX = PlayerState.WorldPositionX,
                 worldPositionY = PlayerState.WorldPositionY,
                 activeSceneName = sceneName ?? string.Empty,
@@ -219,7 +271,10 @@ namespace Axiom.Core
             PlayerState.ApplyVitals(targetMaxHp, targetMaxMp, data.currentHp, data.currentMp);
             PlayerState.ApplyProgression(data.playerLevel, data.playerXp);
             PlayerState.SetUnlockedSpellIds(data.unlockedSpellIds ?? Array.Empty<string>());
-            PlayerState.SetInventoryItemIds(ExpandInventory(data.inventory));
+            EnsureSpellUnlockService();
+            _spellUnlockService?.RestoreFromIds(data.unlockedSpellIds ?? Array.Empty<string>());
+            _spellUnlockService?.NotifyPlayerLevel(PlayerState.Level);
+            PlayerState.Inventory.LoadFromSaveEntries(data.inventory);
             PlayerState.SetWorldPosition(data.worldPositionX, data.worldPositionY);
             PlayerState.SetActiveScene(data.activeSceneName ?? string.Empty);
             PlayerState.SetActivatedCheckpointIds(data.activatedCheckpointIds ?? Array.Empty<string>());
@@ -265,7 +320,27 @@ namespace Axiom.Core
         /// </summary>
         public void StartNewGame()
         {
-            PlayerState = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            if (_playerCharacterData == null)
+            {
+                Debug.LogError(
+                    "[GameManager] _playerCharacterData is not assigned. Cannot start a new game without base stats.",
+                    this);
+                return;
+            }
+
+            PlayerState = new PlayerState(
+                maxHp:   _playerCharacterData.baseMaxHP,
+                maxMp:   _playerCharacterData.baseMaxMP,
+                attack:  _playerCharacterData.baseATK,
+                defense: _playerCharacterData.baseDEF,
+                speed:   _playerCharacterData.baseSPD);
+
+            // Rebuild ProgressionService against the fresh PlayerState.
+            if (_progressionService != null)
+                _progressionService.OnLevelUp -= HandleLevelUp;
+            _progressionService = null;
+            EnsureProgressionService();
+
             ClearPendingBattle();
             ClearWorldSnapshot();
             ClearDefeatedEnemies();
@@ -273,6 +348,14 @@ namespace Axiom.Core
 
             EnsureSaveService();
             _saveService.DeleteSave();
+
+            EnsureSpellUnlockService();
+            if (_spellUnlockService != null)
+            {
+                // Reset the service by restoring from an empty list, then grant level-1 starters.
+                _spellUnlockService.RestoreFromIds(Array.Empty<string>());
+                _spellUnlockService.NotifyPlayerLevel(PlayerState.Level);
+            }
 
             LoadScene("Platformer");
         }
@@ -311,38 +394,101 @@ namespace Axiom.Core
         {
             _saveService = saveService ?? throw new ArgumentNullException(nameof(saveService));
         }
+
+        /// <summary>
+        /// Test-only injector for the player CharacterData. Must be called after
+        /// <c>AddComponent&lt;GameManager&gt;()</c> and before the first <see cref="PlayerState"/>
+        /// access so the lazy <see cref="EnsurePlayerState"/> path can read base stats.
+        /// </summary>
+        public void SetPlayerCharacterDataForTests(Axiom.Data.CharacterData characterData)
+        {
+            _playerCharacterData = characterData
+                ?? throw new ArgumentNullException(nameof(characterData));
+        }
 #endif
 
-private void Awake()
-{
-    if (Instance != null)
-    {
-        Destroy(gameObject);
-        return;
-    }
+        private void Awake()
+        {
+            if (Instance != null)
+            {
+                Destroy(gameObject);
+                return;
+            }
 
-    Instance = this;
-    if (Application.isPlaying)
-        DontDestroyOnLoad(gameObject);
-    EnsurePlayerState();
-    EnsureSaveService();
-}
+            Instance = this;
+            if (Application.isPlaying)
+                DontDestroyOnLoad(gameObject);
+            EnsureSaveService();
+        }
 
         private void OnDestroy()
         {
+            if (_spellUnlockService != null)
+                _spellUnlockService.OnSpellUnlocked -= HandleSpellUnlocked;
+
+            if (_progressionService != null)
+                _progressionService.OnLevelUp -= HandleLevelUp;
+
             if (Instance == this)
                 Instance = null;
         }
 
         private void EnsurePlayerState()
         {
-            if (_playerState == null)
-                _playerState = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            if (_playerState != null) return;
+            if (_playerCharacterData == null)
+            {
+                Debug.LogError(
+                    "[GameManager] _playerCharacterData is not assigned. Assign CD_Player_Kaelen on the GameManager prefab.",
+                    this);
+                return;
+            }
+
+            _playerState = new PlayerState(
+                maxHp:   _playerCharacterData.baseMaxHP,
+                maxMp:   _playerCharacterData.baseMaxMP,
+                attack:  _playerCharacterData.baseATK,
+                defense: _playerCharacterData.baseDEF,
+                speed:   _playerCharacterData.baseSPD);
         }
 
         private void EnsureSaveService()
         {
             _saveService ??= new SaveService();
+        }
+
+        private void EnsureSpellUnlockService()
+        {
+            if (_spellUnlockService != null) return;
+            if (_spellCatalog == null) return; // No catalog assigned — skip silently (Edit Mode tests, isolated scenes).
+
+            _spellUnlockService = new SpellUnlockService(_spellCatalog);
+            _spellUnlockService.OnSpellUnlocked += HandleSpellUnlocked;
+        }
+
+        private void HandleSpellUnlocked(SpellData _)
+        {
+            // Mirror the unlocked set into PlayerState so SaveData round-trips correctly.
+            EnsurePlayerState();
+            PlayerState.SetUnlockedSpellIds(_spellUnlockService.UnlockedSpellNames);
+        }
+
+        private void EnsureProgressionService()
+        {
+            if (_progressionService != null) return;
+            if (_playerCharacterData == null) return; // Edit Mode tests with no CharacterData — skip silently.
+
+            EnsurePlayerState();
+            if (_playerState == null) return;
+
+            _progressionService = new ProgressionService(_playerState, _playerCharacterData);
+            _progressionService.OnLevelUp += HandleLevelUp;
+        }
+
+        private void HandleLevelUp(LevelUpResult result)
+        {
+            EnsureSpellUnlockService();
+            _spellUnlockService?.NotifyPlayerLevel(result.NewLevel);
         }
 
         /// <summary>
@@ -397,60 +543,6 @@ private void Awake()
         /// Notifies all subscribers that the scene is ready for initialization.
         /// </summary>
         public void RaiseSceneReady() => OnSceneReady?.Invoke();
-
-        private static InventorySaveEntry[] BuildInventoryEntries(List<string> itemIds)
-        {
-            if (itemIds == null || itemIds.Count == 0)
-                return Array.Empty<InventorySaveEntry>();
-
-            var countsById = new Dictionary<string, int>(StringComparer.Ordinal);
-            var order = new List<string>();
-
-            foreach (string itemId in itemIds)
-            {
-                if (string.IsNullOrWhiteSpace(itemId))
-                    continue;
-
-                if (!countsById.TryGetValue(itemId, out int count))
-                {
-                    countsById[itemId] = 1;
-                    order.Add(itemId);
-                    continue;
-                }
-
-                countsById[itemId] = count + 1;
-            }
-
-            var entries = new InventorySaveEntry[order.Count];
-            for (int i = 0; i < order.Count; i++)
-            {
-                string itemId = order[i];
-                entries[i] = new InventorySaveEntry
-                {
-                    itemId = itemId,
-                    quantity = countsById[itemId]
-                };
-            }
-
-            return entries;
-        }
-
-        private static IEnumerable<string> ExpandInventory(InventorySaveEntry[] entries)
-        {
-            if (entries == null || entries.Length == 0)
-                yield break;
-
-            foreach (InventorySaveEntry entry in entries)
-            {
-                if (string.IsNullOrWhiteSpace(entry.itemId))
-                    continue;
-                if (entry.quantity <= 0)
-                    continue;
-
-                for (int i = 0; i < entry.quantity; i++)
-                    yield return entry.itemId;
-            }
-        }
 
         private static EnemyHpSaveEntry[] BuildEnemyHpEntries(Dictionary<string, int> damagedHp)
         {

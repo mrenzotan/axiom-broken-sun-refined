@@ -25,6 +25,9 @@ namespace Axiom.Voice
         private readonly ConcurrentQueue<short[]> _inputQueue;
         private readonly ConcurrentQueue<string> _resultQueue;
 
+        public ConcurrentQueue<short[]> InputQueue => _inputQueue;
+        public ConcurrentQueue<string>  ResultQueue => _resultQueue;
+
         private CancellationTokenSource _cts;
         private Task _recognitionTask;
         private volatile bool _finalResultRequested;

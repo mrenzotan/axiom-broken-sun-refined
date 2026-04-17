@@ -1,9 +1,11 @@
 using System;
 using System.Collections;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Axiom.Battle;
+using Axiom.Core;
 using Axiom.Data;
 using UnityEngine;
 using Vosk;
@@ -51,6 +53,8 @@ namespace Axiom.Voice
 
         private VoskRecognizerService _recognizerService;
         private Model _voskModel;
+        private SpellUnlockService _spellUnlockService;
+        private List<SpellData> _activeSpells;
 
         // ── Unity lifecycle ───────────────────────────────────────────────────────
 
@@ -87,7 +91,23 @@ namespace Axiom.Voice
             }
 
             _voskModel = modelTask.Result;
-            SpellData[] spells = _unlockedSpells ?? Array.Empty<SpellData>();
+
+            // Prefer the runtime-owned SpellUnlockService so the recognizer stays in sync
+            // with story unlocks + level-up grants. Fall back to the Inspector array
+            // when running the Battle scene in isolation (no GameManager, or GameManager
+            // present but SpellUnlockService has no spells yet — e.g. no save loaded).
+            _spellUnlockService = GameManager.Instance != null
+                ? GameManager.Instance.SpellUnlockService
+                : null;
+
+            bool serviceHasSpells = _spellUnlockService != null
+                && _spellUnlockService.UnlockedSpells.Count > 0;
+
+            _activeSpells = serviceHasSpells
+                ? new List<SpellData>(_spellUnlockService.UnlockedSpells)
+                : new List<SpellData>(_unlockedSpells ?? Array.Empty<SpellData>());
+
+            SpellData[] spells = _activeSpells.ToArray();
 
             Task<VoskRecognizer> recognizerTask =
                 SpellVocabularyManager.RebuildRecognizerAsync(_voskModel, _sampleRate, spells);
@@ -122,6 +142,9 @@ namespace Axiom.Voice
             _spellCastController.Inject(resultQueue, spells);
 
             Debug.Log("[BattleVoiceBootstrap] Vosk pipeline ready.");
+
+            if (_spellUnlockService != null)
+                _spellUnlockService.OnSpellUnlocked += HandleSpellUnlocked;
         }
 
         private void DisableSpell()
@@ -134,8 +157,56 @@ namespace Axiom.Voice
             _actionMenuUI.SetSpellInteractable(false);
         }
 
+        private void HandleSpellUnlocked(SpellData newSpell)
+        {
+            if (newSpell == null) return;
+            if (_voskModel == null) return;            // pipeline never initialized — ignore
+            if (_recognizerService == null) return;    // no active recognizer to swap
+
+            _activeSpells.Add(newSpell);
+
+            StartCoroutine(RebuildRecognizer(_activeSpells.ToArray()));
+        }
+
+        private IEnumerator RebuildRecognizer(SpellData[] spells)
+        {
+            Task<VoskRecognizer> rebuildTask =
+                SpellVocabularyManager.RebuildRecognizerAsync(_voskModel, _sampleRate, spells);
+
+            yield return new WaitUntil(() => rebuildTask.IsCompleted);
+
+            if (rebuildTask.IsFaulted)
+            {
+                Debug.LogError(
+                    $"[BattleVoiceBootstrap] Failed to rebuild Vosk recognizer on spell unlock: " +
+                    $"{rebuildTask.Exception?.InnerException?.Message}", this);
+                yield break;
+            }
+
+            VoskRecognizer newRecognizer = rebuildTask.Result;
+            if (newRecognizer == null) yield break;  // empty set — should not happen post-init
+
+            // Atomic-enough swap: stop old service (drains queues), hand the new recognizer
+            // to a fresh VoskRecognizerService reusing the existing shared queues.
+            ConcurrentQueue<short[]> inputQueue = _recognizerService.InputQueue;
+            ConcurrentQueue<string>  resultQueue = _recognizerService.ResultQueue;
+
+            _recognizerService.Dispose();
+
+            _recognizerService = new VoskRecognizerService(newRecognizer, inputQueue, resultQueue);
+            _recognizerService.Start();
+
+            _microphoneInputHandler.Inject(inputQueue, _recognizerService);
+            _spellCastController.Inject(resultQueue, spells);
+
+            Debug.Log($"[BattleVoiceBootstrap] Vosk recognizer rebuilt with {spells.Length} spells after unlock.");
+        }
+
         private void OnDestroy()
         {
+            if (_spellUnlockService != null)
+                _spellUnlockService.OnSpellUnlocked -= HandleSpellUnlocked;
+
             _recognizerService?.Dispose();
             _recognizerService = null;
             _voskModel?.Dispose();

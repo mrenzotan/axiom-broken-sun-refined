@@ -8,8 +8,8 @@ namespace Axiom.Data
     [Serializable]
     public class SpellUnlockCondition
     {
-        [Tooltip("Minimum player level required to unlock this spell. 1 = available from game start.")]
-        [Min(1)] public int requiredLevel = 1;
+        [Tooltip("Minimum player level required to unlock this spell. 0 = story-only (never auto-granted by level). 1 = starter spell (granted at level 1 or above).")]
+        [Min(0)] public int requiredLevel = 1;
 
         [Tooltip("Optional spell that must be unlocked first. Null = no prerequisite.")]
         public SpellData prerequisiteSpell;

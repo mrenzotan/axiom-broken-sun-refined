@@ -3,6 +3,7 @@
     "references": [
         "Axiom.Data",
         "Axiom.Battle",
+        "Axiom.Core",
         "Unity.InputSystem"
     ],
     "includePlatforms": [],
