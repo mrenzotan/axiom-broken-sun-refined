@@ -42,7 +42,7 @@ namespace CoreTests
         public void Constructor_InventoryIsEmpty()
         {
             var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
-            Assert.AreEqual(0, state.InventoryItemIds.Count);
+            Assert.AreEqual(0, state.Inventory.GetAll().Count);
         }
 
         [Test]
@@ -226,14 +226,23 @@ namespace CoreTests
         }
 
         [Test]
-        public void SetInventoryItemIds_ReplacesList()
+        public void Inventory_AddAndGetQuantity_TracksItems()
         {
             var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
-            state.SetInventoryItemIds(new[] { "potion", null, "ether" });
+            state.Inventory.Add("potion", 2);
+            state.Inventory.Add("ether");
+            Assert.AreEqual(2, state.Inventory.GetQuantity("potion"));
+            Assert.AreEqual(1, state.Inventory.GetQuantity("ether"));
+        }
 
-            Assert.AreEqual(2, state.InventoryItemIds.Count);
-            Assert.AreEqual("potion", state.InventoryItemIds[0]);
-            Assert.AreEqual("ether", state.InventoryItemIds[1]);
+        [Test]
+        public void Inventory_Remove_DecrementsQuantity()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            state.Inventory.Add("potion", 3);
+            bool removed = state.Inventory.Remove("potion");
+            Assert.IsTrue(removed);
+            Assert.AreEqual(2, state.Inventory.GetQuantity("potion"));
         }
 
         // ── SetActiveScene ────────────────────────────────────────────────────

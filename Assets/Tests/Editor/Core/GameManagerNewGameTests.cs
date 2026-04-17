@@ -194,11 +194,11 @@ namespace Axiom.Tests.Editor.Core
         [Test]
         public void StartNewGame_ClearsInventory()
         {
-            _gameManager.PlayerState.SetInventoryItemIds(new[] { "potion_hp", "potion_hp" });
+            _gameManager.PlayerState.Inventory.Add("potion_hp", 2);
 
             _gameManager.StartNewGame();
 
-            Assert.AreEqual(0, _gameManager.PlayerState.InventoryItemIds.Count);
+            Assert.AreEqual(0, _gameManager.PlayerState.Inventory.GetAll().Count);
         }
 
         [Test]

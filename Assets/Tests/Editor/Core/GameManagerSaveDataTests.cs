@@ -69,10 +69,8 @@ namespace CoreTests
             Assert.AreEqual(35, _gameManager.PlayerState.CurrentMp);
             Assert.AreEqual(2, _gameManager.PlayerState.UnlockedSpellIds.Count);
             Assert.AreEqual("spell_firebolt", _gameManager.PlayerState.UnlockedSpellIds[0]);
-            Assert.AreEqual(3, _gameManager.PlayerState.InventoryItemIds.Count);
-            Assert.AreEqual("potion_hp", _gameManager.PlayerState.InventoryItemIds[0]);
-            Assert.AreEqual("potion_hp", _gameManager.PlayerState.InventoryItemIds[1]);
-            Assert.AreEqual("ether_mp", _gameManager.PlayerState.InventoryItemIds[2]);
+            Assert.AreEqual(2, _gameManager.PlayerState.Inventory.GetQuantity("potion_hp"));
+            Assert.AreEqual(1, _gameManager.PlayerState.Inventory.GetQuantity("ether_mp"));
             Assert.AreEqual(13.5f, _gameManager.PlayerState.WorldPositionX);
             Assert.AreEqual(-4.75f, _gameManager.PlayerState.WorldPositionY);
             Assert.AreEqual("Platformer", _gameManager.PlayerState.ActiveSceneName);
@@ -87,7 +85,8 @@ namespace CoreTests
             _gameManager.PlayerState.ApplyProgression(level: 5, xp: 900);
             _gameManager.PlayerState.ApplyVitals(maxHp: 130, maxMp: 60, currentHp: 101, currentMp: 44);
             _gameManager.PlayerState.SetUnlockedSpellIds(new[] { "spell_a", "spell_b" });
-            _gameManager.PlayerState.SetInventoryItemIds(new[] { "potion_hp", "potion_hp", "ether_mp" });
+            _gameManager.PlayerState.Inventory.Add("potion_hp", 2);
+            _gameManager.PlayerState.Inventory.Add("ether_mp", 1);
             _gameManager.PlayerState.SetWorldPosition(7.25f, -1.5f);
             _gameManager.PlayerState.SetActiveScene("Platformer");
 

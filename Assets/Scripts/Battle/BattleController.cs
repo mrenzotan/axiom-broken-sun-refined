@@ -62,6 +62,14 @@ namespace Axiom.Battle
         [Tooltip("Seconds to pause after an action so the message log is readable before the next turn begins.")]
         private float _actionDelay = 1f;
 
+        [SerializeField]
+        [Tooltip("Assign the ItemCatalog ScriptableObject. Required for the Item action to function.")]
+        private Axiom.Data.ItemCatalog _itemCatalog;
+
+        [SerializeField]
+        [Tooltip("Assign the ItemMenuUI component from the Battle Canvas.")]
+        private ItemMenuUI _itemMenuUI;
+
         // ── UI Events ────────────────────────────────────────────────────────
         /// <summary>Proxies BattleManager.OnStateChanged so BattleHUD can subscribe here.</summary>
         public event Action<BattleState> OnBattleStateChanged;
@@ -133,6 +141,12 @@ namespace Axiom.Battle
         public event Action<CharacterStats, int> OnSpellHealed;
 
         /// <summary>
+        /// Fires when an item is used in battle. Parameters: target CharacterStats, amount of effect, effect type.
+        /// BattleHUD subscribes to show floating numbers and status messages.
+        /// </summary>
+        public event Action<CharacterStats, int, Axiom.Data.ItemEffectType> OnItemUsed;
+
+        /// <summary>
         /// Fires when a Shield spell resolves. Parameters: target CharacterStats, shield HP amount.
         /// BattleHUD subscribes to display a blue shield number.
         /// </summary>
@@ -182,6 +196,7 @@ namespace Axiom.Battle
         private bool _enemySequenceComplete;
         private bool _isAwaitingVoiceSpell;
         private SpellEffectResolver _resolver;
+        private ItemEffectResolver _itemResolver;
         private SpellData   _pendingSpell;
         private SpellResult _pendingSpellResult;
 
@@ -251,6 +266,12 @@ namespace Axiom.Battle
             if (_playerAnimator != null)
                 OnSpellChargeAborted -= _playerAnimator.TriggerResetCharge;
 
+            if (_itemMenuUI != null)
+            {
+                _itemMenuUI.OnItemSelected -= HandleItemSelected;
+                _itemMenuUI.OnCancelled    -= HandleItemCancelled;
+            }
+
             if (_playerData == null)
             {
                 Debug.LogError(
@@ -317,11 +338,18 @@ namespace Axiom.Battle
             _actionHandler      = new PlayerActionHandler(_playerStats, _enemyStats);
             _enemyActionHandler = new EnemyActionHandler(_enemyStats, _playerStats);
             _resolver           = new SpellEffectResolver();
+            _itemResolver       = new ItemEffectResolver();
             _battleManager      = new BattleManager();
             _battleManager.OnStateChanged += HandleStateChanged;
 
             _battleHUD?.Setup(this, _playerStats, _enemyStats);
             _spellInputUI?.Setup(this);
+
+            if (_itemMenuUI != null)
+            {
+                _itemMenuUI.OnItemSelected += HandleItemSelected;
+                _itemMenuUI.OnCancelled    += HandleItemCancelled;
+            }
 
             if (_playerAnimator != null && _enemyAnimator != null)
             {
@@ -525,16 +553,80 @@ namespace Axiom.Battle
             OnSpellChargeAborted?.Invoke();
         }
 
-        /// <summary>Executes the Item placeholder action. No-op outside PlayerTurn or while an action is processing.</summary>
+        /// <summary>
+        /// Opens the item selection menu. No-op outside PlayerTurn, while processing, or
+        /// when ItemCatalog/ItemMenuUI are not assigned (standalone testing).
+        /// If the player's inventory is empty, posts a status message and returns.
+        /// </summary>
         public void PlayerItem()
         {
             if (_battleManager.CurrentState != BattleState.PlayerTurn) return;
             if (_isProcessingAction) return;
+
+            if (_itemCatalog == null || _itemMenuUI == null)
+            {
+                Debug.Log("[Battle] Item action unavailable — ItemCatalog or ItemMenuUI not assigned.");
+                return;
+            }
+
+            var gm = Axiom.Core.GameManager.Instance;
+            if (gm == null)
+            {
+                Debug.Log("[Battle] Item action unavailable — no GameManager.");
+                return;
+            }
+
+            var availableItems = new System.Collections.Generic.List<(Axiom.Data.ItemData item, int quantity)>();
+            foreach (var kvp in gm.PlayerState.Inventory.GetAll())
+            {
+                if (kvp.Value <= 0) continue;
+                if (!_itemCatalog.TryGetItem(kvp.Key, out Axiom.Data.ItemData itemData)) continue;
+                if (itemData.itemType != Axiom.Data.ItemType.Consumable) continue;
+                availableItems.Add((itemData, kvp.Value));
+            }
+
+            if (availableItems.Count == 0)
+            {
+                Debug.Log("[Battle] No usable items in inventory.");
+                return;
+            }
+
             _isProcessingAction = true;
-            _playerDamageVisualsFired = true; // No damage visuals for item placeholder
-            string message = _actionHandler.ExecuteItem();
-            Debug.Log($"[Battle] Item: {message}");
+            _itemMenuUI.Show(availableItems);
+        }
+
+        private void HandleItemSelected(Axiom.Data.ItemData item)
+        {
+            _itemMenuUI.Hide();
+
+            var gm = Axiom.Core.GameManager.Instance;
+            if (gm == null || item == null)
+            {
+                _isProcessingAction = false;
+                return;
+            }
+
+            gm.PlayerState.Inventory.Remove(item.itemId);
+
+            ItemUseResult result = _itemResolver.Resolve(item, _playerStats);
+
+            OnItemUsed?.Invoke(_playerStats, result.Amount, result.EffectType);
+
+            OnConditionsChanged?.Invoke(_playerStats);
+
+            // Zero-damage ping so BattleHUD refreshes HP/MP bars.
+            OnDamageDealt?.Invoke(_playerStats, 0, false);
+
+            Debug.Log($"[Battle] Item used: {item.displayName} → {result.EffectType} {result.Amount}");
+
+            _playerDamageVisualsFired = true;
             StartCoroutine(CompletePlayerAction(targetDefeated: false));
+        }
+
+        private void HandleItemCancelled()
+        {
+            _itemMenuUI.Hide();
+            _isProcessingAction = false;
         }
 
         /// <summary>Executes Flee. No-op outside PlayerTurn.</summary>
@@ -740,6 +832,12 @@ namespace Axiom.Battle
             if (_enemyAnimator  != null) _enemyAnimator.OnAttackSequenceComplete  -= OnEnemySequenceComplete;
             if (_playerAnimator != null) _playerAnimator.OnSpellFireFrame -= FireSpellVisuals;
             if (_playerAnimator != null) OnSpellChargeAborted -= _playerAnimator.TriggerResetCharge;
+
+            if (_itemMenuUI != null)
+            {
+                _itemMenuUI.OnItemSelected -= HandleItemSelected;
+                _itemMenuUI.OnCancelled    -= HandleItemCancelled;
+            }
         }
     }
 }

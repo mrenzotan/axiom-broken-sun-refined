@@ -248,7 +248,7 @@ namespace Axiom.Core
                 maxHp = PlayerState.MaxHp,
                 maxMp = PlayerState.MaxMp,
                 unlockedSpellIds = CopyStringList(PlayerState.UnlockedSpellIds),
-                inventory = BuildInventoryEntries(PlayerState.InventoryItemIds),
+                inventory = PlayerState.Inventory.ToSaveEntries(),
                 worldPositionX = PlayerState.WorldPositionX,
                 worldPositionY = PlayerState.WorldPositionY,
                 activeSceneName = sceneName ?? string.Empty,
@@ -274,7 +274,7 @@ namespace Axiom.Core
             EnsureSpellUnlockService();
             _spellUnlockService?.RestoreFromIds(data.unlockedSpellIds ?? Array.Empty<string>());
             _spellUnlockService?.NotifyPlayerLevel(PlayerState.Level);
-            PlayerState.SetInventoryItemIds(ExpandInventory(data.inventory));
+            PlayerState.Inventory.LoadFromSaveEntries(data.inventory);
             PlayerState.SetWorldPosition(data.worldPositionX, data.worldPositionY);
             PlayerState.SetActiveScene(data.activeSceneName ?? string.Empty);
             PlayerState.SetActivatedCheckpointIds(data.activatedCheckpointIds ?? Array.Empty<string>());
@@ -543,60 +543,6 @@ namespace Axiom.Core
         /// Notifies all subscribers that the scene is ready for initialization.
         /// </summary>
         public void RaiseSceneReady() => OnSceneReady?.Invoke();
-
-        private static InventorySaveEntry[] BuildInventoryEntries(List<string> itemIds)
-        {
-            if (itemIds == null || itemIds.Count == 0)
-                return Array.Empty<InventorySaveEntry>();
-
-            var countsById = new Dictionary<string, int>(StringComparer.Ordinal);
-            var order = new List<string>();
-
-            foreach (string itemId in itemIds)
-            {
-                if (string.IsNullOrWhiteSpace(itemId))
-                    continue;
-
-                if (!countsById.TryGetValue(itemId, out int count))
-                {
-                    countsById[itemId] = 1;
-                    order.Add(itemId);
-                    continue;
-                }
-
-                countsById[itemId] = count + 1;
-            }
-
-            var entries = new InventorySaveEntry[order.Count];
-            for (int i = 0; i < order.Count; i++)
-            {
-                string itemId = order[i];
-                entries[i] = new InventorySaveEntry
-                {
-                    itemId = itemId,
-                    quantity = countsById[itemId]
-                };
-            }
-
-            return entries;
-        }
-
-        private static IEnumerable<string> ExpandInventory(InventorySaveEntry[] entries)
-        {
-            if (entries == null || entries.Length == 0)
-                yield break;
-
-            foreach (InventorySaveEntry entry in entries)
-            {
-                if (string.IsNullOrWhiteSpace(entry.itemId))
-                    continue;
-                if (entry.quantity <= 0)
-                    continue;
-
-                for (int i = 0; i < entry.quantity; i++)
-                    yield return entry.itemId;
-            }
-        }
 
         private static EnemyHpSaveEntry[] BuildEnemyHpEntries(Dictionary<string, int> damagedHp)
         {

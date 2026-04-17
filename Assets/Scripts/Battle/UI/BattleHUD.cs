@@ -80,6 +80,7 @@ namespace Axiom.Battle
             _battleController.OnPhysicalAttackImmune  += HandlePhysicalAttackImmune;
             _battleController.OnConditionsChanged     += HandleConditionsChanged;
             _battleController.OnActionSkipped         += HandleActionSkipped;
+            _battleController.OnItemUsed               += HandleItemUsed;
 
             // Initialise display
             _enemyNameText.text  = enemyStats.Name;
@@ -257,6 +258,36 @@ namespace Axiom.Battle
             _statusMessageUI.Post($"{character.Name} is Frozen — it can't move!");
         }
 
+        private void HandleItemUsed(CharacterStats target, int amount, Axiom.Data.ItemEffectType effectType)
+        {
+            if (target == _playerStats)
+            {
+                _partyHealthBar.SetHP(target.CurrentHP, target.MaxHP);
+                _partyHealthBar.SetMP(target.CurrentMP, target.MaxMP);
+            }
+            else if (target == _enemyStats)
+            {
+                _enemyHealthBar.SetHP(target.CurrentHP, target.MaxHP);
+            }
+
+            if (amount > 0 && _statToRect.TryGetValue(target, out RectTransform rect))
+            {
+                var numberType = effectType == Axiom.Data.ItemEffectType.RestoreMP
+                    ? FloatingNumberSpawner.NumberType.Shield  // blue number for MP restore
+                    : FloatingNumberSpawner.NumberType.Heal;   // green number for HP restore / Revive
+                _floatingNumberSpawner.Spawn(rect, amount, numberType);
+            }
+
+            string effectText = effectType switch
+            {
+                Axiom.Data.ItemEffectType.RestoreHP => $"{target.Name} recovers {amount} HP.",
+                Axiom.Data.ItemEffectType.RestoreMP => $"{target.Name} recovers {amount} MP.",
+                Axiom.Data.ItemEffectType.Revive    => $"{target.Name} is revived with {amount} HP!",
+                _                                   => $"{target.Name} used an item."
+            };
+            _statusMessageUI.Post(effectText);
+        }
+
         private void Unsubscribe()
         {
             if (_battleController == null) return;
@@ -270,6 +301,7 @@ namespace Axiom.Battle
             _battleController.OnPhysicalAttackImmune  -= HandlePhysicalAttackImmune;
             _battleController.OnConditionsChanged     -= HandleConditionsChanged;
             _battleController.OnActionSkipped         -= HandleActionSkipped;
+            _battleController.OnItemUsed               -= HandleItemUsed;
         }
     }
 }

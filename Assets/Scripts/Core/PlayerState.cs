@@ -24,9 +24,7 @@ namespace Axiom.Core
         /// </summary>
         public bool HasPendingWorldPositionApply { get; private set; }
         public List<string> UnlockedSpellIds { get; }
-
-        // Phase 5 (Data Layer) will replace List<string> with proper ItemData references.
-        public List<string> InventoryItemIds { get; }
+        public Inventory Inventory { get; }
 
         private readonly HashSet<string> _activatedCheckpointIds = new HashSet<string>(StringComparer.Ordinal);
         private readonly List<string> _activatedCheckpointIdsList = new List<string>();
@@ -55,7 +53,7 @@ namespace Axiom.Core
             WorldPositionY = 0f;
             ActiveSceneName = string.Empty;
             UnlockedSpellIds = new List<string>();
-            InventoryItemIds = new List<string>();
+            Inventory = new Inventory();
         }
 
         public void SetCurrentHp(int value) =>
@@ -130,21 +128,6 @@ namespace Axiom.Core
                     continue;
 
                 UnlockedSpellIds.Add(spellId);
-            }
-        }
-
-        public void SetInventoryItemIds(IEnumerable<string> itemIds)
-        {
-            InventoryItemIds.Clear();
-            if (itemIds == null)
-                return;
-
-            foreach (string itemId in itemIds)
-            {
-                if (string.IsNullOrWhiteSpace(itemId))
-                    continue;
-
-                InventoryItemIds.Add(itemId);
             }
         }
 
