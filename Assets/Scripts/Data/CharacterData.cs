@@ -3,9 +3,9 @@ using UnityEngine;
 namespace Axiom.Data
 {
     /// <summary>
-    /// Base stats for a playable character. Consumed by <c>PlayerState</c> / character
-    /// initialization instead of hardcoded constants. Fields use the "base" prefix to
-    /// signal these are Level 1 starting values — a level-up system will scale from these.
+    /// Base stats for a playable character. Consumed by <c>PlayerState</c> /
+    /// <c>ProgressionService</c>. Fields use the "base" prefix to signal Level-1 values;
+    /// "perLevel" fields are the additive growth applied each level-up.
     /// </summary>
     [CreateAssetMenu(fileName = "NewCharacterData", menuName = "Axiom/Data/Character Data")]
     public class CharacterData : ScriptableObject
@@ -27,6 +27,26 @@ namespace Axiom.Data
 
         [Tooltip("Base Speed at Level 1.")]
         [Min(0)] public int baseSPD = 8;
+
+        [Header("Progression — DEV-40")]
+
+        [Tooltip("XP required to advance from level (index+1) to (index+2). Index 0 = XP for level 1→2. Array length defines the level cap: once the player has completed every entry, no further level-ups fire.")]
+        public int[] xpToNextLevelCurve = System.Array.Empty<int>();
+
+        [Tooltip("Additive MaxHP gained per level-up.")]
+        [Min(0)] public int maxHpPerLevel;
+
+        [Tooltip("Additive MaxMP gained per level-up.")]
+        [Min(0)] public int maxMpPerLevel;
+
+        [Tooltip("Additive Attack gained per level-up.")]
+        [Min(0)] public int atkPerLevel;
+
+        [Tooltip("Additive Defense gained per level-up.")]
+        [Min(0)] public int defPerLevel;
+
+        [Tooltip("Additive Speed gained per level-up.")]
+        [Min(0)] public int spdPerLevel;
 
         [Tooltip("Portrait sprite shown in the character status screen (Phase 6+). Leave null for now.")]
         public Sprite portraitSprite;

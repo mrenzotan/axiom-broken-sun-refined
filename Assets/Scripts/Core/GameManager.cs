@@ -50,6 +50,23 @@ namespace Axiom.Core
             }
         }
 
+        private ProgressionService _progressionService;
+
+        /// <summary>
+        /// Runtime-owned progression service. Lazily constructed on first access so
+        /// Edit Mode tests work without Awake running.
+        /// On level-up it fires OnLevelUp, which GameManager forwards into
+        /// <see cref="SpellUnlockService.NotifyPlayerLevel"/> to grant new spells.
+        /// </summary>
+        public ProgressionService ProgressionService
+        {
+            get
+            {
+                EnsureProgressionService();
+                return _progressionService;
+            }
+        }
+
         private PlayerState _playerState;
 
         /// <summary>
@@ -63,6 +80,17 @@ namespace Axiom.Core
                 return _playerState;
             }
             private set => _playerState = value;
+        }
+
+        /// <summary>
+        /// DEV-36 calls this after a victorious battle. Negative amounts throw;
+        /// zero is a no-op. Level-up events propagate to <see cref="SpellUnlockService"/>.
+        /// </summary>
+        public void AwardXp(int amount)
+        {
+            EnsurePlayerState();
+            EnsureProgressionService();
+            _progressionService?.AwardXp(amount);
         }
 
         /// <summary>The scene transition controller on this prefab's child hierarchy.</summary>
@@ -306,6 +334,13 @@ namespace Axiom.Core
                 attack:  _playerCharacterData.baseATK,
                 defense: _playerCharacterData.baseDEF,
                 speed:   _playerCharacterData.baseSPD);
+
+            // Rebuild ProgressionService against the fresh PlayerState.
+            if (_progressionService != null)
+                _progressionService.OnLevelUp -= HandleLevelUp;
+            _progressionService = null;
+            EnsureProgressionService();
+
             ClearPendingBattle();
             ClearWorldSnapshot();
             ClearDefeatedEnemies();
@@ -391,6 +426,9 @@ namespace Axiom.Core
             if (_spellUnlockService != null)
                 _spellUnlockService.OnSpellUnlocked -= HandleSpellUnlocked;
 
+            if (_progressionService != null)
+                _progressionService.OnLevelUp -= HandleLevelUp;
+
             if (Instance == this)
                 Instance = null;
         }
@@ -433,6 +471,24 @@ namespace Axiom.Core
             // Mirror the unlocked set into PlayerState so SaveData round-trips correctly.
             EnsurePlayerState();
             PlayerState.SetUnlockedSpellIds(_spellUnlockService.UnlockedSpellNames);
+        }
+
+        private void EnsureProgressionService()
+        {
+            if (_progressionService != null) return;
+            if (_playerCharacterData == null) return; // Edit Mode tests with no CharacterData — skip silently.
+
+            EnsurePlayerState();
+            if (_playerState == null) return;
+
+            _progressionService = new ProgressionService(_playerState, _playerCharacterData);
+            _progressionService.OnLevelUp += HandleLevelUp;
+        }
+
+        private void HandleLevelUp(LevelUpResult result)
+        {
+            EnsureSpellUnlockService();
+            _spellUnlockService?.NotifyPlayerLevel(result.NewLevel);
         }
 
         /// <summary>
