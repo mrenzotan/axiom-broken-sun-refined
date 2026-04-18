@@ -247,6 +247,9 @@ namespace Axiom.Core
                 currentMp = PlayerState.CurrentMp,
                 maxHp = PlayerState.MaxHp,
                 maxMp = PlayerState.MaxMp,
+                attack  = PlayerState.Attack,
+                defense = PlayerState.Defense,
+                speed   = PlayerState.Speed,
                 unlockedSpellIds = CopyStringList(PlayerState.UnlockedSpellIds),
                 inventory = PlayerState.Inventory.ToSaveEntries(),
                 worldPositionX = PlayerState.WorldPositionX,
@@ -269,6 +272,13 @@ namespace Axiom.Core
             int targetMaxMp = data.maxMp >= 0 ? data.maxMp : PlayerState.MaxMp;
 
             PlayerState.ApplyVitals(targetMaxHp, targetMaxMp, data.currentHp, data.currentMp);
+            // Legacy saves (pre-DEV-65) have attack/defense/speed == 0. Treat zero as
+            // "field absent" and keep the base stats PlayerState was seeded with from
+            // CharacterData. Non-zero values reflect real stored (and possibly grown) stats.
+            int targetAttack  = data.attack  > 0 ? data.attack  : PlayerState.Attack;
+            int targetDefense = data.defense > 0 ? data.defense : PlayerState.Defense;
+            int targetSpeed   = data.speed   > 0 ? data.speed   : PlayerState.Speed;
+            PlayerState.ApplyStats(targetAttack, targetDefense, targetSpeed);
             PlayerState.ApplyProgression(data.playerLevel, data.playerXp);
             PlayerState.SetUnlockedSpellIds(data.unlockedSpellIds ?? Array.Empty<string>());
             EnsureSpellUnlockService();

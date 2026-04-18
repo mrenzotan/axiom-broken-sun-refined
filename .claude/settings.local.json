@@ -12,7 +12,9 @@
       "mcp__atlassian__getJiraIssue",
       "mcp__context7__resolve-library-id",
       "mcp__context7__query-docs",
-      "Bash(cm ci *)"
+      "Bash(cm ci *)",
+      "Bash(git *)",
+      "Bash(cm checkin *)"
     ]
   }
 }
