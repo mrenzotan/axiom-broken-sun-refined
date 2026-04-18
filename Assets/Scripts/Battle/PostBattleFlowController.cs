@@ -84,8 +84,12 @@ namespace Axiom.Battle
                 return;
             }
 
+            XpProgress xpProgress = gm?.ProgressionService != null
+                ? gm.ProgressionService.GetXpProgress()
+                : new XpProgress(currentXp: 0, xpForNextLevel: 0, isAtLevelCap: true, progress01: 0f);
+
             _victoryScreenUI.OnDismissed += HandleVictoryScreenDismissed;
-            _victoryScreenUI.Show(result);
+            _victoryScreenUI.Show(result, xpProgress);
         }
 
         private void HandleVictoryScreenDismissed()

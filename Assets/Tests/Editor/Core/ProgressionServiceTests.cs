@@ -258,5 +258,102 @@ namespace CoreTests
 
             Assert.AreEqual(0, service.XpForNextLevelUp);
         }
+
+        // ── GetXpProgress helper ──────────────────────────────────────────
+
+        [Test]
+        public void GetXpProgress_Fresh_ReturnsZeroCurrentAndThreshold()
+        {
+            PlayerState state = NewPlayerState();
+            var service = new ProgressionService(state, MakeCharacterData(100, 250));
+
+            XpProgress progress = service.GetXpProgress();
+
+            Assert.AreEqual(0,    progress.CurrentXp);
+            Assert.AreEqual(100,  progress.XpForNextLevel);
+            Assert.IsFalse(progress.IsAtLevelCap);
+            Assert.AreEqual(0f,   progress.Progress01, 1e-6f);
+        }
+
+        [Test]
+        public void GetXpProgress_MidLevel_ReturnsRatio()
+        {
+            PlayerState state = NewPlayerState();
+            var service = new ProgressionService(state, MakeCharacterData(100, 250));
+            service.AwardXp(40); // below the L1→L2 threshold
+
+            XpProgress progress = service.GetXpProgress();
+
+            Assert.AreEqual(40,   progress.CurrentXp);
+            Assert.AreEqual(100,  progress.XpForNextLevel);
+            Assert.IsFalse(progress.IsAtLevelCap);
+            Assert.AreEqual(0.40f, progress.Progress01, 1e-6f);
+        }
+
+        [Test]
+        public void GetXpProgress_AfterLevelUpWithCarry_ReflectsNewLevelThreshold()
+        {
+            // AC: "Mid-battle level-up: the bar reflects the post-battle state
+            //      (carried XP after any level crossings)."
+            PlayerState state = NewPlayerState();
+            var service = new ProgressionService(state, MakeCharacterData(100, 250));
+
+            service.AwardXp(150); // → L2 with 50 carried
+
+            XpProgress progress = service.GetXpProgress();
+
+            Assert.AreEqual(2,    state.Level);
+            Assert.AreEqual(50,   progress.CurrentXp);
+            Assert.AreEqual(250,  progress.XpForNextLevel);
+            Assert.IsFalse(progress.IsAtLevelCap);
+            Assert.AreEqual(50f / 250f, progress.Progress01, 1e-6f);
+        }
+
+        [Test]
+        public void GetXpProgress_AtLevelCap_ReportsCapAndZeroProgress()
+        {
+            // AC: "Level cap: when XpForNextLevelUp == 0, hide the bar and
+            //      numeric ratio, show MAX LEVEL instead."
+            PlayerState state = NewPlayerState();
+            var service = new ProgressionService(state, MakeCharacterData(100)); // cap = L2
+            service.AwardXp(100);   // → L2, carry 0
+            service.AwardXp(9999);  // post-cap XP still accumulates on state.Xp
+
+            XpProgress progress = service.GetXpProgress();
+
+            Assert.AreEqual(2,    state.Level);
+            Assert.AreEqual(9999, progress.CurrentXp);
+            Assert.AreEqual(0,    progress.XpForNextLevel);
+            Assert.IsTrue(progress.IsAtLevelCap);
+            Assert.AreEqual(0f,   progress.Progress01, 1e-6f);
+        }
+
+        [Test]
+        public void GetXpProgress_EmptyCurve_ReportsCap()
+        {
+            PlayerState state = NewPlayerState();
+            var service = new ProgressionService(state, MakeCharacterData(/*empty*/));
+
+            XpProgress progress = service.GetXpProgress();
+
+            Assert.IsTrue(progress.IsAtLevelCap);
+            Assert.AreEqual(0,   progress.XpForNextLevel);
+            Assert.AreEqual(0f,  progress.Progress01, 1e-6f);
+        }
+
+        [Test]
+        public void GetXpProgress_ProgressIsClampedToOne_WhenXpExceedsThreshold()
+        {
+            // Guard: AwardXp cannot legally leave state.Xp >= threshold at a non-cap
+            // level, but a manual ApplyProgression could. Clamp defensively.
+            PlayerState state = NewPlayerState();
+            state.ApplyProgression(level: 1, xp: 99999);
+            var service = new ProgressionService(state, MakeCharacterData(100, 250));
+
+            XpProgress progress = service.GetXpProgress();
+
+            Assert.IsFalse(progress.IsAtLevelCap);
+            Assert.AreEqual(1f, progress.Progress01, 1e-6f);
+        }
     }
 }

@@ -3,6 +3,8 @@ using System.IO;
 using Axiom.Core;
 using Axiom.Data;
 using NUnit.Framework;
+using UnityEngine;
+using UnityEngine.TestTools;
 
 namespace CoreTests
 {
@@ -92,6 +94,79 @@ namespace CoreTests
             File.WriteAllText(savePath, "{ not valid json");
 
             Assert.DoesNotThrow(() => _saveService.TryLoad(out _));
+        }
+
+        [Test]
+        public void TryLoad_RecoversFromBackup_WhenPrimaryCorrupt()
+        {
+            var first = new SaveData { playerLevel = 3, playerXp = 10, maxHp = 100, maxMp = 50 };
+            var second = new SaveData { playerLevel = 9, playerXp = 99, maxHp = 100, maxMp = 50 };
+
+            _saveService.Save(first);
+            _saveService.Save(second);
+
+            string primaryPath = Path.Combine(_tempDirectory, SaveService.DefaultFileName);
+            File.WriteAllText(primaryPath, "{ not valid json");
+
+            LogAssert.Expect(LogType.Warning, new System.Text.RegularExpressions.Regex("Primary save unreadable"));
+
+            Assert.IsTrue(_saveService.TryLoad(out SaveData restored));
+            Assert.AreEqual(3, restored.playerLevel);
+            Assert.AreEqual(10, restored.playerXp);
+        }
+
+        [Test]
+        public void TryLoad_ReturnsFalse_WhenPrimaryAndBackupCorrupt()
+        {
+            Directory.CreateDirectory(_tempDirectory);
+            File.WriteAllText(Path.Combine(_tempDirectory, SaveService.DefaultFileName), "{ bad");
+            File.WriteAllText(Path.Combine(_tempDirectory, SaveService.DefaultBackupFileName), "{ worse");
+
+            Assert.IsFalse(_saveService.TryLoad(out SaveData restored));
+            Assert.IsNull(restored);
+        }
+
+        [Test]
+        public void TryLoad_IgnoresCorruptStagingFile_AndLoadsPrimary()
+        {
+            var original = new SaveData { playerLevel = 5, maxHp = 100, maxMp = 50 };
+            _saveService.Save(original);
+
+            string stagingPath = Path.Combine(_tempDirectory, SaveService.DefaultFileName + ".tmp");
+            File.WriteAllText(stagingPath, "{ truncated write");
+
+            Assert.IsTrue(_saveService.TryLoad(out SaveData restored));
+            Assert.AreEqual(5, restored.playerLevel);
+        }
+
+        [Test]
+        public void Save_SecondWrite_MovesPreviousPrimaryIntoBackup()
+        {
+            var first = new SaveData { playerLevel = 1, maxHp = 100, maxMp = 50 };
+            var second = new SaveData { playerLevel = 2, maxHp = 100, maxMp = 50 };
+
+            _saveService.Save(first);
+            _saveService.Save(second);
+
+            string backupPath = Path.Combine(_tempDirectory, SaveService.DefaultBackupFileName);
+            Assert.IsTrue(File.Exists(backupPath));
+
+            string backupJson = File.ReadAllText(backupPath);
+            SaveData fromBackup = JsonUtility.FromJson<SaveData>(backupJson);
+            Assert.AreEqual(1, fromBackup.playerLevel);
+        }
+
+        [Test]
+        public void HasSave_IsTrue_WhenOnlyBackupExists()
+        {
+            Directory.CreateDirectory(_tempDirectory);
+            var payload = new SaveData { playerLevel = 7, maxHp = 100, maxMp = 50 };
+            string json = JsonUtility.ToJson(payload, prettyPrint: true);
+            File.WriteAllText(Path.Combine(_tempDirectory, SaveService.DefaultBackupFileName), json);
+
+            Assert.IsTrue(_saveService.HasSave());
+            Assert.IsTrue(_saveService.TryLoad(out SaveData loaded));
+            Assert.AreEqual(7, loaded.playerLevel);
         }
     }
 }
