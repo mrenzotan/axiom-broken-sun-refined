@@ -1,6 +1,7 @@
 using System.Collections;
-using UnityEngine;
+using Axiom.Core;
 using Axiom.Data;
+using UnityEngine;
 
 namespace Axiom.Battle
 {
@@ -13,6 +14,7 @@ namespace Axiom.Battle
     ///   - Animator          — must use SpellVFXAnimator controller (one state named "SpellVFX"
     ///                         using a placeholder clip named exactly "SpellVFXBase").
     ///   - AudioSource       — Play On Awake: off, Loop: off, Spatial Blend: 0 (fully 2D).
+    ///                         At runtime, output is routed to the SFX mixer bus when <see cref="AudioManager"/> is present.
     /// </summary>
     public class SpellVFXController : MonoBehaviour
     {
@@ -44,6 +46,20 @@ namespace Axiom.Battle
 
             if (_spriteRenderer != null)
                 _spriteRenderer.enabled = false;
+        }
+
+        private void Start()
+        {
+            if (_audioSource == null) return;
+
+            AudioManager audio =
+                GameManager.Instance != null
+                    ? GameManager.Instance.GetComponentInChildren<AudioManager>()
+                    : null;
+            if (audio == null)
+                audio = FindFirstObjectByType<AudioManager>();
+
+            audio?.RouteSourceThroughSfxBus(_audioSource);
         }
 
         /// <summary>

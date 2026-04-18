@@ -6,7 +6,13 @@
       "Bash(cm status *)",
       "Bash(dir C:\\\\unity-projects\\\\axiom-broken-sun-refined\\\\Assets\\\\Tests\\\\Editor\\\\Data *)",
       "Bash(cm find *)",
-      "Bash(cm add *)"
+      "Bash(cm add *)",
+      "Skill(game-development)",
+      "mcp__atlassian__getVisibleJiraProjects",
+      "mcp__atlassian__getJiraIssue",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__query-docs",
+      "Bash(cm ci *)"
     ]
   }
 }

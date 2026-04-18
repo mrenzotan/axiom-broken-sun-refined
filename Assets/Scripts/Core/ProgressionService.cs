@@ -47,6 +47,26 @@ namespace Axiom.Core
         }
 
         /// <summary>
+        /// Snapshots the player's XP progress into their current level. Designed
+        /// for UI (Victory screen): the caller gets the ratio and level-cap flag
+        /// without duplicating curve lookups. All reads are main-thread only.
+        /// </summary>
+        public XpProgress GetXpProgress()
+        {
+            int threshold = XpForNextLevelUp;
+            int currentXp = _state.Xp;
+
+            if (threshold <= 0)
+                return new XpProgress(currentXp, xpForNextLevel: 0, isAtLevelCap: true, progress01: 0f);
+
+            float ratio = (float)currentXp / threshold;
+            if (ratio < 0f) ratio = 0f;
+            if (ratio > 1f) ratio = 1f;
+
+            return new XpProgress(currentXp, xpForNextLevel: threshold, isAtLevelCap: false, progress01: ratio);
+        }
+
+        /// <summary>
         /// Adds <paramref name="amount"/> XP to <see cref="PlayerState.Xp"/>.
         /// If the accumulated XP meets or exceeds <see cref="XpForNextLevelUp"/>,
         /// levels up — subtracting the threshold, incrementing level, applying stat growth,

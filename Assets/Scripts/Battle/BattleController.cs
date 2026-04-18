@@ -70,6 +70,10 @@ namespace Axiom.Battle
         [Tooltip("Assign the ItemMenuUI component from the Battle Canvas.")]
         private ItemMenuUI _itemMenuUI;
 
+        [SerializeField]
+        [Tooltip("Assign the PostBattleFlowController component that owns the Victory/Defeat UI flow.")]
+        private PostBattleFlowController _postBattleFlow;
+
         // ── UI Events ────────────────────────────────────────────────────────
         /// <summary>Proxies BattleManager.OnStateChanged so BattleHUD can subscribe here.</summary>
         public event Action<BattleState> OnBattleStateChanged;
@@ -662,23 +666,36 @@ namespace Axiom.Battle
             else if (state == BattleState.Victory)
             {
                 SyncBattleHpToPlayerState();
-                // Placeholder — DEV-37 will insert XP/loot screen before this transition.
-                if (GameManager.Instance != null && !string.IsNullOrEmpty(_battleEnemyId))
+
+                if (_postBattleFlow != null)
                 {
-                    GameManager.Instance.MarkEnemyDefeated(_battleEnemyId);
-                    GameManager.Instance.ClearDamagedEnemyHp(_battleEnemyId);
+                    _postBattleFlow.BeginVictoryFlow(_enemyData, _battleEnemyId);
                 }
-                GameManager.Instance?.PersistToDisk();
-                if (GameManager.Instance?.SceneTransition != null)
-                    GameManager.Instance.SceneTransition.BeginTransition("Platformer", TransitionStyle.BlackFade);
                 else
-                    SceneManager.LoadScene("Platformer"); // Standalone Battle scene testing fallback
+                {
+                    // Standalone Battle scene fallback — no orchestrator in the scene.
+                    // Preserves the pre-DEV-36 direct-transition behaviour so isolated
+                    // scene testing still completes.
+                    if (GameManager.Instance != null && !string.IsNullOrEmpty(_battleEnemyId))
+                    {
+                        GameManager.Instance.MarkEnemyDefeated(_battleEnemyId);
+                        GameManager.Instance.ClearDamagedEnemyHp(_battleEnemyId);
+                    }
+                    GameManager.Instance?.PersistToDisk();
+                    if (GameManager.Instance?.SceneTransition != null)
+                        GameManager.Instance.SceneTransition.BeginTransition("Platformer", TransitionStyle.BlackFade);
+                    else
+                        SceneManager.LoadScene("Platformer");
+                }
             }
             else if (state == BattleState.Defeat)
             {
                 SyncBattleHpToPlayerState();
                 if (GameManager.Instance != null && !string.IsNullOrEmpty(_battleEnemyId))
                     GameManager.Instance.SetDamagedEnemyHp(_battleEnemyId, _enemyStats.CurrentHP);
+
+                if (_postBattleFlow != null)
+                    _postBattleFlow.BeginDefeatFlow();
             }
         }
 
