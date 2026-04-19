@@ -58,7 +58,7 @@ namespace Axiom.Core
                 _audioManager = GameManager.Instance.GetComponentInChildren<AudioManager>();
 
             if (_audioManager == null)
-                _audioManager = FindFirstObjectByType<AudioManager>();
+                _audioManager = FindAnyObjectByType<AudioManager>();
 
             TryAutoBindSettingsReferences();
             LogSettingsWiringIssues();

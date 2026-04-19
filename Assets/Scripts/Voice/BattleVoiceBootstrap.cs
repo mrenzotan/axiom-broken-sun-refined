@@ -60,6 +60,16 @@ namespace Axiom.Voice
 
         private IEnumerator Start()
         {
+            if (!ValidateRequiredReferences(out string missingRef))
+            {
+                Debug.LogError(
+                    $"[BattleVoiceBootstrap] Required reference '{missingRef}' is not assigned " +
+                    "in the Inspector. Voice pipeline will not start; Spell action disabled.", this);
+                DisableSpell();
+                enabled = false;
+                yield break;
+            }
+
             if (Microphone.devices.Length == 0)
             {
                 Debug.LogWarning("[BattleVoiceBootstrap] No microphone device detected — Spell button disabled.", this);
@@ -200,6 +210,45 @@ namespace Axiom.Voice
             _spellCastController.Inject(resultQueue, spells);
 
             Debug.Log($"[BattleVoiceBootstrap] Vosk recognizer rebuilt with {spells.Length} spells after unlock.");
+        }
+
+        /// <summary>
+        /// Validates that all required Inspector references are assigned.
+        /// Returns <c>true</c> when all required refs are present. On failure,
+        /// returns <c>false</c> and sets <paramref name="missingRefName"/> to
+        /// the name of the first missing field (in declaration order).
+        ///
+        /// <para>
+        /// Called at the top of <see cref="Start"/> before any async Vosk work
+        /// so that missing refs fail fast with a clear diagnostic instead of
+        /// throwing <see cref="System.NullReferenceException"/> deep in the
+        /// coroutine after the 50MB Vosk model has been loaded.
+        /// </para>
+        ///
+        /// <para>
+        /// Public to allow Edit Mode tests to exercise the guard paths without
+        /// running the coroutine. <c>_actionMenuUI</c> is intentionally excluded
+        /// from this check: <see cref="DisableSpell"/> already handles its own
+        /// null case with a logged error and is still useful to call even when
+        /// the UI reference is missing (nothing crashes).
+        /// </para>
+        /// </summary>
+        public bool ValidateRequiredReferences(out string missingRefName)
+        {
+            if (_microphoneInputHandler == null)
+            {
+                missingRefName = nameof(_microphoneInputHandler);
+                return false;
+            }
+
+            if (_spellCastController == null)
+            {
+                missingRefName = nameof(_spellCastController);
+                return false;
+            }
+
+            missingRefName = null;
+            return true;
         }
 
         private void OnDestroy()

@@ -14,7 +14,8 @@
       "mcp__context7__query-docs",
       "Bash(cm ci *)",
       "Bash(git *)",
-      "Bash(cm checkin *)"
+      "Bash(cm checkin *)",
+      "mcp__atlassian__createJiraIssue"
     ]
   }
 }
