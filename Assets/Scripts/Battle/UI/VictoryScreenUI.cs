@@ -53,7 +53,7 @@ namespace Axiom.Battle.UI
 
         private void Awake()
         {
-            HidePanel();
+            Hide();
         }
 
         private void OnEnable()
@@ -129,20 +129,27 @@ namespace Axiom.Battle.UI
             return itemId;
         }
 
+        /// <summary>
+        /// Deactivates the panel GameObject. The orchestrator
+        /// (<see cref="Axiom.Battle.PostBattleFlowController"/>) calls this after it
+        /// finishes fading the CanvasGroup out, so the fade stays visible.
+        /// </summary>
+        public void Hide()
+        {
+            if (_panel != null) _panel.SetActive(false);
+        }
+
         private void OnConfirmClicked()
         {
-            HidePanel();
+            // Do NOT deactivate the panel here — the controller runs a fade on the
+            // CanvasGroup first, then calls Hide() when the fade finishes. Hiding
+            // here would make the fade invisible.
             OnDismissed?.Invoke();
         }
 
         private void ShowPanel()
         {
             if (_panel != null) _panel.SetActive(true);
-        }
-
-        private void HidePanel()
-        {
-            if (_panel != null) _panel.SetActive(false);
         }
     }
 }

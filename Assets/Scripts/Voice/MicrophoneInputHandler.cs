@@ -53,6 +53,15 @@ namespace Axiom.Voice
 
         private void OnEnable()
         {
+            if (_pushToTalkAction == null || _pushToTalkAction.action == null)
+            {
+                Debug.LogError(
+                    "[MicrophoneInputHandler] Push-to-talk InputActionReference is not assigned " +
+                    "or its action is null. Disabling component to prevent NullReferenceException.", this);
+                enabled = false;
+                return;
+            }
+
             _pushToTalkAction.action.started  += OnPushToTalkStarted;
             _pushToTalkAction.action.canceled += OnPushToTalkCanceled;
             _pushToTalkAction.action.Enable();
@@ -60,6 +69,9 @@ namespace Axiom.Voice
 
         private void OnDisable()
         {
+            if (_pushToTalkAction == null || _pushToTalkAction.action == null)
+                return;
+
             _pushToTalkAction.action.started  -= OnPushToTalkStarted;
             _pushToTalkAction.action.canceled -= OnPushToTalkCanceled;
             _pushToTalkAction.action.Disable();

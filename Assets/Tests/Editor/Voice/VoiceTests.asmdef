@@ -2,7 +2,8 @@
     "name": "VoiceTests",
     "references": [
         "Axiom.Voice",
-        "Axiom.Data"
+        "Axiom.Data",
+        "Unity.InputSystem"
     ],
     "testReferences": [
         "UnityEngine.TestRunner",

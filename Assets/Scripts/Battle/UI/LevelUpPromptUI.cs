@@ -38,7 +38,7 @@ namespace Axiom.Battle.UI
 
         private void OnEnable()
         {
-            HidePanel();
+            Hide();
 
             GameManager manager = GameManager.Instance;
             if (manager == null) return;
@@ -108,18 +108,29 @@ namespace Axiom.Battle.UI
             _controller.Enqueue(result, newSpellNames);
         }
 
+        /// <summary>
+        /// Deactivates the panel GameObject. The orchestrator
+        /// (<see cref="Axiom.Battle.PostBattleFlowController"/>) calls this after it
+        /// finishes fading the CanvasGroup out, so the fade stays visible.
+        /// </summary>
+        public void Hide()
+        {
+            if (_panel != null) _panel.SetActive(false);
+        }
+
         private void OnConfirmClicked()
         {
             _controller.Dismiss();
             if (_controller.IsPending)
                 RenderCurrent();
-            else
-                HidePanel();
+            // else: do NOT hide here; HandleQueueDrained will fire and the
+            // orchestrator will fade out, then call Hide().
         }
 
         private void HandleQueueDrained()
         {
-            HidePanel();
+            // Do NOT deactivate the panel here — the controller fades the CanvasGroup
+            // first, then calls Hide() when the fade finishes.
             OnDismissed?.Invoke();
         }
 
@@ -159,11 +170,6 @@ namespace Axiom.Battle.UI
         private void ShowPanel()
         {
             if (_panel != null) _panel.SetActive(true);
-        }
-
-        private void HidePanel()
-        {
-            if (_panel != null) _panel.SetActive(false);
         }
     }
 }

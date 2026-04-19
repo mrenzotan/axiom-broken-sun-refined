@@ -2,6 +2,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Threading;
 using System.Threading.Tasks;
+using UnityEngine;
 using Vosk;
 
 namespace Axiom.Voice
@@ -26,12 +27,14 @@ namespace Axiom.Voice
         private readonly ConcurrentQueue<string> _resultQueue;
 
         public ConcurrentQueue<short[]> InputQueue => _inputQueue;
-        public ConcurrentQueue<string>  ResultQueue => _resultQueue;
+        public ConcurrentQueue<string> ResultQueue => _resultQueue;
 
         private CancellationTokenSource _cts;
         private Task _recognitionTask;
         private volatile bool _finalResultRequested;
         private bool _disposed;
+
+        private const int ShutdownTimeoutMs = 2000;
 
         public VoskRecognizerService(
             VoskRecognizer recognizer,
@@ -39,7 +42,7 @@ namespace Axiom.Voice
             ConcurrentQueue<string> resultQueue)
         {
             _recognizer = recognizer ?? throw new ArgumentNullException(nameof(recognizer));
-            _inputQueue = inputQueue  ?? throw new ArgumentNullException(nameof(inputQueue));
+            _inputQueue = inputQueue ?? throw new ArgumentNullException(nameof(inputQueue));
             _resultQueue = resultQueue ?? throw new ArgumentNullException(nameof(resultQueue));
         }
 
@@ -65,18 +68,33 @@ namespace Axiom.Voice
         }
 
         /// <summary>
-        /// Cancels the background task, waits for it to exit, and drains any pending audio
-        /// with a final <c>FinalResult()</c> flush. No-op if not started.
+        /// Cancels the background task and waits up to <see cref="ShutdownTimeoutMs"/> for it
+        /// to exit. Drains any remaining audio and flushes a final result. No-op if not started.
+        /// After this call, the service can be restarted by calling <see cref="Start"/>.
         /// </summary>
         public void Stop()
         {
             if (_recognitionTask == null) return;
 
             _cts.Cancel();
-            _recognitionTask.Wait();
-            _recognitionTask = null;
 
-            _cts.Dispose();
+            bool completed = _recognitionTask.Wait(ShutdownTimeoutMs);
+            if (!completed)
+            {
+                Debug.LogWarning(
+                    "[VoskRecognizerService] Background recognition task did not exit within " +
+                    $"{ShutdownTimeoutMs}ms. Forcibly continuing shutdown.");
+            }
+
+            if (_recognitionTask.IsFaulted)
+            {
+                Debug.LogError(
+                    "[VoskRecognizerService] Background recognition task faulted: " +
+                    $"{_recognitionTask.Exception?.Flatten().Message}");
+            }
+
+            _recognitionTask = null;
+            _cts?.Dispose();
             _cts = null;
         }
 

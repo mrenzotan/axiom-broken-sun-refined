@@ -57,7 +57,7 @@ namespace Axiom.Battle
                     ? GameManager.Instance.GetComponentInChildren<AudioManager>()
                     : null;
             if (audio == null)
-                audio = FindFirstObjectByType<AudioManager>();
+                audio = FindAnyObjectByType<AudioManager>();
 
             audio?.RouteSourceThroughSfxBus(_audioSource);
         }
