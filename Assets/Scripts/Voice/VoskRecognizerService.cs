@@ -27,12 +27,11 @@ namespace Axiom.Voice
         private readonly ConcurrentQueue<string> _resultQueue;
 
         public ConcurrentQueue<short[]> InputQueue => _inputQueue;
-        public ConcurrentQueue<string>  ResultQueue => _resultQueue;
+        public ConcurrentQueue<string> ResultQueue => _resultQueue;
 
         private CancellationTokenSource _cts;
         private Task _recognitionTask;
         private volatile bool _finalResultRequested;
-        private volatile bool _running;
         private bool _disposed;
 
         private const int ShutdownTimeoutMs = 2000;
@@ -43,7 +42,7 @@ namespace Axiom.Voice
             ConcurrentQueue<string> resultQueue)
         {
             _recognizer = recognizer ?? throw new ArgumentNullException(nameof(recognizer));
-            _inputQueue = inputQueue  ?? throw new ArgumentNullException(nameof(inputQueue));
+            _inputQueue = inputQueue ?? throw new ArgumentNullException(nameof(inputQueue));
             _resultQueue = resultQueue ?? throw new ArgumentNullException(nameof(resultQueue));
         }
 
@@ -54,7 +53,6 @@ namespace Axiom.Voice
         public void Start()
         {
             if (_recognitionTask != null) return;
-            _running = true;
             _cts = new CancellationTokenSource();
             _recognitionTask = Task.Run(() => RecognitionLoop(_cts.Token));
         }
@@ -79,7 +77,6 @@ namespace Axiom.Voice
             if (_recognitionTask == null) return;
 
             _cts.Cancel();
-            _running = false;
 
             bool completed = _recognitionTask.Wait(ShutdownTimeoutMs);
             if (!completed)

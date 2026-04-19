@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Axiom.Battle.UI;
@@ -37,6 +38,19 @@ namespace Axiom.Battle
         [SerializeField]
         [Tooltip("Assign the LevelUpPromptUI from the Battle Canvas (already present — DEV-40).")]
         private LevelUpPromptUI _levelUpPromptUI;
+
+        [Header("Fade (DEV-77)")]
+        [SerializeField]
+        [Tooltip("CanvasGroup on the VictoryScreenPanel root. Drives the crossfade to Level-Up.")]
+        private CanvasGroup _victoryCanvasGroup;
+
+        [SerializeField]
+        [Tooltip("CanvasGroup on the LevelUpPromptPanel root. Drives the crossfade from Victory.")]
+        private CanvasGroup _levelUpCanvasGroup;
+
+        [SerializeField, Range(0f, 0.5f)]
+        [Tooltip("Fade duration for each leg of the crossfade, seconds. DEV-77 spec: ≤0.2s.")]
+        private float _fadeDuration = 0.2f;
 
         [SerializeField]
         [Tooltip("Scene to load after Victory and after Continue. Usually Platformer.")]
@@ -89,6 +103,10 @@ namespace Axiom.Battle
                 : new XpProgress(currentXp: 0, xpForNextLevel: 0, isAtLevelCap: true, progress01: 0f);
 
             _victoryScreenUI.OnDismissed += HandleVictoryScreenDismissed;
+
+            if (_victoryCanvasGroup != null)
+                SetCanvasGroupAlpha(_victoryCanvasGroup, 1f, interactable: true);
+
             _victoryScreenUI.Show(result, xpProgress);
         }
 
@@ -97,14 +115,79 @@ namespace Axiom.Battle
             if (_victoryScreenUI != null)
                 _victoryScreenUI.OnDismissed -= HandleVictoryScreenDismissed;
 
+            StartCoroutine(CrossfadeVictoryToLevelUp());
+        }
+
+        private IEnumerator CrossfadeVictoryToLevelUp()
+        {
+            // Leg 1: fade Victory out (if the panel is actually showing and we have a CanvasGroup).
+            if (_victoryScreenUI != null && _victoryScreenUI.IsShowing && _victoryCanvasGroup != null)
+                yield return FadeCanvasGroup(_victoryCanvasGroup, 1f, 0f, _fadeDuration);
+
+            if (_victoryScreenUI != null)
+                _victoryScreenUI.Hide();
+
+            // No level-up UI wired → go straight to transition.
             if (_levelUpPromptUI == null)
             {
                 HandleLevelUpPromptDismissed();
-                return;
+                yield break;
             }
+
+            // Pre-set Level-Up alpha to 0 BEFORE ShowIfPending so it doesn't flash at
+            // full alpha for one frame if the panel is about to activate.
+            if (_levelUpCanvasGroup != null)
+                SetCanvasGroupAlpha(_levelUpCanvasGroup, 0f, interactable: false);
 
             _levelUpPromptUI.OnDismissed += HandleLevelUpPromptDismissed;
             _levelUpPromptUI.ShowIfPending();
+
+            // Empty-queue path: ShowIfPending fired OnDismissed synchronously without
+            // activating the panel. HandleLevelUpPromptDismissed has already run. Skip
+            // the fade-in on an invisible panel — scene transition is already queued.
+            if (!_levelUpPromptUI.IsShowing)
+                yield break;
+
+            // Leg 2: fade Level-Up in.
+            if (_levelUpCanvasGroup != null)
+                yield return FadeCanvasGroup(_levelUpCanvasGroup, 0f, 1f, _fadeDuration);
+        }
+
+        private IEnumerator FadeCanvasGroup(CanvasGroup group, float from, float to, float duration)
+        {
+            if (group == null) yield break;
+
+            // Disable input for the duration of the fade so mid-fade clicks can't
+            // double-dismiss the panel.
+            bool targetInteractable = to >= 1f;
+            group.interactable = false;
+            group.blocksRaycasts = targetInteractable; // keep raycasts blocked while fading in; release while fading out
+            group.alpha = from;
+
+            if (duration <= 0f)
+            {
+                SetCanvasGroupAlpha(group, to, interactable: targetInteractable);
+                yield break;
+            }
+
+            float elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.unscaledDeltaTime;
+                float t = Mathf.Clamp01(elapsed / duration);
+                group.alpha = Mathf.Lerp(from, to, t);
+                yield return null;
+            }
+
+            SetCanvasGroupAlpha(group, to, interactable: targetInteractable);
+        }
+
+        private static void SetCanvasGroupAlpha(CanvasGroup group, float alpha, bool interactable)
+        {
+            if (group == null) return;
+            group.alpha = alpha;
+            group.interactable = interactable;
+            group.blocksRaycasts = interactable;
         }
 
         private void HandleLevelUpPromptDismissed()
