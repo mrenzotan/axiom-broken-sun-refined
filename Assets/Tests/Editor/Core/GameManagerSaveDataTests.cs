@@ -511,6 +511,83 @@ namespace CoreTests
             Assert.AreEqual(-1, _gameManager.GetDamagedEnemyHp("enemy_a"));
         }
 
+        // ── ATK/DEF/SPD persistence (DEV-65) ─────────────────────────────────
+
+        [Test]
+        public void BuildSaveData_IncludesGrownAttackDefenseSpeed()
+        {
+            // PlayerState is seeded with CD base stats (atk=10, def=5, spd=8).
+            _gameManager.PlayerState.ApplyStats(attack: 25, defense: 14, speed: 19);
+
+            SaveData data = _gameManager.BuildSaveData();
+
+            Assert.AreEqual(25, data.attack);
+            Assert.AreEqual(14, data.defense);
+            Assert.AreEqual(19, data.speed);
+        }
+
+        [Test]
+        public void ApplySaveData_RestoresAttackDefenseSpeed()
+        {
+            var saveData = new SaveData
+            {
+                maxHp = 100,
+                maxMp = 50,
+                attack  = 30,
+                defense = 18,
+                speed   = 22
+            };
+
+            _gameManager.ApplySaveData(saveData);
+
+            Assert.AreEqual(30, _gameManager.PlayerState.Attack);
+            Assert.AreEqual(18, _gameManager.PlayerState.Defense);
+            Assert.AreEqual(22, _gameManager.PlayerState.Speed);
+        }
+
+        [Test]
+        public void ApplySaveData_LegacySaveWithZeroStats_KeepsCharacterDataBaseStats()
+        {
+            // A pre-DEV-65 save has attack/defense/speed == 0 (JsonUtility default).
+            // Expected behavior: fall back to PlayerState base values from CharacterData.
+            // Test CharacterData: atk=10, def=5, spd=8 (see CreateTestCharacterData).
+            var saveData = new SaveData
+            {
+                maxHp = 100,
+                maxMp = 50,
+                attack  = 0,
+                defense = 0,
+                speed   = 0
+            };
+
+            _gameManager.ApplySaveData(saveData);
+
+            Assert.AreEqual(10, _gameManager.PlayerState.Attack);
+            Assert.AreEqual(5,  _gameManager.PlayerState.Defense);
+            Assert.AreEqual(8,  _gameManager.PlayerState.Speed);
+        }
+
+        [Test]
+        public void PersistAndLoad_RoundTrip_RestoresGrownStats()
+        {
+            SaveService tempSaveService = CreateTempSaveService();
+            _gameManager.SetSaveServiceForTests(tempSaveService);
+
+            // Simulate level-up stat growth.
+            _gameManager.PlayerState.ApplyStats(attack: 42, defense: 27, speed: 33);
+            _gameManager.PersistToDisk();
+
+            // Reset to base stats to prove the load (not the in-memory state) restores them.
+            _gameManager.PlayerState.ApplyStats(attack: 10, defense: 5, speed: 8);
+
+            bool loaded = _gameManager.TryLoadFromDiskIntoGame();
+
+            Assert.IsTrue(loaded);
+            Assert.AreEqual(42, _gameManager.PlayerState.Attack);
+            Assert.AreEqual(27, _gameManager.PlayerState.Defense);
+            Assert.AreEqual(33, _gameManager.PlayerState.Speed);
+        }
+
         private CharacterData CreateTestCharacterData(
             int maxHp = 100,
             int maxMp = 50,

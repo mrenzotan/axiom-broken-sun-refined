@@ -359,5 +359,72 @@ namespace CoreTests
             Assert.AreEqual("cp_valid", state.ActivatedCheckpointIds[0]);
             Assert.AreEqual("cp_also_valid", state.ActivatedCheckpointIds[1]);
         }
+
+        // ── ApplyStats ───────────────────────────────────────────────────────
+
+        [Test]
+        public void ApplyStats_OverwritesAttackDefenseSpeed()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+
+            state.ApplyStats(attack: 22, defense: 13, speed: 17);
+
+            Assert.AreEqual(22, state.Attack);
+            Assert.AreEqual(13, state.Defense);
+            Assert.AreEqual(17, state.Speed);
+        }
+
+        [Test]
+        public void ApplyStats_AllowsZeroValues()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+
+            state.ApplyStats(attack: 0, defense: 0, speed: 0);
+
+            Assert.AreEqual(0, state.Attack);
+            Assert.AreEqual(0, state.Defense);
+            Assert.AreEqual(0, state.Speed);
+        }
+
+        [Test]
+        public void ApplyStats_ThrowsOnNegativeAttack()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => state.ApplyStats(attack: -1, defense: 5, speed: 8));
+        }
+
+        [Test]
+        public void ApplyStats_ThrowsOnNegativeDefense()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => state.ApplyStats(attack: 10, defense: -1, speed: 8));
+        }
+
+        [Test]
+        public void ApplyStats_ThrowsOnNegativeSpeed()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            Assert.Throws<ArgumentOutOfRangeException>(
+                () => state.ApplyStats(attack: 10, defense: 5, speed: -1));
+        }
+
+        [Test]
+        public void ApplyStats_DoesNotAlterHpMpOrProgression()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            state.ApplyProgression(level: 4, xp: 600);
+            state.ApplyVitals(maxHp: 120, maxMp: 60, currentHp: 90, currentMp: 40);
+
+            state.ApplyStats(attack: 99, defense: 99, speed: 99);
+
+            Assert.AreEqual(120, state.MaxHp);
+            Assert.AreEqual(60,  state.MaxMp);
+            Assert.AreEqual(90,  state.CurrentHp);
+            Assert.AreEqual(40,  state.CurrentMp);
+            Assert.AreEqual(4,   state.Level);
+            Assert.AreEqual(600, state.Xp);
+        }
     }
 }

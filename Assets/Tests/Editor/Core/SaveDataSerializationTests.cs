@@ -108,5 +108,51 @@ namespace CoreTests
             Assert.AreEqual(0, copy.defeatedEnemyIds.Length);
             Assert.AreEqual(3, copy.playerLevel);
         }
+
+        [Test]
+        public void SaveData_JsonUtility_RoundTrip_PreservesAttackDefenseSpeed()
+        {
+            var original = new SaveData
+            {
+                attack  = 18,
+                defense = 11,
+                speed   = 14
+            };
+
+            string json = JsonUtility.ToJson(original, prettyPrint: true);
+            SaveData copy = JsonUtility.FromJson<SaveData>(json);
+
+            Assert.AreEqual(18, copy.attack);
+            Assert.AreEqual(11, copy.defense);
+            Assert.AreEqual(14, copy.speed);
+        }
+
+        [Test]
+        public void SaveData_DefaultAttackDefenseSpeed_AreZero()
+        {
+            var data = new SaveData();
+            Assert.AreEqual(0, data.attack);
+            Assert.AreEqual(0, data.defense);
+            Assert.AreEqual(0, data.speed);
+        }
+
+        [Test]
+        public void SaveData_JsonUtility_BackwardCompat_MissingAttackDefenseSpeed_DeserializesAsZero()
+        {
+            // Legacy JSON written before DEV-65 — has no attack/defense/speed fields.
+            string legacyJson = "{\"saveVersion\":1,\"playerLevel\":3,\"playerXp\":0,\"currentHp\":50," +
+                                "\"currentMp\":20,\"maxHp\":100,\"maxMp\":50," +
+                                "\"unlockedSpellIds\":[],\"inventory\":[]," +
+                                "\"worldPositionX\":0.0,\"worldPositionY\":0.0," +
+                                "\"activeSceneName\":\"Platformer\",\"activatedCheckpointIds\":[]," +
+                                "\"defeatedEnemyIds\":[],\"damagedEnemyHp\":[]}";
+
+            SaveData copy = JsonUtility.FromJson<SaveData>(legacyJson);
+
+            Assert.AreEqual(0, copy.attack);
+            Assert.AreEqual(0, copy.defense);
+            Assert.AreEqual(0, copy.speed);
+            Assert.AreEqual(3, copy.playerLevel); // sanity: legacy fields still parse
+        }
     }
 }

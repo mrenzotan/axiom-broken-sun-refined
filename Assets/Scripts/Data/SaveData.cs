@@ -32,6 +32,10 @@ namespace Axiom.Data
         public int maxHp;
         public int maxMp;
 
+        public int attack;
+        public int defense;
+        public int speed;
+
         public string[] unlockedSpellIds = Array.Empty<string>();
         public InventorySaveEntry[] inventory = Array.Empty<InventorySaveEntry>();
 

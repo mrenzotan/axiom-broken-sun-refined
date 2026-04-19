@@ -82,6 +82,23 @@ namespace Axiom.Core
         }
 
         /// <summary>
+        /// Overwrites base combat stats with persisted values. Used by
+        /// <c>GameManager.ApplySaveData</c> to restore level-up stat growth on load.
+        /// Deltas are not applied — this is an absolute write.
+        /// All values must be non-negative.
+        /// </summary>
+        public void ApplyStats(int attack, int defense, int speed)
+        {
+            if (attack  < 0) throw new ArgumentOutOfRangeException(nameof(attack),  "attack cannot be negative.");
+            if (defense < 0) throw new ArgumentOutOfRangeException(nameof(defense), "defense cannot be negative.");
+            if (speed   < 0) throw new ArgumentOutOfRangeException(nameof(speed),   "speed cannot be negative.");
+
+            Attack  = attack;
+            Defense = defense;
+            Speed   = speed;
+        }
+
+        /// <summary>
         /// Applies additive stat growth (level-up). All deltas must be non-negative.
         /// Current HP/MP are healed up to the new max — classic JRPG level-up behavior.
         /// </summary>

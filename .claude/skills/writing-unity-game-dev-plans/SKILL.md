@@ -179,3 +179,9 @@ Scan the test file code blocks and the implementation code blocks side by side:
 ### 6. Unity Editor task isolation
 
 Verify every Unity Editor action has its own `> **Unity Editor task (user):**` callout and is **not** in the same checkbox as a code step. Mixed steps cause confusion about who does what.
+
+---
+
+## After the plan is approved
+
+To implement tasks from the saved plan (batches, UVCS, editor handoffs): use [executing-unity-game-dev-plans](../executing-unity-game-dev-plans/SKILL.md) together with `superpowers:executing-plans`.

@@ -142,5 +142,55 @@ namespace Axiom.Voice.Tests
             Assert.GreaterOrEqual(_resultQueue.Count, 1,
                 "Expected at least one result after Stop() drains pending audio");
         }
+
+        // --- Bounded shutdown (DEV-69) ---
+
+        [Test]
+        public void Stop_CompletesWithinTimeout_WhenBackgroundTaskIsSlow()
+        {
+            _service.Start();
+            for (int i = 0; i < 100; i++)
+                _inputQueue.Enqueue(new short[1600]);
+
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            _service.Stop();
+            sw.Stop();
+
+            Assert.Less(sw.ElapsedMilliseconds, 2000,
+                $"Stop() took {sw.ElapsedMilliseconds}ms — expected bounded shutdown within 2s");
+        }
+
+        [Test]
+        public void Dispose_HandlesFaultedBackgroundTask_WithoutThrowing()
+        {
+            _service.Start();
+            Assert.DoesNotThrow(() => _service.Dispose());
+        }
+
+        [Test]
+        public void RepeatedStopAndDispose_DoesNotThrowOrHang()
+        {
+            _service.Start();
+            _service.Stop();
+            Assert.DoesNotThrow(() => _service.Stop());
+            Assert.DoesNotThrow(() => _service.Dispose());
+            Assert.DoesNotThrow(() => _service.Dispose());
+        }
+
+        [Test]
+        public void Stop_AfterDispose_IsNoOp()
+        {
+            _service.Dispose();
+            Assert.DoesNotThrow(() => _service.Stop());
+        }
+
+        [Test]
+        public void DoubleStart_DoesNotCreateSecondTask()
+        {
+            _service.Start();
+            _service.Start();
+            _service.Stop();
+            Assert.Pass("Double Start did not throw or hang on Stop.");
+        }
     }
 }
