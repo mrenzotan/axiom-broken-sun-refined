@@ -1,3 +1,4 @@
+using System;
 using Axiom.Data;
 using UnityEngine;
 using UnityEngine.Audio;
@@ -19,8 +20,10 @@ namespace Axiom.Core
         [Tooltip("Optional. When null, volume prefs still persist but mixer RTPC is skipped.")]
         private AudioMixer _mixer;
 
-        [SerializeField] private string _musicVolumeParameter = "MusicVol";
-        [SerializeField] private string _ambientVolumeParameter = "AmbientVol";
+        [SerializeField]
+        [Tooltip("Exposed mixer parameter for both menu BGM and exploration/ambient loop (same group name for both AudioSources).")]
+        private string _musicVolumeParameter = "MusicVol";
+
         [SerializeField] private string _sfxVolumeParameter = "SfxVol";
 
         [SerializeField] private AudioSource _bgmSource;
@@ -29,6 +32,12 @@ namespace Axiom.Core
 
         private AudioSettingsStore _store;
         private AudioPlaybackService _service;
+
+        /// <summary>
+        /// Raised after master / music / SFX levels are written to prefs (or listener volume for master).
+        /// UI sliders should refresh with <see cref="SetValueWithoutNotify"/> so main menu and pause menu stay in sync.
+        /// </summary>
+        public event Action PersistedAudioLevelsChanged;
 
         private void Awake()
         {
@@ -54,15 +63,17 @@ namespace Axiom.Core
                 _uiSource,
                 SetMixerFloatIfConfigured,
                 _musicVolumeParameter,
-                _ambientVolumeParameter,
                 _sfxVolumeParameter,
                 amplifyUiOneShotWithStoredSfx: _mixer == null);
 
             _service.ApplyPersistedVolumesToMixer();
+            AudioListener.volume = _store != null ? _store.GetMasterVolumeNormalized() : 1f;
             _service.OnSceneBecameActive(SceneManager.GetActiveScene().name);
 
             if (GameManager.Instance != null)
                 GameManager.Instance.OnSceneReady += HandleSceneReady;
+
+            NotifyPersistedAudioLevelsChanged();
         }
 
         private void OnDestroy()
@@ -75,17 +86,36 @@ namespace Axiom.Core
         {
             string name = SceneManager.GetActiveScene().name;
             _service?.OnSceneBecameActive(name);
+            NotifyPersistedAudioLevelsChanged();
         }
 
-        public void SetMusicVolume(float linear01) => _service?.SetMusicVolume(linear01);
+        public void SetMusicVolume(float linear01)
+        {
+            _service?.SetMusicVolume(linear01);
+            NotifyPersistedAudioLevelsChanged();
+        }
 
-        public void SetAmbientVolume(float linear01) => _service?.SetAmbientVolume(linear01);
+        public void SetSfxVolume(float linear01)
+        {
+            _service?.SetSfxVolume(linear01);
+            NotifyPersistedAudioLevelsChanged();
+        }
 
-        public void SetSfxVolume(float linear01) => _service?.SetSfxVolume(linear01);
+        public void SetMasterVolume(float linear01)
+        {
+            AudioListener.volume = Mathf.Clamp01(linear01);
+            if (_store != null)
+                _store.SetMasterVolume(Mathf.Clamp01(linear01));
+            NotifyPersistedAudioLevelsChanged();
+        }
+
+        private void NotifyPersistedAudioLevelsChanged() =>
+            PersistedAudioLevelsChanged?.Invoke();
+
+        public float GetMasterVolumeNormalized() =>
+            _store != null ? _store.GetMasterVolumeNormalized() : 1f;
 
         public float GetMusicVolumeNormalized() => _service?.GetMusicVolumeNormalized() ?? 1f;
-
-        public float GetAmbientVolumeNormalized() => _service?.GetAmbientVolumeNormalized() ?? 1f;
 
         public float GetSfxVolumeNormalized() => _service?.GetSfxVolumeNormalized() ?? 1f;
 
@@ -113,7 +143,7 @@ namespace Axiom.Core
             if (_mixer == null) return;
 
             AssignSourceToMixerGroup(_bgmSource, _musicVolumeParameter);
-            AssignSourceToMixerGroup(_ambientSource, _ambientVolumeParameter);
+            AssignSourceToMixerGroup(_ambientSource, _musicVolumeParameter);
             AssignSourceToMixerGroup(_uiSource, _sfxVolumeParameter);
         }
 

@@ -33,7 +33,6 @@ namespace CoreTests
                     ui,
                     null,
                     "Music",
-                    "Ambient",
                     "Sfx");
 
                 for (int i = 0; i < 50; i++)
@@ -74,7 +73,6 @@ namespace CoreTests
                     ui,
                     null,
                     "Music",
-                    "Ambient",
                     "Sfx");
 
                 svc.OnSceneBecameActive(AudioPlaybackService.MainMenuSceneName);

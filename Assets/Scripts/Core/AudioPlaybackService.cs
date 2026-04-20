@@ -5,8 +5,9 @@ using UnityEngine;
 namespace Axiom.Core
 {
     /// <summary>
-    /// Plain C# audio policy: main-menu BGM on <see cref="MainMenuSceneName"/>, in-game ambient on
-    /// <see cref="PlatformerSceneName"/>, UI clicks, mixer RTPC from persisted levels, idempotent scene hooks.
+    /// Plain C# audio policy: main-menu BGM on <see cref="MainMenuSceneName"/>, in-game exploration loop on
+    /// <see cref="PlatformerSceneName"/> (same <see cref="AudioSettingsStore"/> music level as BGM),
+    /// UI clicks, mixer RTPC from persisted levels, idempotent scene hooks.
     /// </summary>
     public sealed class AudioPlaybackService
     {
@@ -22,7 +23,6 @@ namespace Axiom.Core
         private readonly AudioSource _uiSource;
         private readonly System.Action<string, float> _setMixerParam;
         private readonly string _musicParam;
-        private readonly string _ambientParam;
         private readonly string _sfxParam;
 
         /// <summary>
@@ -45,7 +45,6 @@ namespace Axiom.Core
             AudioSource uiSource,
             System.Action<string, float> setMixerParam,
             string musicMixerParameterName,
-            string ambientMixerParameterName,
             string sfxMixerParameterName,
             bool amplifyUiOneShotWithStoredSfx = true)
         {
@@ -56,7 +55,6 @@ namespace Axiom.Core
             _uiSource = uiSource;
             _setMixerParam = setMixerParam;
             _musicParam = musicMixerParameterName;
-            _ambientParam = ambientMixerParameterName;
             _sfxParam = sfxMixerParameterName;
             _amplifyUiOneShotWithStoredSfx = amplifyUiOneShotWithStoredSfx;
         }
@@ -66,10 +64,8 @@ namespace Axiom.Core
             if (_store == null) return;
 
             float music = _store.GetMusicVolumeNormalized();
-            float ambient = _store.GetAmbientVolumeNormalized();
             float sfx = _store.GetSfxVolumeNormalized();
             ApplyMusicMixerOnly(music);
-            ApplyAmbientMixerOnly(ambient);
             ApplySfxMixerOnly(sfx);
         }
 
@@ -95,18 +91,6 @@ namespace Axiom.Core
                 _store.SetMusicVolume(linear01);
 
             ApplyMusicMixerOnly(linear01);
-            // When ambient has never been saved, store resolves ambient from music; otherwise ambient stays independent.
-            float ambientLevel = _store != null ? _store.GetAmbientVolumeNormalized() : linear01;
-            ApplyAmbientMixerOnly(ambientLevel);
-        }
-
-        public void SetAmbientVolume(float linear01)
-        {
-            linear01 = Mathf.Clamp01(linear01);
-            if (_store != null)
-                _store.SetAmbientVolume(linear01);
-
-            ApplyAmbientMixerOnly(linear01);
         }
 
         public void SetSfxVolume(float linear01)
@@ -120,9 +104,6 @@ namespace Axiom.Core
 
         public float GetMusicVolumeNormalized() =>
             _store != null ? _store.GetMusicVolumeNormalized() : 1f;
-
-        public float GetAmbientVolumeNormalized() =>
-            _store != null ? _store.GetAmbientVolumeNormalized() : 1f;
 
         public float GetSfxVolumeNormalized() =>
             _store != null ? _store.GetSfxVolumeNormalized() : 1f;
@@ -226,11 +207,6 @@ namespace Axiom.Core
         private void ApplyMusicMixerOnly(float linear01)
         {
             TrySetMixer(_musicParam, linear01);
-        }
-
-        private void ApplyAmbientMixerOnly(float linear01)
-        {
-            TrySetMixer(_ambientParam, linear01);
         }
 
         private void ApplySfxMixerOnly(float linear01)
