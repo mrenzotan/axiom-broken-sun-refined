@@ -126,7 +126,7 @@ namespace Axiom.Voice
             _isCapturing = false;
             Microphone.End(_deviceName);
             _clip = null;
-            _recognizerService?.RequestFinalResult();
+            _capture?.EnqueueSentinel();
         }
     }
 }

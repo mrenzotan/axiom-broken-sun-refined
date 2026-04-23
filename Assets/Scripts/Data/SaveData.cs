@@ -48,5 +48,7 @@ namespace Axiom.Data
         public string[] defeatedEnemyIds = Array.Empty<string>();
 
         public EnemyHpSaveEntry[] damagedEnemyHp = Array.Empty<EnemyHpSaveEntry>();
+
+        public string[] collectedPickupIds = Array.Empty<string>();
     }
 }

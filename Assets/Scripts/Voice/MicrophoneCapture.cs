@@ -30,6 +30,16 @@ namespace Axiom.Voice
             _inputQueue.Enqueue(ToPcm16(floatSamples));
         }
 
+        /// <summary>
+        /// Enqueues a <c>null</c> sentinel into the input queue. The background
+        /// recognition loop uses this to trigger <c>FinalResult()</c> and reset
+        /// recognizer state between push-to-talk sessions.
+        /// </summary>
+        public void EnqueueSentinel()
+        {
+            _inputQueue.Enqueue(null);
+        }
+
         private static short[] ToPcm16(float[] floatSamples)
         {
             short[] pcm = new short[floatSamples.Length];

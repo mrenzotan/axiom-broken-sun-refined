@@ -37,9 +37,12 @@ namespace Axiom.Core
 
         private PauseMenuLogic _logic;
 
+        private static bool CanPause => SceneManager.GetActiveScene().name != "MainMenu";
+
         private void Awake()
         {
             EnsureCanvasIsRaycastable();
+            EnsureCanvasRendersOnTop();
             _logic = new PauseMenuLogic();
             ApplyPanelState();
         }
@@ -66,6 +69,26 @@ namespace Axiom.Core
             }
         }
 
+        private void EnsureCanvasRendersOnTop()
+        {
+            var canvas = GetComponent<Canvas>();
+            if (canvas != null && canvas.sortingOrder < 1000)
+                canvas.sortingOrder = 1000;
+        }
+
+        private void OnEnable()
+        {
+            SceneManager.sceneLoaded += OnSceneLoaded;
+        }
+
+        private void OnDisable()
+        {
+            SceneManager.sceneLoaded -= OnSceneLoaded;
+
+            if (_logic != null && _logic.IsPaused)
+                Time.timeScale = 1f;
+        }
+
         private void Start()
         {
             if (_resumeButton != null) _resumeButton.onClick.AddListener(OnResumeClicked);
@@ -87,14 +110,23 @@ namespace Axiom.Core
                 Time.timeScale = 1f;
         }
 
-        private void OnDisable()
+        private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
         {
-            if (_logic != null && _logic.IsPaused)
-                Time.timeScale = 1f;
+            ApplyPanelState();
         }
 
         private void Update()
         {
+            if (!CanPause)
+            {
+                if (_logic.IsPaused)
+                {
+                    _logic.Resume();
+                    ApplyPanelState();
+                }
+                return;
+            }
+
             bool toggleRequested =
                 (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) ||
                 (Gamepad.current != null && Gamepad.current.startButton.wasPressedThisFrame);
@@ -115,6 +147,7 @@ namespace Axiom.Core
 
         private void OnPauseButtonClicked()
         {
+            if (!CanPause) return;
             _logic.Pause();
             ApplyPanelState();
         }
@@ -160,7 +193,7 @@ namespace Axiom.Core
                 _pausePanel.SetActive(paused);
 
             if (_pauseButton != null)
-                _pauseButton.gameObject.SetActive(!paused);
+                _pauseButton.gameObject.SetActive(!paused && CanPause);
 
             bool showSettings = _logic.ActivePanel == PauseMenuPanel.Settings;
 

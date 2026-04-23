@@ -1,6 +1,6 @@
 {
   "name": "PlatformerTests",
-  "references": ["Axiom.Platformer"],
+  "references": ["Axiom.Platformer", "Axiom.Core", "Axiom.Data"],
   "testReferences": ["UnityEngine.TestRunner", "UnityEditor.TestRunner"],
   "includePlatforms": ["Editor"],
   "excludePlatforms": [],

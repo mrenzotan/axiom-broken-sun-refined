@@ -150,6 +150,9 @@ namespace Axiom.Core
         private readonly Dictionary<string, int> _damagedEnemyHp =
             new Dictionary<string, int>(StringComparer.Ordinal);
 
+        private readonly HashSet<string> _collectedPickupIds =
+            new HashSet<string>(StringComparer.Ordinal);
+
         public bool IsEnemyDefeated(string enemyId) =>
             !string.IsNullOrEmpty(enemyId) && _defeatedEnemyIds.Contains(enemyId);
 
@@ -219,6 +222,31 @@ namespace Axiom.Core
         /// <summary>Clears all damaged enemy HP overrides.</summary>
         public void ClearAllDamagedEnemyHp() => _damagedEnemyHp.Clear();
 
+        public bool IsPickupCollected(string pickupId) =>
+            !string.IsNullOrEmpty(pickupId) && _collectedPickupIds.Contains(pickupId);
+
+        public void MarkPickupCollected(string pickupId)
+        {
+            if (!string.IsNullOrEmpty(pickupId))
+                _collectedPickupIds.Add(pickupId);
+        }
+
+        public void ClearCollectedPickups() => _collectedPickupIds.Clear();
+
+        public IEnumerable<string> CollectedPickupIds => _collectedPickupIds;
+
+        public void RestoreCollectedPickups(IEnumerable<string> pickupIds)
+        {
+            _collectedPickupIds.Clear();
+            if (pickupIds == null) return;
+
+            foreach (string id in pickupIds)
+            {
+                if (!string.IsNullOrWhiteSpace(id))
+                    _collectedPickupIds.Add(id);
+            }
+        }
+
         public bool HasSaveFile() => _saveService != null && _saveService.HasSave();
 
         public void CaptureWorldSnapshot(Vector2 worldPosition)
@@ -257,7 +285,8 @@ namespace Axiom.Core
                 activeSceneName = sceneName ?? string.Empty,
                 activatedCheckpointIds = CopyReadOnlyStringList(PlayerState.ActivatedCheckpointIds),
                 defeatedEnemyIds = CopyHashSet(_defeatedEnemyIds),
-                damagedEnemyHp = BuildEnemyHpEntries(_damagedEnemyHp)
+                damagedEnemyHp = BuildEnemyHpEntries(_damagedEnemyHp),
+                collectedPickupIds = CopyHashSet(_collectedPickupIds)
             };
         }
 
@@ -290,6 +319,7 @@ namespace Axiom.Core
             PlayerState.SetActivatedCheckpointIds(data.activatedCheckpointIds ?? Array.Empty<string>());
             RestoreDefeatedEnemies(data.defeatedEnemyIds);
             RestoreDamagedEnemyHp(data.damagedEnemyHp);
+            RestoreCollectedPickups(data.collectedPickupIds);
         }
 
         public void PersistToDisk()
@@ -355,6 +385,7 @@ namespace Axiom.Core
             ClearWorldSnapshot();
             ClearDefeatedEnemies();
             ClearAllDamagedEnemyHp();
+            ClearCollectedPickups();
 
             EnsureSaveService();
             _saveService.DeleteSave();

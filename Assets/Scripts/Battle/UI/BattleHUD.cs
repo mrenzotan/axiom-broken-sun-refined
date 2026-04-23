@@ -273,7 +273,7 @@ namespace Axiom.Battle
             if (amount > 0 && _statToRect.TryGetValue(target, out RectTransform rect))
             {
                 var numberType = effectType == Axiom.Data.ItemEffectType.RestoreMP
-                    ? FloatingNumberSpawner.NumberType.Shield  // blue number for MP restore
+                    ? FloatingNumberSpawner.NumberType.Mana    // blue number for MP restore
                     : FloatingNumberSpawner.NumberType.Heal;   // green number for HP restore / Revive
                 _floatingNumberSpawner.Spawn(rect, amount, numberType);
             }

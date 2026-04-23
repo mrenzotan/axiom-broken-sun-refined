@@ -81,6 +81,11 @@ namespace Axiom.Battle
                 : new PostBattleResult(0, Array.Empty<ItemGrant>());
 
             GameManager gm = GameManager.Instance;
+
+            XpProgress xpBefore = gm?.ProgressionService != null
+                ? gm.ProgressionService.GetXpProgress()
+                : new XpProgress(currentXp: 0, xpForNextLevel: 0, isAtLevelCap: true, progress01: 0f);
+
             if (gm != null)
             {
                 if (result.Xp > 0)
@@ -98,7 +103,7 @@ namespace Axiom.Battle
                 return;
             }
 
-            XpProgress xpProgress = gm?.ProgressionService != null
+            XpProgress xpAfter = gm?.ProgressionService != null
                 ? gm.ProgressionService.GetXpProgress()
                 : new XpProgress(currentXp: 0, xpForNextLevel: 0, isAtLevelCap: true, progress01: 0f);
 
@@ -107,7 +112,7 @@ namespace Axiom.Battle
             if (_victoryCanvasGroup != null)
                 SetCanvasGroupAlpha(_victoryCanvasGroup, 1f, interactable: true);
 
-            _victoryScreenUI.Show(result, xpProgress);
+            _victoryScreenUI.Show(result, xpBefore, xpAfter);
         }
 
         private void HandleVictoryScreenDismissed()
