@@ -10,11 +10,13 @@ namespace Axiom.Voice
     /// </summary>
     public class MicrophoneCapture
     {
+        private readonly MicrophoneBufferPool _bufferPool;
         private readonly ConcurrentQueue<short[]> _inputQueue;
 
-        public MicrophoneCapture(ConcurrentQueue<short[]> inputQueue)
+        public MicrophoneCapture(ConcurrentQueue<short[]> inputQueue, MicrophoneBufferPool bufferPool)
         {
             _inputQueue = inputQueue ?? throw new ArgumentNullException(nameof(inputQueue));
+            _bufferPool = bufferPool ?? throw new ArgumentNullException(nameof(bufferPool));
         }
 
         /// <summary>
@@ -27,7 +29,32 @@ namespace Axiom.Voice
             if (floatSamples == null) throw new ArgumentNullException(nameof(floatSamples));
             if (floatSamples.Length == 0) return;
 
-            _inputQueue.Enqueue(ToPcm16(floatSamples));
+            ProcessSamples(floatSamples, floatSamples.Length);
+        }
+
+        /// <summary>
+        /// Converts the first <paramref name="count"/> elements of <paramref name="floatSamples"/>
+        /// to PCM16 and enqueues the result.
+        /// </summary>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="floatSamples"/> is null.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="count"/> exceeds <paramref name="floatSamples"/>.Length.</exception>
+        public void ProcessSamples(float[] floatSamples, int count)
+        {
+            if (floatSamples == null) throw new ArgumentNullException(nameof(floatSamples));
+            if (count == 0) return;
+            if (count > floatSamples.Length)
+                throw new ArgumentOutOfRangeException(nameof(count),
+                    $"count ({count}) cannot exceed floatSamples.Length ({floatSamples.Length}).");
+
+            short[] pcm = _bufferPool.RentShort(count);
+            for (int i = 0; i < count; i++)
+            {
+                float clamped = floatSamples[i] < -1f ? -1f
+                              : floatSamples[i] >  1f ?  1f
+                              : floatSamples[i];
+                pcm[i] = (short)(clamped * 32767f);
+            }
+            _inputQueue.Enqueue(pcm);
         }
 
         /// <summary>
@@ -38,19 +65,6 @@ namespace Axiom.Voice
         public void EnqueueSentinel()
         {
             _inputQueue.Enqueue(null);
-        }
-
-        private static short[] ToPcm16(float[] floatSamples)
-        {
-            short[] pcm = new short[floatSamples.Length];
-            for (int i = 0; i < floatSamples.Length; i++)
-            {
-                float clamped = floatSamples[i] < -1f ? -1f
-                              : floatSamples[i] >  1f ?  1f
-                              : floatSamples[i];
-                pcm[i] = (short)(clamped * 32767f);
-            }
-            return pcm;
         }
     }
 }

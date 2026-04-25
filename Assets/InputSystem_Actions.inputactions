@@ -86,6 +86,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "DebugMeltCast",
+                    "type": "Button",
+                    "id": "dec46a01-1a2b-3c4d-5e6f-7890abcdef01",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -471,6 +480,17 @@
                     "processors": "",
                     "groups": "Keyboard&Mouse",
                     "action": "Crouch",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "dec46b01-1a2b-3c4d-5e6f-7890abcdef02",
+                    "path": "<Keyboard>/m",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "Keyboard&Mouse",
+                    "action": "DebugMeltCast",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

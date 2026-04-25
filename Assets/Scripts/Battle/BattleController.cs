@@ -211,6 +211,12 @@ namespace Axiom.Battle
 
         private Coroutine _spellFireTimeoutCoroutine;
 
+        [SerializeField]
+        [Tooltip("Background SpriteRenderer in the Battle scene. BattleEnvironmentService sets its sprite and tint based on the player's origin region. Leave unassigned to keep the static background.")]
+        private SpriteRenderer _backgroundRenderer;
+
+        private BattleEnvironmentService _environmentService;
+
         // EnemyId of the enemy triggering this battle. Propagated from BattleEntry;
         // used on Victory to mark the enemy defeated so the Platformer restore step
         // can destroy it, preventing an infinite re-trigger loop.
@@ -228,6 +234,10 @@ namespace Axiom.Battle
                 _enemyStartHp  = pending.EnemyCurrentHp;
                 GameManager.Instance.ClearPendingBattle();
             }
+
+            // Apply dynamic battle background from the engagement origin (DEV-80).
+            _environmentService = new BattleEnvironmentService();
+            _environmentService.Apply(pending?.EnvironmentData, _backgroundRenderer);
 
             if (GameManager.Instance?.SceneTransition?.IsTransitioning == true)
                 GameManager.Instance.OnSceneReady += InitializeFromTransition;

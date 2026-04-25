@@ -5,13 +5,28 @@ namespace Axiom.Voice.Tests
 {
     public class MicrophoneCaptureTests
     {
+        private MicrophoneBufferPool _bufferPool;
+
+        [SetUp]
+        public void SetUp()
+        {
+            _bufferPool = new MicrophoneBufferPool();
+        }
+
         // ── Constructor ──────────────────────────────────────────────────────────
 
         [Test]
         public void Constructor_NullQueue_ThrowsArgumentNullException()
         {
             Assert.Throws<System.ArgumentNullException>(() =>
-                new MicrophoneCapture(null));
+                new MicrophoneCapture(null, _bufferPool));
+        }
+
+        [Test]
+        public void Constructor_NullBufferPool_ThrowsArgumentNullException()
+        {
+            Assert.Throws<System.ArgumentNullException>(() =>
+                new MicrophoneCapture(new System.Collections.Concurrent.ConcurrentQueue<short[]>(), null));
         }
 
         // ── ProcessSamples: guard clauses ─────────────────────────────────────────
@@ -20,7 +35,7 @@ namespace Axiom.Voice.Tests
         public void ProcessSamples_NullArray_ThrowsArgumentNullException()
         {
             var queue   = new ConcurrentQueue<short[]>();
-            var capture = new MicrophoneCapture(queue);
+            var capture = new MicrophoneCapture(queue, _bufferPool);
 
             Assert.Throws<System.ArgumentNullException>(() =>
                 capture.ProcessSamples(null));
@@ -30,7 +45,7 @@ namespace Axiom.Voice.Tests
         public void ProcessSamples_EmptyArray_DoesNotEnqueue()
         {
             var queue   = new ConcurrentQueue<short[]>();
-            var capture = new MicrophoneCapture(queue);
+            var capture = new MicrophoneCapture(queue, _bufferPool);
 
             capture.ProcessSamples(new float[0]);
 
@@ -43,7 +58,7 @@ namespace Axiom.Voice.Tests
         public void ProcessSamples_ValidSamples_EnqueuesExactlyOneChunk()
         {
             var queue   = new ConcurrentQueue<short[]>();
-            var capture = new MicrophoneCapture(queue);
+            var capture = new MicrophoneCapture(queue, _bufferPool);
 
             capture.ProcessSamples(new float[] { 0.5f, -0.5f });
 
@@ -54,7 +69,7 @@ namespace Axiom.Voice.Tests
         public void ProcessSamples_ValidSamples_EnqueuedChunkMatchesInputLength()
         {
             var queue   = new ConcurrentQueue<short[]>();
-            var capture = new MicrophoneCapture(queue);
+            var capture = new MicrophoneCapture(queue, _bufferPool);
 
             capture.ProcessSamples(new float[] { 0.1f, 0.2f, 0.3f });
 
@@ -66,7 +81,7 @@ namespace Axiom.Voice.Tests
         public void ProcessSamples_PlusOneSample_EnqueuesMaxPositiveShort()
         {
             var queue   = new ConcurrentQueue<short[]>();
-            var capture = new MicrophoneCapture(queue);
+            var capture = new MicrophoneCapture(queue, _bufferPool);
 
             capture.ProcessSamples(new float[] { 1.0f });
 
@@ -78,7 +93,7 @@ namespace Axiom.Voice.Tests
         public void ProcessSamples_MinusOneSample_EnqueuesMinNegativeShort()
         {
             var queue   = new ConcurrentQueue<short[]>();
-            var capture = new MicrophoneCapture(queue);
+            var capture = new MicrophoneCapture(queue, _bufferPool);
 
             capture.ProcessSamples(new float[] { -1.0f });
 
@@ -90,7 +105,7 @@ namespace Axiom.Voice.Tests
         public void ProcessSamples_ZeroSample_EnqueuesZero()
         {
             var queue   = new ConcurrentQueue<short[]>();
-            var capture = new MicrophoneCapture(queue);
+            var capture = new MicrophoneCapture(queue, _bufferPool);
 
             capture.ProcessSamples(new float[] { 0.0f });
 
@@ -102,7 +117,7 @@ namespace Axiom.Voice.Tests
         public void ProcessSamples_AboveClampValue_ClampsToMaxPositiveShort()
         {
             var queue   = new ConcurrentQueue<short[]>();
-            var capture = new MicrophoneCapture(queue);
+            var capture = new MicrophoneCapture(queue, _bufferPool);
 
             capture.ProcessSamples(new float[] { 2.0f });
 
@@ -114,7 +129,7 @@ namespace Axiom.Voice.Tests
         public void ProcessSamples_BelowClampValue_ClampsToMinNegativeShort()
         {
             var queue   = new ConcurrentQueue<short[]>();
-            var capture = new MicrophoneCapture(queue);
+            var capture = new MicrophoneCapture(queue, _bufferPool);
 
             capture.ProcessSamples(new float[] { -2.0f });
 
@@ -126,7 +141,7 @@ namespace Axiom.Voice.Tests
         public void ProcessSamples_MultipleCallsEnqueueMultipleChunks()
         {
             var queue   = new ConcurrentQueue<short[]>();
-            var capture = new MicrophoneCapture(queue);
+            var capture = new MicrophoneCapture(queue, _bufferPool);
 
             capture.ProcessSamples(new float[] { 0.1f });
             capture.ProcessSamples(new float[] { 0.2f });

@@ -16,14 +16,17 @@ namespace Axiom.Data
         public EnemyData EnemyData { get; }
         public string EnemyId { get; }
         public int EnemyCurrentHp { get; }
+        public BattleEnvironmentData EnvironmentData { get; }
 
         public BattleEntry(CombatStartState startState, EnemyData enemyData,
-                           string enemyId = null, int enemyCurrentHp = -1)
+                           string enemyId = null, int enemyCurrentHp = -1,
+                           BattleEnvironmentData environmentData = null)
         {
             StartState = startState;
             EnemyData = enemyData;
             EnemyId = enemyId;
             EnemyCurrentHp = enemyCurrentHp;
+            EnvironmentData = environmentData;
         }
     }
 }

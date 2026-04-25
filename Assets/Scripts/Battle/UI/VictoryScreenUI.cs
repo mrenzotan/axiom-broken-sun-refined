@@ -46,7 +46,7 @@ namespace Axiom.Battle.UI
                 _confirmButton.onClick.RemoveListener(OnConfirmClicked);
         }
 
-        public void Show(PostBattleResult result, XpProgress xpBefore, XpProgress xpAfter)
+        public void Show(PostBattleResult result, XpProgress xpBefore, XpProgress xpAfter, int levelsGained = 0)
         {
             if (_titleText != null)
                 _titleText.text = "VICTORY!";
@@ -73,15 +73,17 @@ namespace Axiom.Battle.UI
                 }
             }
 
+            ShowPanel();
+
             if (_xpBar != null)
             {
                 if (xpAfter.IsAtLevelCap)
                     _xpBar.ShowLevelCap();
+                else if (levelsGained > 0)
+                    StartCoroutine(_xpBar.AnimateLevelUpFlow(xpBefore, xpAfter));
                 else
                     _xpBar.AnimateTo(xpAfter.CurrentXp, xpAfter.XpForNextLevel, xpBefore.Progress01);
             }
-
-            ShowPanel();
         }
 
         private string ResolveDisplayName(string itemId)

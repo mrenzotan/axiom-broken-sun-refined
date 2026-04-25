@@ -25,6 +25,7 @@ namespace Axiom.Voice
         private readonly VoskRecognizer _recognizer;
         private readonly ConcurrentQueue<short[]> _inputQueue;
         private readonly ConcurrentQueue<string> _resultQueue;
+        private readonly MicrophoneBufferPool _bufferPool;
 
         public ConcurrentQueue<short[]> InputQueue => _inputQueue;
         public ConcurrentQueue<string> ResultQueue => _resultQueue;
@@ -38,11 +39,13 @@ namespace Axiom.Voice
         public VoskRecognizerService(
             VoskRecognizer recognizer,
             ConcurrentQueue<short[]> inputQueue,
-            ConcurrentQueue<string> resultQueue)
+            ConcurrentQueue<string> resultQueue,
+            MicrophoneBufferPool bufferPool = null)
         {
             _recognizer = recognizer ?? throw new ArgumentNullException(nameof(recognizer));
             _inputQueue = inputQueue ?? throw new ArgumentNullException(nameof(inputQueue));
             _resultQueue = resultQueue ?? throw new ArgumentNullException(nameof(resultQueue));
+            _bufferPool = bufferPool;
         }
 
         /// <summary>
@@ -115,6 +118,7 @@ namespace Axiom.Voice
                         // AcceptWaveform returns true when it detects a complete utterance.
                         if (_recognizer.AcceptWaveform(samples, samples.Length))
                             _resultQueue.Enqueue(_recognizer.Result());
+                        _bufferPool?.ReturnShort(samples);
                     }
                 }
                 else
@@ -129,6 +133,7 @@ namespace Axiom.Voice
             {
                 if (remaining == null) continue; // skip sentinels during shutdown drain
                 _recognizer.AcceptWaveform(remaining, remaining.Length);
+                _bufferPool?.ReturnShort(remaining);
             }
 
             // Always flush a final result on Stop() so no partial recognition is lost.

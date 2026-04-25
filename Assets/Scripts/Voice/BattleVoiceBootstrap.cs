@@ -55,6 +55,7 @@ namespace Axiom.Voice
         private Model _voskModel;
         private SpellUnlockService _spellUnlockService;
         private List<SpellData> _activeSpells;
+        private MicrophoneBufferPool _bufferPool;
 
         // ── Unity lifecycle ───────────────────────────────────────────────────────
 
@@ -144,11 +145,12 @@ namespace Axiom.Voice
 
             var inputQueue  = new ConcurrentQueue<short[]>();
             var resultQueue = new ConcurrentQueue<string>();
+            _bufferPool = new MicrophoneBufferPool();
 
-            _recognizerService = new VoskRecognizerService(recognizerTask.Result, inputQueue, resultQueue);
+            _recognizerService = new VoskRecognizerService(recognizerTask.Result, inputQueue, resultQueue, _bufferPool);
             _recognizerService.Start();
 
-            _microphoneInputHandler.Inject(inputQueue, _recognizerService);
+            _microphoneInputHandler.Inject(inputQueue, _recognizerService, _bufferPool);
             _spellCastController.Inject(resultQueue, spells);
 
             Debug.Log("[BattleVoiceBootstrap] Vosk pipeline ready.");
@@ -203,10 +205,10 @@ namespace Axiom.Voice
 
             _recognizerService.Dispose();
 
-            _recognizerService = new VoskRecognizerService(newRecognizer, inputQueue, resultQueue);
+            _recognizerService = new VoskRecognizerService(newRecognizer, inputQueue, resultQueue, _bufferPool);
             _recognizerService.Start();
 
-            _microphoneInputHandler.Inject(inputQueue, _recognizerService);
+            _microphoneInputHandler.Inject(inputQueue, _recognizerService, _bufferPool);
             _spellCastController.Inject(resultQueue, spells);
 
             Debug.Log($"[BattleVoiceBootstrap] Vosk recognizer rebuilt with {spells.Length} spells after unlock.");
