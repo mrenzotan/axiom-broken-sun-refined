@@ -668,8 +668,8 @@ namespace Axiom.Battle
                 if (GameManager.Instance != null && !string.IsNullOrEmpty(_battleEnemyId))
                     GameManager.Instance.SetDamagedEnemyHp(_battleEnemyId, _enemyStats.CurrentHP);
                 GameManager.Instance?.PersistToDisk();
-                if (GameManager.Instance?.SceneTransition != null)
-                    GameManager.Instance.SceneTransition.BeginTransition("Platformer", TransitionStyle.BlackFade);
+                if (GameManager.Instance != null)
+                    GameManager.Instance.ReturnToWorldScene();
                 else
                     SceneManager.LoadScene("Platformer"); // Standalone Battle scene testing fallback
             }
@@ -692,8 +692,8 @@ namespace Axiom.Battle
                         GameManager.Instance.ClearDamagedEnemyHp(_battleEnemyId);
                     }
                     GameManager.Instance?.PersistToDisk();
-                    if (GameManager.Instance?.SceneTransition != null)
-                        GameManager.Instance.SceneTransition.BeginTransition("Platformer", TransitionStyle.BlackFade);
+                    if (GameManager.Instance != null)
+                        GameManager.Instance.ReturnToWorldScene();
                     else
                         SceneManager.LoadScene("Platformer");
                 }

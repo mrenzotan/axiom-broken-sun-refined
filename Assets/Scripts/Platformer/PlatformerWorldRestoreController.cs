@@ -1,5 +1,6 @@
 // Assets/Scripts/Platformer/PlatformerWorldRestoreController.cs
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using Axiom.Core;
 
 namespace Axiom.Platformer
@@ -28,6 +29,11 @@ namespace Axiom.Platformer
         private void Start()
         {
             if (GameManager.Instance == null) return;
+
+            // Per-scene enemy state (DEV-XX) keys off PlayerState.ActiveSceneName. After a
+            // LevelExitTrigger transition, that field still names the previous scene until
+            // the player touches a save point — so we resync here on every level-scene load.
+            GameManager.Instance.PlayerState.SetActiveScene(SceneManager.GetActiveScene().name);
 
             DestroyDefeatedEnemies();
             DestroyCollectedPickups();

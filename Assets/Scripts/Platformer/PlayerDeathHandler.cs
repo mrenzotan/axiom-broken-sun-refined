@@ -1,14 +1,13 @@
 using Axiom.Core;
 using UnityEngine;
-using UnityEngine.SceneManagement;
 
 namespace Axiom.Platformer
 {
     /// <summary>
     /// Polls PlayerState.CurrentHp each frame while on the platformer side.
-    /// On HP reaching zero, delegates to PlayerDeathResolver and either reloads
-    /// the current scene (respawn) or loads MainMenu (game over).
-    /// Heals to full on respawn so the player has a recoverable slate.
+    /// On HP reaching zero, delegates to <see cref="GameManager.RespawnAtLastCheckpoint"/>
+    /// (heals + teleports to the last save point) or loads MainMenu when no checkpoint
+    /// has been activated.
     /// </summary>
     public class PlayerDeathHandler : MonoBehaviour
     {
@@ -45,11 +44,9 @@ namespace Axiom.Platformer
 
             _dispatched = true;
 
-            if (outcome == PlayerDeathOutcome.RespawnAtLastCheckpoint)
+            if (outcome == PlayerDeathOutcome.RespawnAtLastCheckpoint &&
+                GameManager.Instance.RespawnAtLastCheckpoint(_transitionStyle))
             {
-                state.SetCurrentHp(state.MaxHp);
-                string sceneName = SceneManager.GetActiveScene().name;
-                transition.BeginTransition(sceneName, _transitionStyle);
                 return;
             }
 

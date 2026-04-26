@@ -22,8 +22,9 @@ namespace Axiom.Battle
     ///
     /// Defeat flow:
     ///   1. Show <see cref="DefeatScreenUI"/>.
-    ///   2. On continue, call <see cref="GameManager.TryContinueGame"/>.
-    ///   3. If no save exists, transition to MainMenu.
+    ///   2. On continue, call <see cref="GameManager.RespawnAtLastCheckpoint"/> — heals the
+    ///      player and loads the level scene of the most recently touched save point.
+    ///   3. If no checkpoint has been activated, transition to MainMenu.
     /// </summary>
     public class PostBattleFlowController : MonoBehaviour
     {
@@ -51,10 +52,6 @@ namespace Axiom.Battle
         [SerializeField, Range(0f, 0.5f)]
         [Tooltip("Fade duration for each leg of the crossfade, seconds. DEV-77 spec: ≤0.2s.")]
         private float _fadeDuration = 0.2f;
-
-        [SerializeField]
-        [Tooltip("Scene to load after Victory and after Continue. Usually Platformer.")]
-        private string _returnScene = "Platformer";
 
         [SerializeField]
         [Tooltip("Scene to fall back to on Defeat if no save file exists. Usually MainMenu.")]
@@ -222,10 +219,10 @@ namespace Axiom.Battle
             _pendingEnemy   = null;
             _pendingEnemyId = null;
 
-            if (gm?.SceneTransition != null)
-                gm.SceneTransition.BeginTransition(_returnScene, TransitionStyle.BlackFade);
+            if (gm != null)
+                gm.ReturnToWorldScene();
             else
-                SceneManager.LoadScene(_returnScene);
+                SceneManager.LoadScene("Platformer");
         }
 
         /// <summary>
@@ -251,13 +248,10 @@ namespace Axiom.Battle
                 _defeatScreenUI.OnContinueClicked -= HandleDefeatContinue;
 
             GameManager gm = GameManager.Instance;
-            if (gm != null && gm.HasSaveFile())
-            {
-                gm.TryContinueGame();
+            if (gm != null && gm.RespawnAtLastCheckpoint(TransitionStyle.BlackFade))
                 return;
-            }
 
-            // No save — fall back to MainMenu.
+            // No checkpoint activated (or no GameManager) — fall back to MainMenu.
             if (gm?.SceneTransition != null)
                 gm.SceneTransition.BeginTransition(_noSaveFallbackScene, TransitionStyle.BlackFade);
             else

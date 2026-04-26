@@ -9,6 +9,15 @@ namespace Axiom.Platformer
         [SerializeField] private string _checkpointId = string.Empty;
         [SerializeField] private PlatformerFloatingNumberSpawner _floatingNumberSpawner;
 
+        [SerializeField]
+        [Tooltip(
+            "When true, touching this save point still activates the checkpoint (so it can " +
+            "act as a cross-level safety net for the next scene's missed cp_start), but does " +
+            "NOT update the player's respawn point. Use this on level-end checkpoints so " +
+            "backtracking after touching them still respawns the player at the earlier in-level " +
+            "checkpoint instead of teleporting them to the level exit on death.")]
+        private bool _isFallbackOnly;
+
         private void Reset()
         {
             Collider2D triggerCollider = GetComponent<Collider2D>();
@@ -36,9 +45,19 @@ namespace Axiom.Platformer
                 return;
             }
 
+            // Update the respawn point on every touch (re-touch updates too) so the player
+            // respawns at the most recently visited save point — unless this trigger is
+            // marked fallback-only, in which case the activation still counts but the
+            // respawn point stays at the earlier in-level checkpoint.
+            if (!_isFallbackOnly)
+            {
+                GameManager.Instance.SetLastCheckpoint(
+                    other.transform.position.x,
+                    other.transform.position.y);
+            }
+
             if (!GameManager.Instance.TryActivateCheckpointRegen(_checkpointId, out int healedHp, out int healedMp))
             {
-                GameManager.Instance.PersistToDisk();
                 return;
             }
 

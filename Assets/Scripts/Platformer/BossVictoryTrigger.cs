@@ -1,13 +1,14 @@
 using Axiom.Core;
 using Axiom.Platformer.UI;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Axiom.Platformer
 {
     /// <summary>
     /// Place in Level_1-4 alongside the boss. On scene ready (after a returning
-    /// post-battle transition), checks whether the boss's enemy id is present in
-    /// GameManager.DefeatedEnemyIds. If so, shows the ChapterCompleteCardUI.
+    /// post-battle transition), checks whether the boss's enemy id is recorded as
+    /// defeated in this scene's set. If so, shows the ChapterCompleteCardUI.
     /// </summary>
     public class BossVictoryTrigger : MonoBehaviour
     {
@@ -41,7 +42,7 @@ namespace Axiom.Platformer
             if (GameManager.Instance == null) return;
 
             bool victorious = BossVictoryChecker.IsVictorious(
-                defeatedEnemyIds: GameManager.Instance.DefeatedEnemyIds,
+                defeatedEnemyIds: GameManager.Instance.DefeatedEnemyIdsInScene(SceneManager.GetActiveScene().name),
                 bossEnemyId: _bossEnemyId);
 
             if (!victorious) return;

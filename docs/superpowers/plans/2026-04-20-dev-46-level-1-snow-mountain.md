@@ -9,6 +9,7 @@
 **Tech Stack:** Unity 6.0.4 LTS, URP 2D, Unity 2D Tilemap + Tile Palettes (manual paint; no RuleTiles — the Snow Mountain sheets use a blob/wang layout, not a 3×3 neighbor pattern), Cinemachine, New Input System, TextMeshPro, Unity Test Framework (Edit Mode, NUnit).
 
 **Related tickets:**
+
 - **DEV-80** — Dynamic Battle background (depends on this plan's Snow Mountain assets; separate ticket)
 - **DEV-81** — Narrative cutscene system (will replace DEV-46's placeholder completion card)
 - **DEV-82** — Environmental chemistry-spell puzzles (future extension)
@@ -21,74 +22,75 @@
 
 ### New runtime scripts (`Assets/Scripts/Platformer/`, covered by existing `Platformer.asmdef`)
 
-| File | Responsibility |
-|---|---|
-| `HazardDamageResolver.cs` | Pure damage calculation for hazards |
-| `HazardTrigger.cs` | MonoBehaviour — OnTriggerEnter2D → resolver → `PlayerState.SetCurrentHp` |
-| `LevelExitTrigger.cs` | MonoBehaviour — OnTriggerEnter2D → `SceneTransition.BeginTransition` |
-| `PlayerDeathResolver.cs` | Decides respawn vs. Game Over from player state |
-| `PlayerDeathHandler.cs` | MonoBehaviour — polls HP each frame, invokes resolver |
-| `TutorialPromptTrigger.cs` | MonoBehaviour — shows a prompt panel on enter, hides on exit |
-| `UI/PlatformerHpHudFormatter.cs` | Formats "HP {current}/{max}" string |
-| `UI/PlatformerHpHudUI.cs` | MonoBehaviour — binds `PlayerState.CurrentHp` to TMP text |
-| `UI/TutorialPromptPanelUI.cs` | MonoBehaviour — shows/hides a TMP panel with a message |
-| `UI/ChapterCompleteCardUI.cs` | MonoBehaviour — shows the "Chapter 1 Complete" card, returns to MainMenu |
-| `BossVictoryChecker.cs` | Pure check: is a boss ID in the defeated set? |
-| `BossVictoryTrigger.cs` | MonoBehaviour — on scene ready, if boss defeated, shows completion card |
-| `MeltableObstacle.cs` | Pure decision: does a spell ID melt this obstacle? |
-| `MeltableObstacleController.cs` | MonoBehaviour — owns melted state, fade coroutine, exposes `TryMelt(spellId)` seam |
-| `MeltableObstacleDebugCaster.cs` | MonoBehaviour — DEV-46 stub; fires `TryMelt` from `DebugMeltCast` InputAction (deleted in DEV-82) |
-| `MeltableObstacleProximityForwarder.cs` | MonoBehaviour on child trigger — forwards enter/exit to parent controller's `_isPlayerInRange` |
+| File                                    | Responsibility                                                                                    |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `HazardDamageResolver.cs`               | Pure damage calculation for hazards                                                               |
+| `HazardTrigger.cs`                      | MonoBehaviour — OnTriggerEnter2D → resolver → `PlayerState.SetCurrentHp`                          |
+| `LevelExitTrigger.cs`                   | MonoBehaviour — OnTriggerEnter2D → `SceneTransition.BeginTransition`                              |
+| `PlayerDeathResolver.cs`                | Decides respawn vs. Game Over from player state                                                   |
+| `PlayerDeathHandler.cs`                 | MonoBehaviour — polls HP each frame, invokes resolver                                             |
+| `TutorialPromptTrigger.cs`              | MonoBehaviour — shows a prompt panel on enter, hides on exit                                      |
+| `UI/PlatformerHpHudFormatter.cs`        | Formats "HP {current}/{max}" string                                                               |
+| `UI/PlatformerHpHudUI.cs`               | MonoBehaviour — binds `PlayerState.CurrentHp` to TMP text                                         |
+| `UI/TutorialPromptPanelUI.cs`           | MonoBehaviour — shows/hides a TMP panel with a message                                            |
+| `UI/ChapterCompleteCardUI.cs`           | MonoBehaviour — shows the "Chapter 1 Complete" card, returns to MainMenu                          |
+| `BossVictoryChecker.cs`                 | Pure check: is a boss ID in the defeated set?                                                     |
+| `BossVictoryTrigger.cs`                 | MonoBehaviour — on scene ready, if boss defeated, shows completion card                           |
+| `MeltableObstacle.cs`                   | Pure decision: does a spell ID melt this obstacle?                                                |
+| `MeltableObstacleController.cs`         | MonoBehaviour — owns melted state, fade coroutine, exposes `TryMelt(spellId)` seam                |
+| `MeltableObstacleDebugCaster.cs`        | MonoBehaviour — DEV-46 stub; fires `TryMelt` from `DebugMeltCast` InputAction (deleted in DEV-82) |
+| `MeltableObstacleProximityForwarder.cs` | MonoBehaviour on child trigger — forwards enter/exit to parent controller's `_isPlayerInRange`    |
 
 ### New tests (`Assets/Tests/Editor/Platformer/`, covered by existing `PlatformerTests.asmdef`)
 
-| File | Tests |
-|---|---|
-| `HazardDamageResolverTests.cs` | Pit KO, spike % damage, clamping to 0 |
-| `PlatformerHpHudFormatterTests.cs` | Format correctness, edge values |
-| `PlayerDeathResolverTests.cs` | Respawn vs. Game Over decision |
-| `BossVictoryCheckerTests.cs` | Found vs. not found, null/empty id handling |
-| `MeltableObstacleTests.cs` | `CanMelt` decision logic — null id, empty id, in-list, not-in-list |
+| File                               | Tests                                                              |
+| ---------------------------------- | ------------------------------------------------------------------ |
+| `HazardDamageResolverTests.cs`     | Pit KO, spike % damage, clamping to 0                              |
+| `PlatformerHpHudFormatterTests.cs` | Format correctness, edge values                                    |
+| `PlayerDeathResolverTests.cs`      | Respawn vs. Game Over decision                                     |
+| `BossVictoryCheckerTests.cs`       | Found vs. not found, null/empty id handling                        |
+| `MeltableObstacleTests.cs`         | `CanMelt` decision logic — null id, empty id, in-list, not-in-list |
 
 ### New Unity Editor assets
 
-| Asset | Location |
-|---|---|
-| `Palette_SnowMountain.prefab` | `Assets/Art/Tilemaps/SnowMountain/Palettes/` — single Tile Palette containing every sliced Snow Mountain sprite, painted manually from |
-| `Tiles/*.asset` (auto-generated) | `Assets/Art/Tilemaps/SnowMountain/Tiles/` — one `.asset` per sliced sprite, auto-created when sprites are dragged onto the palette |
-| `P_SnowMountainParallax.prefab` | `Assets/Prefabs/Platformer/` |
-| `ED_Meltspawn.asset` | `Assets/Data/Enemies/` |
-| `ED_FrostbiteCreeper.asset` | `Assets/Data/Enemies/` |
-| `ED_VoidWraith.asset` | `Assets/Data/Enemies/` |
-| `ED_FrostMeltSentinel.asset` | `Assets/Data/Enemies/` |
-| `P_IceWall.prefab` | `Assets/Prefabs/Platformer/` — meltable obstacle (Grid + Tilemap + ProximityTrigger) |
-| `Level_1-1.unity` | `Assets/Scenes/` — exists, will be built out |
-| `Level_1-2.unity` | `Assets/Scenes/` — new |
-| `Level_1-3.unity` | `Assets/Scenes/` — new |
-| `Level_1-4.unity` | `Assets/Scenes/` — new |
+| Asset                            | Location                                                                                                                               |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `Palette_SnowMountain.prefab`    | `Assets/Art/Tilemaps/SnowMountain/Palettes/` — single Tile Palette containing every sliced Snow Mountain sprite, painted manually from |
+| `Tiles/*.asset` (auto-generated) | `Assets/Art/Tilemaps/SnowMountain/Tiles/` — one `.asset` per sliced sprite, auto-created when sprites are dragged onto the palette     |
+| `P_SnowMountainParallax.prefab`  | `Assets/Prefabs/Platformer/`                                                                                                           |
+| `ED_Meltspawn.asset`             | `Assets/Data/Enemies/`                                                                                                                 |
+| `ED_FrostbiteCreeper.asset`      | `Assets/Data/Enemies/`                                                                                                                 |
+| `ED_VoidWraith.asset`            | `Assets/Data/Enemies/`                                                                                                                 |
+| `ED_FrostMeltSentinel.asset`     | `Assets/Data/Enemies/`                                                                                                                 |
+| `P_IceWall.prefab`               | `Assets/Prefabs/Platformer/` — meltable obstacle (Grid + Tilemap + ProximityTrigger)                                                   |
+| `Level_1-1.unity`                | `Assets/Scenes/` — exists, will be built out                                                                                           |
+| `Level_1-2.unity`                | `Assets/Scenes/` — new                                                                                                                 |
+| `Level_1-3.unity`                | `Assets/Scenes/` — new                                                                                                                 |
+| `Level_1-4.unity`                | `Assets/Scenes/` — new                                                                                                                 |
 
 ### Modified
 
-| File | Change |
-|---|---|
-| `Assets/Tests/Editor/Platformer/PlatformerTests.asmdef` | Add `Axiom.Core` reference (tests use `PlayerState`) |
-| `Assets/InputSystem_Actions.inputactions` | Add `DebugMeltCast` action (Player map) bound to `<Keyboard>/m` (deleted in DEV-82) |
-| Build Settings scene list | Add Level_1-1 through Level_1-4 |
+| File                                                    | Change                                                                              |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| `Assets/Tests/Editor/Platformer/PlatformerTests.asmdef` | Add `Axiom.Core` reference (tests use `PlayerState`)                                |
+| `Assets/InputSystem_Actions.inputactions`               | Add `DebugMeltCast` action (Player map) bound to `<Keyboard>/m` (deleted in DEV-82) |
+| Build Settings scene list                               | Add Level_1-1 through Level_1-4                                                     |
 
 ### Deleted (cleanup)
 
-| File | Reason |
-|---|---|
-| `Assets/Editor/LevelBuilderTool.cs` | Phase 1 stub, replaced by real content; docstring explicitly marks for deletion |
-| `Assets/Art/Tilemaps/GroundRuleTile.asset` | Placeholder rule tile; replaced by Snow Mountain Tile Palette |
-| `Assets/Art/Tilemaps/PlaceholderTile.png` | Placeholder gray sprite |
-| `Assets/Data/Enemies/ED_MeltspawnTest.asset` | Test placeholder; replaced by `ED_Meltspawn.asset` |
+| File                                         | Reason                                                                          |
+| -------------------------------------------- | ------------------------------------------------------------------------------- |
+| `Assets/Editor/LevelBuilderTool.cs`          | Phase 1 stub, replaced by real content; docstring explicitly marks for deletion |
+| `Assets/Art/Tilemaps/GroundRuleTile.asset`   | Placeholder rule tile; replaced by Snow Mountain Tile Palette                   |
+| `Assets/Art/Tilemaps/PlaceholderTile.png`    | Placeholder gray sprite                                                         |
+| `Assets/Data/Enemies/ED_MeltspawnTest.asset` | Test placeholder; replaced by `ED_Meltspawn.asset`                              |
 
 ---
 
 ## Task 1: UVCS branch + import Snow Mountain pack + create Tile Palette
 
 **Files:**
+
 - Create: `Assets/Art/Tilemaps/SnowMountain/Palettes/Palette_SnowMountain.prefab` (Tile Palette)
 - Create: `Assets/Art/Tilemaps/SnowMountain/Tiles/*.asset` (one auto-generated Tile per sliced sprite)
 - Modify sprite import settings on `Assets/Art/AssetPacks/Pixelart Snow Mountain/16x16 tiles/*.png` and `Tilesets/*.png`
@@ -102,6 +104,7 @@
 > **Unity Editor task (user):** Each sheet's **Pixels Per Unit** must match its source pixel size so 1 sprite = 1 tile (1 world unit). DEV-84 left every sheet at PPU 16, which is correct for the `16x16 tiles/` group but **wrong for the `Tilesets/` 8×8 group** — you must change those to PPU 8 here. Select each texture, apply the shared settings plus the group-specific PPU, then slice using the pixel size that matches the source artwork.
 
 **Shared Inspector settings (apply to every sheet below):**
+
 - **Texture Type:** Sprite (2D and UI)
 - **Sprite Mode:** Multiple
 - **Filter Mode:** Point (no filter)
@@ -109,6 +112,7 @@
 - **Pixels Per Unit:** _set per group below — not shared_
 
 **Group A — 16×16 source sheets** (`16x16 tiles/`) — **PPU 16** (verify — should already be correct post-DEV-84), slice at **Pixel Size 16×16**:
+
 - `Assets/Art/AssetPacks/Pixelart Snow Mountain/16x16 tiles/IceTiles.png`
 - `Assets/Art/AssetPacks/Pixelart Snow Mountain/16x16 tiles/RockTiles.png`
 - `Assets/Art/AssetPacks/Pixelart Snow Mountain/16x16 tiles/BackgroundTiles.png`
@@ -116,6 +120,7 @@
 - `Assets/Art/AssetPacks/Pixelart Snow Mountain/16x16 tiles/PlatformTiles.png`
 
 **Group B — 8×8 source sheets** (`Tilesets/`) — **change PPU from 16 → 8** (overrides the DEV-84 default for these sheets), slice at **Pixel Size 8×8**:
+
 - `Assets/Art/AssetPacks/Pixelart Snow Mountain/Tilesets/iceBGtiles.png`
 - `Assets/Art/AssetPacks/Pixelart Snow Mountain/Tilesets/icetiles1.png`
 - `Assets/Art/AssetPacks/Pixelart Snow Mountain/Tilesets/icetiles2.png`
@@ -127,7 +132,7 @@
 - `Assets/Art/AssetPacks/Pixelart Snow Mountain/Tilesets/SlipperyIceTiles.png`
 - `Assets/Art/AssetPacks/Pixelart Snow Mountain/Tilesets/SpikeTiles.png`
 
-For each sheet in its group: click **Sprite Editor** → **Slice** menu → Type: Grid By Cell Size → enter the group's pixel size → Slice → Apply. The slice size reflects the *source sprite dimensions on the sheet* and is independent of PPU.
+For each sheet in its group: click **Sprite Editor** → **Slice** menu → Type: Grid By Cell Size → enter the group's pixel size → Slice → Apply. The slice size reflects the _source sprite dimensions on the sheet_ and is independent of PPU.
 
 > **World-space sizing (PPU matches source size):** because each sheet's PPU equals its source pixel size, **every sliced sprite renders at exactly 1 × 1 world unit** — a 16×16 sprite at PPU 16 and an 8×8 sprite at PPU 8 both fill one cell on a Grid with cell size = 1. The two folders are fully interchangeable on the same tilemap grid: `16x16 tiles/` and `Tilesets/` sheets mix freely at the same painted size. The only remaining difference is art density (8×8 art has half the pixel resolution of 16×16 art at the same on-screen size).
 
@@ -136,27 +141,29 @@ For each sheet in its group: click **Sprite Editor** → **Slice** menu → Type
 > **Why Tile Palettes (not RuleTiles):** the Snow Mountain sheets are laid out as blob/wang tiles (edge + corner variants surrounding a hollow interior — see `Tilesets/icetiles1.png`), not Unity's expected 3×3 neighbor grid. RuleTile's default brush pattern does not match this layout, so authoring RuleTiles would require per-tile custom rule setup that duplicates what a simple Tile Palette gives for free. For DEV-46 we paint manually from a palette and defer any autotile work.
 
 > **Unity Editor task (user):**
+>
 > 1. Right-click in `Assets/Art/Tilemaps/` → Create → Folder → name it `SnowMountain`. Inside `SnowMountain/`, create two subfolders: `Palettes/` and `Tiles/`.
 > 2. Open **Window → 2D → Tile Palette**. In the palette window's top dropdown choose **Create New Palette**, name it `Palette_SnowMountain`, Grid = Rectangle, Cell Size = **Manual 1, 1, 0**, save into `Assets/Art/Tilemaps/SnowMountain/Palettes/`. Unity will create `Palette_SnowMountain.prefab`.
 > 3. With the palette open, drag the sliced sprite sheets below onto the palette canvas. Unity will prompt for a folder to save the auto-generated Tile `.asset` files — point each prompt at `Assets/Art/Tilemaps/SnowMountain/Tiles/`. After each drag, arrange the tiles on the palette so rock, ice, platform, spike, and BG groups are visually clustered (this is just organization — painting is manual).
 
 **Sprite sheets to drag onto the palette:**
 
-| Source sheet | Purpose on the palette |
-|---|---|
-| `Tilesets/rocktiles1.png` + `Tilesets/rocktiles2.png` | Rock ground (blob layout — paint edges/corners/interior manually) |
-| `Tilesets/icetiles1.png` + `Tilesets/icetiles2.png` | Ice ground (same blob pattern as rock) |
-| `Tilesets/iceBGtiles.png`, `rockBGtiles1.png`, `rockBGtiles2.png` | Cavern/background fill behind the playfield |
-| `Tilesets/SlipperyIceTiles.png` | Optional slippery-ice variant (reserved for later tasks if needed) |
-| `16x16 tiles/PlatformTiles.png` (or `Tilesets/PlatformTiles.png`) | Drop-through platform tops |
-| `16x16 tiles/SpikeTiles.png` (or `Tilesets/SpikeTiles.png`) | Decorative spike tiles (actual hazards are `HazardTrigger` objects in Task 12 Step 3) |
-| `16x16 tiles/BackgroundTiles.png` | Flat background fill |
+| Source sheet                                                      | Purpose on the palette                                                                |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `Tilesets/rocktiles1.png` + `Tilesets/rocktiles2.png`             | Rock ground (blob layout — paint edges/corners/interior manually)                     |
+| `Tilesets/icetiles1.png` + `Tilesets/icetiles2.png`               | Ice ground (same blob pattern as rock)                                                |
+| `Tilesets/iceBGtiles.png`, `rockBGtiles1.png`, `rockBGtiles2.png` | Cavern/background fill behind the playfield                                           |
+| `Tilesets/SlipperyIceTiles.png`                                   | Optional slippery-ice variant (reserved for later tasks if needed)                    |
+| `16x16 tiles/PlatformTiles.png` (or `Tilesets/PlatformTiles.png`) | Drop-through platform tops                                                            |
+| `16x16 tiles/SpikeTiles.png` (or `Tilesets/SpikeTiles.png`)       | Decorative spike tiles (actual hazards are `HazardTrigger` objects in Task 12 Step 3) |
+| `16x16 tiles/BackgroundTiles.png`                                 | Flat background fill                                                                  |
 
 All sliced sprites render at 1 world unit per the PPU decision in Step 2, so 16×16 and 8×8 tiles can mix freely on the same painted tilemap.
 
 - [ ] **Step 4: Check in via UVCS**
 
 Unity Version Control → Pending Changes → stage the files listed below → Check in with message: `chore(DEV-46): import Snow Mountain pack and build tile palette`
+
 - `Assets/Art/AssetPacks/Pixelart Snow Mountain/**/*.png.meta` (all modified meta files for reimport)
 - `Assets/Art/Tilemaps/SnowMountain/` (the folder, plus the folder's .meta sibling)
 - `Assets/Art/Tilemaps/SnowMountain/Palettes/` + `.meta`
@@ -169,6 +176,7 @@ Unity Version Control → Pending Changes → stage the files listed below → C
 ## Task 2: Build 3-layer parallax prefab
 
 **Files:**
+
 - Create: `Assets/Prefabs/Platformer/P_SnowMountainParallax.prefab`
 
 **Sizing context (why Tiled draw mode + 1.5× root scale are required):** the `Background{1,2,3}.png` files are authored at **320×180 pixels**. At the project PPU of 16 (per DEV-84) this gives a natural sprite size of **20 × 11.25 world units**. But the Pixel Perfect Camera in `Platformer.unity` was set to `RefResolution 480×270` (DEV-84 end-of-plan note) to keep Kaelen at a ~24% screen-height framing — this yields a **30 × 16.875 unit** viewport. A single bare copy of the background therefore covers only ~66% of the viewport in both axes. Horizontally we tile via `SpriteRenderer.DrawMode = Tiled`. Vertically we cannot tile (the Snow Mountain BG art is not designed to seam top-to-bottom — mountain silhouettes would inject mid-sky), so instead we **uniformly scale the ParallaxRoot by 1.5×** so `11.25 × 1.5 = 16.875 units` exactly fills the viewport height. This is the standard pixel-art parallax convention (Celeste / Dead Cells / Hollow Knight): distant layers accept slight non-pixel-perfect scaling, which reads as atmospheric depth rather than as softness.
@@ -212,6 +220,7 @@ Notes on the Tiled draw mode sizing and root scale:
 - [ ] **Step 4: Check in via UVCS**
 
 Unity Version Control → Pending Changes → stage the files below → Check in with message: `feat(DEV-46): add P_SnowMountainParallax prefab`
+
 - `Assets/Prefabs/Platformer/P_SnowMountainParallax.prefab` + `.meta`
 - `Assets/Prefabs/Platformer/` folder `.meta` if newly created
 - Any modified `Background*.png.meta` files
@@ -221,6 +230,7 @@ Unity Version Control → Pending Changes → stage the files below → Check in
 ## Task 3: Build P_PlatformerCamera prefab
 
 **Files:**
+
 - Create: `Assets/Prefabs/Platformer/P_PlatformerCamera.prefab`
 
 `Assets/Scenes/Platformer.unity` already contains a working Cinemachine follow camera rig (`Main Camera` + `CM Follow Camera`). Extract it into a prefab so every Level 1 scene (and future worlds) shares one point of tuning. Platformer.unity itself stays untouched — it's a regression harness.
@@ -254,6 +264,7 @@ Unity Version Control → Pending Changes → stage the files below → Check in
 - [ ] **Step 6: Check in via UVCS**
 
 Unity Version Control → Pending Changes → Check in with message: `feat(DEV-46): add P_PlatformerCamera prefab`
+
 - `Assets/Prefabs/Platformer/P_PlatformerCamera.prefab` + `.meta`
 
 ---
@@ -261,6 +272,7 @@ Unity Version Control → Pending Changes → Check in with message: `feat(DEV-4
 ## Task 4: Add `Axiom.Core` reference to PlatformerTests asmdef
 
 **Files:**
+
 - Modify: `Assets/Tests/Editor/Platformer/PlatformerTests.asmdef`
 
 The platformer tests will reference `Axiom.Core.PlayerState`. Without this asmdef reference, tests won't compile.
@@ -293,6 +305,7 @@ Replace the contents of `Assets/Tests/Editor/Platformer/PlatformerTests.asmdef` 
 - [ ] **Step 3: Check in via UVCS**
 
 Unity Version Control → Pending Changes → stage the file below → Check in with message: `chore(DEV-46): add Axiom.Core reference to PlatformerTests asmdef`
+
 - `Assets/Tests/Editor/Platformer/PlatformerTests.asmdef`
 
 ---
@@ -300,6 +313,7 @@ Unity Version Control → Pending Changes → stage the file below → Check in 
 ## Task 5: HazardDamageResolver + HazardTrigger
 
 **Files:**
+
 - Create: `Assets/Scripts/Platformer/HazardDamageResolver.cs`
 - Create: `Assets/Scripts/Platformer/HazardTrigger.cs`
 - Create: `Assets/Tests/Editor/Platformer/HazardDamageResolverTests.cs`
@@ -500,6 +514,7 @@ namespace Axiom.Platformer
 - [ ] **Step 6: Check in via UVCS**
 
 Unity Version Control → Pending Changes → stage the files below → Check in with message: `feat(DEV-46): add HazardDamageResolver and HazardTrigger`
+
 - `Assets/Scripts/Platformer/HazardDamageResolver.cs` + `.meta`
 - `Assets/Scripts/Platformer/HazardTrigger.cs` + `.meta`
 - `Assets/Tests/Editor/Platformer/HazardDamageResolverTests.cs` + `.meta`
@@ -509,6 +524,7 @@ Unity Version Control → Pending Changes → stage the files below → Check in
 ## Task 6: LevelExitTrigger
 
 **Files:**
+
 - Create: `Assets/Scripts/Platformer/LevelExitTrigger.cs`
 
 No logic beyond event plumbing — no resolver/tests needed per project's "no premature abstraction" rule.
@@ -581,6 +597,7 @@ namespace Axiom.Platformer
 - [ ] **Step 3: Check in via UVCS**
 
 Unity Version Control → Pending Changes → Check in with message: `feat(DEV-46): add LevelExitTrigger`
+
 - `Assets/Scripts/Platformer/LevelExitTrigger.cs` + `.meta`
 
 ---
@@ -588,6 +605,7 @@ Unity Version Control → Pending Changes → Check in with message: `feat(DEV-4
 ## Task 7: PlatformerHpHudFormatter + PlatformerHpHudUI
 
 **Files:**
+
 - Create: `Assets/Scripts/Platformer/UI/PlatformerHpHudFormatter.cs`
 - Create: `Assets/Scripts/Platformer/UI/PlatformerHpHudUI.cs`
 - Create: `Assets/Tests/Editor/Platformer/PlatformerHpHudFormatterTests.cs`
@@ -714,6 +732,7 @@ namespace Axiom.Platformer.UI
 - [ ] **Step 6: Check in via UVCS**
 
 Unity Version Control → Pending Changes → Check in with message: `feat(DEV-46): add PlatformerHpHud formatter and UI`
+
 - `Assets/Scripts/Platformer/UI/PlatformerHpHudFormatter.cs` + `.meta`
 - `Assets/Scripts/Platformer/UI/PlatformerHpHudUI.cs` + `.meta`
 - `Assets/Scripts/Platformer/UI/` folder `.meta` if newly created
@@ -724,6 +743,7 @@ Unity Version Control → Pending Changes → Check in with message: `feat(DEV-4
 ## Task 8: PlayerDeathResolver + PlayerDeathHandler
 
 **Files:**
+
 - Create: `Assets/Scripts/Platformer/PlayerDeathResolver.cs`
 - Create: `Assets/Scripts/Platformer/PlayerDeathHandler.cs`
 - Create: `Assets/Tests/Editor/Platformer/PlayerDeathResolverTests.cs`
@@ -896,6 +916,7 @@ namespace Axiom.Platformer
 - [ ] **Step 6: Check in via UVCS**
 
 Unity Version Control → Pending Changes → Check in with message: `feat(DEV-46): add PlayerDeathResolver and PlayerDeathHandler`
+
 - `Assets/Scripts/Platformer/PlayerDeathResolver.cs` + `.meta`
 - `Assets/Scripts/Platformer/PlayerDeathHandler.cs` + `.meta`
 - `Assets/Tests/Editor/Platformer/PlayerDeathResolverTests.cs` + `.meta`
@@ -905,6 +926,7 @@ Unity Version Control → Pending Changes → Check in with message: `feat(DEV-4
 ## Task 9: BossVictoryChecker + BossVictoryTrigger + ChapterCompleteCardUI
 
 **Files:**
+
 - Create: `Assets/Scripts/Platformer/BossVictoryChecker.cs`
 - Create: `Assets/Scripts/Platformer/BossVictoryTrigger.cs`
 - Create: `Assets/Scripts/Platformer/UI/ChapterCompleteCardUI.cs`
@@ -1137,6 +1159,7 @@ namespace Axiom.Platformer
 - [ ] **Step 7: Check in via UVCS**
 
 Unity Version Control → Pending Changes → Check in with message: `feat(DEV-46): add BossVictoryChecker, BossVictoryTrigger, ChapterCompleteCardUI`
+
 - `Assets/Scripts/Platformer/BossVictoryChecker.cs` + `.meta`
 - `Assets/Scripts/Platformer/BossVictoryTrigger.cs` + `.meta`
 - `Assets/Scripts/Platformer/UI/ChapterCompleteCardUI.cs` + `.meta`
@@ -1147,6 +1170,7 @@ Unity Version Control → Pending Changes → Check in with message: `feat(DEV-4
 ## Task 10: TutorialPromptTrigger + TutorialPromptPanelUI
 
 **Files:**
+
 - Create: `Assets/Scripts/Platformer/TutorialPromptTrigger.cs`
 - Create: `Assets/Scripts/Platformer/UI/TutorialPromptPanelUI.cs`
 
@@ -1238,6 +1262,7 @@ namespace Axiom.Platformer
 - [ ] **Step 3: Check in via UVCS**
 
 Unity Version Control → Pending Changes → Check in with message: `feat(DEV-46): add TutorialPromptTrigger and panel UI`
+
 - `Assets/Scripts/Platformer/TutorialPromptTrigger.cs` + `.meta`
 - `Assets/Scripts/Platformer/UI/TutorialPromptPanelUI.cs` + `.meta`
 
@@ -1246,6 +1271,7 @@ Unity Version Control → Pending Changes → Check in with message: `feat(DEV-4
 ## Task 11: Create Level 1 EnemyData assets
 
 **Files:**
+
 - Create: `Assets/Data/Enemies/ED_Meltspawn.asset`
 - Create: `Assets/Data/Enemies/ED_FrostbiteCreeper.asset`
 - Create: `Assets/Data/Enemies/ED_VoidWraith.asset`
@@ -1257,15 +1283,15 @@ All values sourced from `docs/ENEMY_ROSTER.md` § LEVEL 1. Keep the existing `ED
 
 > **Unity Editor task (user):** `Assets/Data/Enemies/` → right-click → Create → Axiom → Data → Enemy Data (or whatever the existing `EnemyData` CreateAsset menu path is — see `Assets/Scripts/Data/EnemyData.cs` for the `[CreateAssetMenu]` attribute). Name it `ED_Meltspawn`. Fill fields in Inspector:
 
-| Field | Value |
-|---|---|
-| `enemyName` | Meltspawn |
-| `maxHP` | 20 |
-| `maxMP` | 0 |
-| `atk` | 3 |
-| `def` | 2 |
-| `spd` | 2 |
-| `xpReward` | 20 |
+| Field              | Value                            |
+| ------------------ | -------------------------------- |
+| `enemyName`        | Meltspawn                        |
+| `maxHP`            | 20                               |
+| `maxMP`            | 0                                |
+| `atk`              | 3                                |
+| `def`              | 2                                |
+| `spd`              | 2                                |
+| `xpReward`         | 20                               |
 | `innateConditions` | `[Liquid]` (single element list) |
 
 Leave sprite/animator fields empty for now — art pass is Phase 7.
@@ -1274,50 +1300,51 @@ Leave sprite/animator fields empty for now — art pass is Phase 7.
 
 > **Unity Editor task (user):** Same menu path, name `ED_FrostbiteCreeper`. Fields:
 
-| Field | Value |
-|---|---|
-| `enemyName` | Frostbite Creeper |
-| `maxHP` | 22 |
-| `maxMP` | 0 |
-| `atk` | 4 |
-| `def` | 1 |
-| `spd` | 3 |
-| `xpReward` | 25 |
-| `innateConditions` | `[Liquid]` |
+| Field              | Value             |
+| ------------------ | ----------------- |
+| `enemyName`        | Frostbite Creeper |
+| `maxHP`            | 22                |
+| `maxMP`            | 0                 |
+| `atk`              | 4                 |
+| `def`              | 1                 |
+| `spd`              | 3                 |
+| `xpReward`         | 25                |
+| `innateConditions` | `[Liquid]`        |
 
 - [ ] **Step 3: Create `ED_VoidWraith.asset`**
 
 > **Unity Editor task (user):** Same menu path, name `ED_VoidWraith`. Fields:
 
-| Field | Value |
-|---|---|
-| `enemyName` | Void Wraith |
-| `maxHP` | 24 |
-| `maxMP` | 0 |
-| `atk` | 4 |
-| `def` | 1 |
-| `spd` | 4 |
-| `xpReward` | 30 |
-| `innateConditions` | `[Vapor]` |
+| Field              | Value       |
+| ------------------ | ----------- |
+| `enemyName`        | Void Wraith |
+| `maxHP`            | 24          |
+| `maxMP`            | 0           |
+| `atk`              | 4           |
+| `def`              | 1           |
+| `spd`              | 4           |
+| `xpReward`         | 30          |
+| `innateConditions` | `[Vapor]`   |
 
 - [ ] **Step 4: Create `ED_FrostMeltSentinel.asset`**
 
 > **Unity Editor task (user):** Same menu path, name `ED_FrostMeltSentinel`. Fields:
 
-| Field | Value |
-|---|---|
-| `enemyName` | Frost-Melt Sentinel |
-| `maxHP` | 100 |
-| `maxMP` | 20 |
-| `atk` | 10 |
-| `def` | 5 |
-| `spd` | 6 |
-| `xpReward` | 175 |
+| Field              | Value                                                                                                                  |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `enemyName`        | Frost-Melt Sentinel                                                                                                    |
+| `maxHP`            | 100                                                                                                                    |
+| `maxMP`            | 20                                                                                                                     |
+| `atk`              | 10                                                                                                                     |
+| `def`              | 5                                                                                                                      |
+| `spd`              | 6                                                                                                                      |
+| `xpReward`         | 175                                                                                                                    |
 | `innateConditions` | `[Solid]` (initial phase — phase-cycling behavior belongs to a future boss AI ticket; use single-condition v1 for now) |
 
 - [ ] **Step 5: Check in via UVCS**
 
 Unity Version Control → Pending Changes → Check in with message: `feat(DEV-46): add Level 1 EnemyData assets`
+
 - `Assets/Data/Enemies/ED_Meltspawn.asset` + `.meta`
 - `Assets/Data/Enemies/ED_FrostbiteCreeper.asset` + `.meta`
 - `Assets/Data/Enemies/ED_VoidWraith.asset` + `.meta`
@@ -1328,6 +1355,7 @@ Unity Version Control → Pending Changes → Check in with message: `feat(DEV-4
 ## Task 11A: MeltableObstacle scripts and tests
 
 **Files:**
+
 - Create: `Assets/Tests/Editor/Platformer/MeltableObstacleTests.cs`
 - Create: `Assets/Scripts/Platformer/MeltableObstacle.cs`
 - Create: `Assets/Scripts/Platformer/MeltableObstacleController.cs`
@@ -1339,6 +1367,7 @@ Implements the meltable Ice Wall scaffold per `docs/superpowers/specs/2026-04-25
 - [ ] **Step 1: Write `MeltableObstacleTests.cs`**
 
 Four NUnit cases against `MeltableObstacle.CanMelt(string spellId, IReadOnlyList<string> meltSpellIds)`:
+
 - `CanMelt_NullSpellId_ReturnsFalse`
 - `CanMelt_EmptySpellId_ReturnsFalse`
 - `CanMelt_SpellInList_ReturnsTrue`
@@ -1365,6 +1394,7 @@ MonoBehaviour with serialized `_tilemap` (`UnityEngine.Tilemaps.Tilemap`), `_sol
 - [ ] **Step 6: Check in via UVCS**
 
 Unity Version Control → Pending Changes → Check in with message: `feat(DEV-46): add MeltableObstacle scripts and tests`
+
 - `Assets/Scripts/Platformer/MeltableObstacle.cs` + `.meta`
 - `Assets/Scripts/Platformer/MeltableObstacleController.cs` + `.meta`
 - `Assets/Scripts/Platformer/MeltableObstacleDebugCaster.cs` + `.meta`
@@ -1377,6 +1407,7 @@ Unity Version Control → Pending Changes → Check in with message: `feat(DEV-4
 ## Task 11B: InputAction + P_IceWall prefab
 
 **Files:**
+
 - Modify: `Assets/InputSystem_Actions.inputactions` (add `DebugMeltCast` action and `<Keyboard>/m` binding under the Player map)
 - Create: `Assets/Prefabs/Platformer/P_IceWall.prefab`
 
@@ -1404,6 +1435,7 @@ P_IceWall (root)
 - [ ] **Step 3: Wire serialized fields**
 
 > **Unity Editor task (user):** On the prefab root:
+>
 > - `MeltableObstacleController._tilemap` → drag the child `Tilemap`
 > - `MeltableObstacleController._solidCollider` → drag the child `Tilemap`'s `TilemapCollider2D`
 > - `MeltableObstacleController._meltSpells` → set size 1, drag `Assets/Data/Spells/SD_Combust.asset` into element 0
@@ -1419,6 +1451,7 @@ P_IceWall (root)
 - [ ] **Step 5: Check in via UVCS**
 
 Unity Version Control → Pending Changes → Check in with message: `feat(DEV-46): add P_IceWall prefab and DebugMeltCast input action`
+
 - `Assets/InputSystem_Actions.inputactions`
 - `Assets/Scripts/Platformer/InputSystem_Actions.cs` (auto-regenerated)
 - `Assets/Prefabs/Platformer/P_IceWall.prefab` + `.meta`
@@ -1428,6 +1461,7 @@ Unity Version Control → Pending Changes → Check in with message: `feat(DEV-4
 ## Task 12: Build Level_1-1 (tutorial stage)
 
 **Files:**
+
 - Modify: `Assets/Scenes/Level_1-1.unity` (currently stub)
 
 Tutorial scope: movement controls, Advantaged combat, Surprised combat, plus the first voice-cast moment (handled by existing Battle UI — Level_1-1 just delivers the first Meltspawn encounter).
@@ -1485,7 +1519,7 @@ Checkpoint: tutorial stage is forgiving. No more than 2 spike clusters and 1 pit
 
 > **Unity Editor task (user):** Secret pattern for Level_1-1 (simplest — fake wall):
 
-- Create a section of Ground tiles that extends behind what appears to be a wall, containing 1 pickup or chest (use a placeholder sprite). 
+- Create a section of Ground tiles that extends behind what appears to be a wall, containing 1 pickup or chest (use a placeholder sprite).
 - Add a narrow vertical gap one tile wide that the player can enter by jumping into it.
 - Optionally add a TutorialPromptTrigger hinting at exploration (e.g. "Some walls hide more than they show.").
 
@@ -1517,6 +1551,7 @@ Since DEV-82 puzzles aren't built yet, the reward is visual/spatial only — an 
 - [ ] **Step 7: Playtest and iterate**
 
 > **Unity Editor task (user):** Enter Play mode from Level_1-1. Verify:
+
 - Tutorial prompts appear in sequence as you walk past triggers.
 - Meltspawn encounter loads Battle scene (Advantaged if you strike, Surprised if you walk into it).
 - Spike cluster deals 20% max HP.
@@ -1527,6 +1562,7 @@ Since DEV-82 puzzles aren't built yet, the reward is visual/spatial only — an 
 - [ ] **Step 8: Check in via UVCS**
 
 Unity Version Control → Pending Changes → Check in with message: `feat(DEV-46): build Level_1-1 tutorial stage`
+
 - `Assets/Scenes/Level_1-1.unity`
 
 ---
@@ -1534,13 +1570,15 @@ Unity Version Control → Pending Changes → Check in with message: `feat(DEV-4
 ## Task 13: Build Level_1-2
 
 **Files:**
+
 - Create: `Assets/Scenes/Level_1-2.unity`
 
 Level_1-2 focus: Frostbite Creeper introduces the DoT status effect. Narrative beat: "things escalate." No tutorial prompts — player has the basics now.
 
 - [ ] **Step 1: Create the scene**
 
-> **Unity Editor task (user):** File → New Scene → save as `Assets/Scenes/Level_1-2.unity`. Copy the root hierarchy from Level_1-1 as a starting template, then remove all `Tutorial_*` triggers and change:
+> **Unity Editor task (user):** File → New Scene → save as `Assets/Scenes/Level_1-2.unity`. Copy the root hierarchy from Level*1-1 as a starting template, then remove all `Tutorial*\*` triggers and change:
+
 - `Checkpoint_Start._checkpointId = "CP_Level_1-2_Start"`
 - `LevelExit_To_1-2` → rename to `LevelExit_To_1-3`, `_targetSceneName = "Level_1-3"`
 - Remove the Meltspawn instance
@@ -1549,6 +1587,7 @@ Level_1-2 focus: Frostbite Creeper introduces the DoT status effect. Narrative b
 - [ ] **Step 2: Paint geometry**
 
 > **Unity Editor task (user):** Longer level than 1-1 (~100 tiles). Introduce:
+
 - Elevated platforms requiring ~70% of max jump height
 - 2–3 drop-through platforms in a vertical sequence
 - 2 spike clusters
@@ -1557,6 +1596,7 @@ Level_1-2 focus: Frostbite Creeper introduces the DoT status effect. Narrative b
 - [ ] **Step 3: Place 2–3 Frostbite Creeper instances**
 
 > **Unity Editor task (user):** For each instance:
+
 - Instance the Enemy prefab
 - `EnemyController.EnemyId` = `"L1-2_FrostbiteCreeper_01"`, `_02`, etc.
 - `ExplorationEnemyCombatTrigger._enemyData = ED_FrostbiteCreeper`
@@ -1573,6 +1613,7 @@ Level_1-2 focus: Frostbite Creeper introduces the DoT status effect. Narrative b
 - [ ] **Step 6: Check in via UVCS**
 
 Unity Version Control → Pending Changes → Check in with message: `feat(DEV-46): build Level_1-2`
+
 - `Assets/Scenes/Level_1-2.unity` + `.meta`
 
 ---
@@ -1580,6 +1621,7 @@ Unity Version Control → Pending Changes → Check in with message: `feat(DEV-4
 ## Task 14: Build Level_1-3
 
 **Files:**
+
 - Create: `Assets/Scenes/Level_1-3.unity`
 
 Level_1-3 focus: Void Wraith introduces Vapor condition and the Combustion-on-Vapor elemental synergy. Harder geometry — the last level before the boss.
@@ -1591,6 +1633,7 @@ Level_1-3 focus: Void Wraith introduces Vapor condition and the Combustion-on-Va
 - [ ] **Step 2: Paint geometry**
 
 > **Unity Editor task (user):** Hardest non-boss level. Introduce:
+
 - Multi-segment vertical climbing with drop-through platforms
 - 3–4 hazards including a "spike tunnel" forcing precise jumps
 - Use `Decor/ClimberDecor.png` or `iceDecor.png` for mood
@@ -1598,6 +1641,7 @@ Level_1-3 focus: Void Wraith introduces Vapor condition and the Combustion-on-Va
 - [ ] **Step 3: Place 2–3 Void Wraith instances**
 
 > **Unity Editor task (user):** For each instance:
+
 - `EnemyController.EnemyId` = `"L1-3_VoidWraith_01"`, `_02`, etc.
 - `ExplorationEnemyCombatTrigger._enemyData = ED_VoidWraith`
 - Void Wraiths are faster (SPD 4) — place them in open arenas where SPD matters
@@ -1613,6 +1657,7 @@ Level_1-3 focus: Void Wraith introduces Vapor condition and the Combustion-on-Va
 - [ ] **Step 6: Check in via UVCS**
 
 Unity Version Control → Pending Changes → Check in with message: `feat(DEV-46): build Level_1-3`
+
 - `Assets/Scenes/Level_1-3.unity` + `.meta`
 
 ---
@@ -1620,6 +1665,7 @@ Unity Version Control → Pending Changes → Check in with message: `feat(DEV-4
 ## Task 15: Build Level_1-4 (boss stage)
 
 **Files:**
+
 - Create: `Assets/Scenes/Level_1-4.unity`
 
 Boss arena. Minimal platforming — walk/jump to the boss, engage, win, see the completion card.
@@ -1631,6 +1677,7 @@ Boss arena. Minimal platforming — walk/jump to the boss, engage, win, see the 
 - [ ] **Step 2: Paint the boss arena**
 
 > **Unity Editor task (user):**
+
 - Flat ground arena with a decorative backdrop (use rock + ice tiles together for the "Frost-Melt" visual theme)
 - Checkpoint_Start near the left edge with `_checkpointId = "CP_Level_1-4_Start"` — respawn target if the player flees/dies before the boss triggers
 - No hazards, no minions — the boss is the only encounter
@@ -1638,6 +1685,7 @@ Boss arena. Minimal platforming — walk/jump to the boss, engage, win, see the 
 - [ ] **Step 3: Place the Frost-Melt Sentinel**
 
 > **Unity Editor task (user):**
+
 - Instance the Enemy prefab at arena center-right
 - `EnemyController.EnemyId = "L1-4_FrostMeltSentinel"`
 - `ExplorationEnemyCombatTrigger._enemyData = ED_FrostMeltSentinel`
@@ -1646,6 +1694,7 @@ Boss arena. Minimal platforming — walk/jump to the boss, engage, win, see the 
 - [ ] **Step 4: Add the ChapterCompleteCard and BossVictoryTrigger**
 
 > **Unity Editor task (user):**
+
 - Add the `ChapterCompleteCardUI` to the HUD_Canvas (root panel inactive by default). Fill fields: `_chapterTitle = "Chapter 1 Complete"`, `_continueSceneName = "MainMenu"`.
 - Add an empty GameObject `BossVictoryTrigger_Scene` with `BossVictoryTrigger` component. Set `_bossEnemyId = "L1-4_FrostMeltSentinel"` (must match the EnemyController.EnemyId), and wire `_completeCard` to the ChapterCompleteCardUI in the Canvas.
 
@@ -1656,6 +1705,7 @@ Boss arena. Minimal platforming — walk/jump to the boss, engage, win, see the 
 - [ ] **Step 6: Check in via UVCS**
 
 Unity Version Control → Pending Changes → Check in with message: `feat(DEV-46): build Level_1-4 boss stage`
+
 - `Assets/Scenes/Level_1-4.unity` + `.meta`
 
 ---
@@ -1665,6 +1715,7 @@ Unity Version Control → Pending Changes → Check in with message: `feat(DEV-4
 - [ ] **Step 1: Add scenes to Build Settings**
 
 > **Unity Editor task (user):** File → Build Settings → drag the following into the Scenes In Build list, in order:
+
 - `Assets/Scenes/MainMenu.unity` (if not already)
 - `Assets/Scenes/Level_1-1.unity`
 - `Assets/Scenes/Level_1-2.unity`
@@ -1692,6 +1743,7 @@ Fix any issues inline (small scene tweaks, Inspector wiring) before the next ste
 - [ ] **Step 3: Check in via UVCS**
 
 Unity Version Control → Pending Changes → Check in with message: `chore(DEV-46): register Level 1 scenes in Build Settings`
+
 - `ProjectSettings/EditorBuildSettings.asset`
 
 ---
@@ -1699,6 +1751,7 @@ Unity Version Control → Pending Changes → Check in with message: `chore(DEV-
 ## Task 17: Cleanup
 
 **Files (deletions):**
+
 - Delete: `Assets/Editor/LevelBuilderTool.cs` and `.meta`
 - Delete: `Assets/Editor/LevelBuilderTool.asmdef` and `.meta` (if only used for LevelBuilderTool; check whether it also contains other editor tools first)
 - Delete: `Assets/Art/Tilemaps/GroundRuleTile.asset` and `.meta`
@@ -1734,6 +1787,7 @@ Expected: only the files themselves should match. If any scene or asset referenc
 - [ ] **Step 5: Check in via UVCS**
 
 Unity Version Control → Pending Changes → Check in with message: `chore(DEV-46): remove Phase 1 LevelBuilderTool and placeholder tiles`
+
 - Deleted: `Assets/Editor/LevelBuilderTool.cs` + `.meta`
 - Deleted: `Assets/Editor/LevelBuilderTool.asmdef` + `.meta` (if applicable)
 - Deleted: `Assets/Art/Tilemaps/GroundRuleTile.asset` + `.meta`
@@ -1761,20 +1815,20 @@ See `docs/VERSION_CONTROL.md` for why this is optional but encouraged.
 
 ## Acceptance Criteria Mapping
 
-| DEV-46 AC bullet | Covered by |
-|---|---|
+| DEV-46 AC bullet                                                                | Covered by                                                                                                                                 |
+| ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | At least one complete, playable level built using Unity 2D Tilemap + Rule Tiles | Tasks 1, 12–15 — AC satisfied by Unity 2D Tilemap; RuleTiles deferred (blob-layout sheets require manual palette paint, see Task 1 Step 3) |
-| Variety of platform types: solid ground, elevated, drop-through | Tasks 1 (tile palette), 12–15 (placement) |
-| Environmental hazards (pits, damaging terrain) | Tasks 5 (script), 12–14 (placement) |
-| At least one secret area per level | Tasks 12.4, 13.4, 14.4; Level_1-4 is boss arena (no secret required) |
-| Enemy spawn positions defined | Tasks 12.5, 13.3, 14.3, 15.3 — existing `EnemyPatrolBehavior` from DEV-32 |
-| Battle trigger zones linked to enemy data | Tasks 12.5, 13.3, 14.3, 15.3 — existing `ExplorationEnemyCombatTrigger` + new EnemyData assets from Task 11 |
-| Level exit/progression trigger | Task 6 (script), 12.6, 13.1, 14.1 (placement); Level_1-4 uses `BossVictoryTrigger` instead |
-| Final tileset (or placeholder pending Phase 7) | Task 1 — Snow Mountain pack is final for Level 1 |
-| Jump distances match player jump arc from DEV-7 | Task 12.2, 16.2 (playtest validation) |
-| (Added) HP persists between platformer hazards and battle | Task 5 writes through `PlayerState`, which is already persistent |
-| (Added) Tutorial stage for Level_1-1 | Task 10 (script), 12 (placement) |
-| (Added) Boss stage completion → placeholder card → MainMenu | Task 9 (scripts), 15 (scene) |
+| Variety of platform types: solid ground, elevated, drop-through                 | Tasks 1 (tile palette), 12–15 (placement)                                                                                                  |
+| Environmental hazards (pits, damaging terrain)                                  | Tasks 5 (script), 12–14 (placement)                                                                                                        |
+| At least one secret area per level                                              | Tasks 12.4, 13.4, 14.4; Level_1-4 is boss arena (no secret required)                                                                       |
+| Enemy spawn positions defined                                                   | Tasks 12.5, 13.3, 14.3, 15.3 — existing `EnemyPatrolBehavior` from DEV-32                                                                  |
+| Battle trigger zones linked to enemy data                                       | Tasks 12.5, 13.3, 14.3, 15.3 — existing `ExplorationEnemyCombatTrigger` + new EnemyData assets from Task 11                                |
+| Level exit/progression trigger                                                  | Task 6 (script), 12.6, 13.1, 14.1 (placement); Level_1-4 uses `BossVictoryTrigger` instead                                                 |
+| Final tileset (or placeholder pending Phase 7)                                  | Task 1 — Snow Mountain pack is final for Level 1                                                                                           |
+| Jump distances match player jump arc from DEV-7                                 | Task 12.2, 16.2 (playtest validation)                                                                                                      |
+| (Added) HP persists between platformer hazards and battle                       | Task 5 writes through `PlayerState`, which is already persistent                                                                           |
+| (Added) Tutorial stage for Level_1-1                                            | Task 10 (script), 12 (placement)                                                                                                           |
+| (Added) Boss stage completion → placeholder card → MainMenu                     | Task 9 (scripts), 15 (scene)                                                                                                               |
 
 ---
 

@@ -144,83 +144,131 @@ namespace Axiom.Core
         /// combat when the player is restored into their prior position (which sits
         /// inside the enemy's trigger).
         /// </summary>
-        private readonly HashSet<string> _defeatedEnemyIds =
-            new HashSet<string>(StringComparer.Ordinal);
+        // Per-scene tracking: a death in one level only wipes that level's defeated set,
+        // so backtracking through a previously-cleared level still finds those enemies dead.
+        // Scene bucket key is the originating level scene (PlayerState.ActiveSceneName at the
+        // moment of the kill), NOT the Battle scene — so writes from BattleController land
+        // under the correct level.
+        private readonly Dictionary<string, HashSet<string>> _defeatedEnemiesByScene =
+            new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
 
-        private readonly Dictionary<string, int> _damagedEnemyHp =
-            new Dictionary<string, int>(StringComparer.Ordinal);
+        private readonly Dictionary<string, Dictionary<string, int>> _damagedEnemyHpByScene =
+            new Dictionary<string, Dictionary<string, int>>(StringComparer.Ordinal);
 
         private readonly HashSet<string> _collectedPickupIds =
             new HashSet<string>(StringComparer.Ordinal);
 
+        // ── Defeated enemies ────────────────────────────────────────────────
+
+        /// <summary>
+        /// Returns true when the given enemy ID has been recorded as defeated in the
+        /// player's current originating scene (<see cref="PlayerState.ActiveSceneName"/>).
+        /// Use the InScene overload for explicit scene control (e.g. tests).
+        /// </summary>
         public bool IsEnemyDefeated(string enemyId) =>
-            !string.IsNullOrEmpty(enemyId) && _defeatedEnemyIds.Contains(enemyId);
+            IsEnemyDefeatedInScene(GetActiveSceneBucket(), enemyId);
 
-        public void MarkEnemyDefeated(string enemyId)
+        public bool IsEnemyDefeatedInScene(string sceneName, string enemyId)
         {
-            if (!string.IsNullOrEmpty(enemyId))
-                _defeatedEnemyIds.Add(enemyId);
-        }
-
-        public void ClearDefeatedEnemies() => _defeatedEnemyIds.Clear();
-
-        /// <summary>
-        /// Read-only view of the defeated-enemy set. Used by BuildSaveData to
-        /// project the set into the SaveData DTO. Do not cast and mutate — use
-        /// MarkEnemyDefeated / ClearDefeatedEnemies / RestoreDefeatedEnemies.
-        /// </summary>
-        public IEnumerable<string> DefeatedEnemyIds => _defeatedEnemyIds;
-
-        /// <summary>
-        /// Replaces the defeated-enemy set with the provided IDs. Null or whitespace
-        /// IDs in the input are skipped. A null input clears the set.
-        /// Called on Continue after ApplySaveData to restore cross-session state.
-        /// </summary>
-        public void RestoreDefeatedEnemies(IEnumerable<string> enemyIds)
-        {
-            _defeatedEnemyIds.Clear();
-            if (enemyIds == null)
-                return;
-
-            foreach (string id in enemyIds)
-            {
-                if (!string.IsNullOrWhiteSpace(id))
-                    _defeatedEnemyIds.Add(id);
-            }
+            if (string.IsNullOrEmpty(enemyId)) return false;
+            string key = sceneName ?? string.Empty;
+            return _defeatedEnemiesByScene.TryGetValue(key, out HashSet<string> set) && set.Contains(enemyId);
         }
 
         /// <summary>
-        /// Returns the persisted current HP for a damaged enemy, or -1 if the enemy
-        /// has no damage override (meaning it should start at full HP).
-        /// </summary>
-        public int GetDamagedEnemyHp(string enemyId)
-        {
-            if (string.IsNullOrEmpty(enemyId)) return -1;
-            return _damagedEnemyHp.TryGetValue(enemyId, out int hp) ? hp : -1;
-        }
-
-        /// <summary>
-        /// Records a damaged enemy's current HP. Called by BattleController on Fled.
+        /// Records the enemy as defeated under the player's current originating scene.
         /// Null/empty IDs are silently ignored.
         /// </summary>
-        public void SetDamagedEnemyHp(string enemyId, int currentHp)
+        public void MarkEnemyDefeated(string enemyId) =>
+            MarkEnemyDefeatedInScene(GetActiveSceneBucket(), enemyId);
+
+        public void MarkEnemyDefeatedInScene(string sceneName, string enemyId)
         {
-            if (!string.IsNullOrEmpty(enemyId))
-                _damagedEnemyHp[enemyId] = currentHp;
+            if (string.IsNullOrEmpty(enemyId)) return;
+            string key = sceneName ?? string.Empty;
+            if (!_defeatedEnemiesByScene.TryGetValue(key, out HashSet<string> set))
+            {
+                set = new HashSet<string>(StringComparer.Ordinal);
+                _defeatedEnemiesByScene[key] = set;
+            }
+            set.Add(enemyId);
         }
+
+        /// <summary>Clears every scene's defeated set. Used by StartNewGame.</summary>
+        public void ClearDefeatedEnemies() => _defeatedEnemiesByScene.Clear();
 
         /// <summary>
-        /// Removes a single enemy's damage override. Called on Victory (enemy is dead,
-        /// no HP to persist). Null/empty IDs are silently ignored.
+        /// Clears only the named scene's defeated set. Used by RespawnAtLastCheckpoint
+        /// so dying in level A respawns its enemies but leaves level B's progress intact.
         /// </summary>
-        public void ClearDamagedEnemyHp(string enemyId)
+        public void ClearDefeatedEnemiesInScene(string sceneName) =>
+            _defeatedEnemiesByScene.Remove(sceneName ?? string.Empty);
+
+        /// <summary>
+        /// Read-only view of defeated enemies in the given scene. Empty when the scene
+        /// has no recorded defeats. Used by BossVictoryTrigger via BossVictoryChecker.
+        /// </summary>
+        public IEnumerable<string> DefeatedEnemyIdsInScene(string sceneName)
         {
-            if (!string.IsNullOrEmpty(enemyId))
-                _damagedEnemyHp.Remove(enemyId);
+            string key = sceneName ?? string.Empty;
+            return _defeatedEnemiesByScene.TryGetValue(key, out HashSet<string> set)
+                ? set
+                : Array.Empty<string>();
         }
 
-        /// <summary>Clears all damaged enemy HP overrides.</summary>
-        public void ClearAllDamagedEnemyHp() => _damagedEnemyHp.Clear();
+        // ── Damaged enemy HP ────────────────────────────────────────────────
+
+        public int GetDamagedEnemyHp(string enemyId) =>
+            GetDamagedEnemyHpInScene(GetActiveSceneBucket(), enemyId);
+
+        public int GetDamagedEnemyHpInScene(string sceneName, string enemyId)
+        {
+            if (string.IsNullOrEmpty(enemyId)) return -1;
+            string key = sceneName ?? string.Empty;
+            return _damagedEnemyHpByScene.TryGetValue(key, out Dictionary<string, int> sceneMap) &&
+                   sceneMap.TryGetValue(enemyId, out int hp)
+                ? hp
+                : -1;
+        }
+
+        public void SetDamagedEnemyHp(string enemyId, int currentHp) =>
+            SetDamagedEnemyHpInScene(GetActiveSceneBucket(), enemyId, currentHp);
+
+        public void SetDamagedEnemyHpInScene(string sceneName, string enemyId, int currentHp)
+        {
+            if (string.IsNullOrEmpty(enemyId)) return;
+            string key = sceneName ?? string.Empty;
+            if (!_damagedEnemyHpByScene.TryGetValue(key, out Dictionary<string, int> sceneMap))
+            {
+                sceneMap = new Dictionary<string, int>(StringComparer.Ordinal);
+                _damagedEnemyHpByScene[key] = sceneMap;
+            }
+            sceneMap[enemyId] = currentHp;
+        }
+
+        public void ClearDamagedEnemyHp(string enemyId) =>
+            ClearDamagedEnemyHpInScene(GetActiveSceneBucket(), enemyId);
+
+        public void ClearDamagedEnemyHpInScene(string sceneName, string enemyId)
+        {
+            if (string.IsNullOrEmpty(enemyId)) return;
+            string key = sceneName ?? string.Empty;
+            if (_damagedEnemyHpByScene.TryGetValue(key, out Dictionary<string, int> sceneMap))
+                sceneMap.Remove(enemyId);
+        }
+
+        /// <summary>Clears every scene's damaged-HP overrides. Used by StartNewGame.</summary>
+        public void ClearAllDamagedEnemyHp() => _damagedEnemyHpByScene.Clear();
+
+        /// <summary>Clears one scene's damaged-HP overrides. Used by RespawnAtLastCheckpoint.</summary>
+        public void ClearAllDamagedEnemyHpInScene(string sceneName) =>
+            _damagedEnemyHpByScene.Remove(sceneName ?? string.Empty);
+
+        private string GetActiveSceneBucket()
+        {
+            EnsurePlayerState();
+            return PlayerState.ActiveSceneName ?? string.Empty;
+        }
 
         public bool IsPickupCollected(string pickupId) =>
             !string.IsNullOrEmpty(pickupId) && _collectedPickupIds.Contains(pickupId);
@@ -284,8 +332,19 @@ namespace Axiom.Core
                 worldPositionY = PlayerState.WorldPositionY,
                 activeSceneName = sceneName ?? string.Empty,
                 activatedCheckpointIds = CopyReadOnlyStringList(PlayerState.ActivatedCheckpointIds),
-                defeatedEnemyIds = CopyHashSet(_defeatedEnemyIds),
-                damagedEnemyHp = BuildEnemyHpEntries(_damagedEnemyHp),
+                lastCheckpointPositionX = PlayerState.LastCheckpointPositionX,
+                lastCheckpointPositionY = PlayerState.LastCheckpointPositionY,
+                lastCheckpointSceneName = PlayerState.LastCheckpointSceneName ?? string.Empty,
+                checkpointLevel   = PlayerState.CheckpointLevel,
+                checkpointXp      = PlayerState.CheckpointXp,
+                checkpointMaxHp   = PlayerState.CheckpointMaxHp,
+                checkpointMaxMp   = PlayerState.CheckpointMaxMp,
+                checkpointAttack  = PlayerState.CheckpointAttack,
+                checkpointDefense = PlayerState.CheckpointDefense,
+                checkpointSpeed   = PlayerState.CheckpointSpeed,
+                checkpointUnlockedSpellIds = CopyReadOnlyStringList(PlayerState.CheckpointUnlockedSpellIds),
+                defeatedEnemiesPerScene = BuildDefeatedEnemiesPerScene(_defeatedEnemiesByScene),
+                damagedEnemyHpPerScene = BuildDamagedEnemyHpPerScene(_damagedEnemyHpByScene),
                 collectedPickupIds = CopyHashSet(_collectedPickupIds)
             };
         }
@@ -317,8 +376,21 @@ namespace Axiom.Core
             PlayerState.SetWorldPosition(data.worldPositionX, data.worldPositionY);
             PlayerState.SetActiveScene(data.activeSceneName ?? string.Empty);
             PlayerState.SetActivatedCheckpointIds(data.activatedCheckpointIds ?? Array.Empty<string>());
-            RestoreDefeatedEnemies(data.defeatedEnemyIds);
-            RestoreDamagedEnemyHp(data.damagedEnemyHp);
+            PlayerState.SetLastCheckpoint(
+                data.lastCheckpointSceneName ?? string.Empty,
+                data.lastCheckpointPositionX,
+                data.lastCheckpointPositionY);
+            PlayerState.SetCheckpointProgression(
+                data.checkpointLevel,
+                data.checkpointXp,
+                data.checkpointMaxHp,
+                data.checkpointMaxMp,
+                data.checkpointAttack,
+                data.checkpointDefense,
+                data.checkpointSpeed,
+                data.checkpointUnlockedSpellIds ?? Array.Empty<string>());
+            RestoreDefeatedEnemiesPerScene(data);
+            RestoreDamagedEnemyHpPerScene(data);
             RestoreCollectedPickups(data.collectedPickupIds);
         }
 
@@ -352,6 +424,90 @@ namespace Axiom.Core
 
             LoadScene(sceneToLoad);
             return true;
+        }
+
+        /// <summary>
+        /// Loads the scene the player was last in (set by <see cref="CaptureWorldSnapshot"/>).
+        /// Used by Flee and Victory to return from Battle to whichever level the encounter
+        /// originated in. Falls back to <see cref="DefaultContinueScene"/> when no scene
+        /// has been recorded (e.g. standalone Battle scene play).
+        /// </summary>
+        public void ReturnToWorldScene()
+        {
+            EnsurePlayerState();
+            string sceneToLoad = string.IsNullOrWhiteSpace(PlayerState.ActiveSceneName)
+                ? DefaultContinueScene
+                : PlayerState.ActiveSceneName;
+
+            LoadScene(sceneToLoad);
+        }
+
+        /// <summary>
+        /// Heals the player to full and loads the scene of the most recently touched save
+        /// point, teleporting to its position. Returns false when no checkpoint has been
+        /// activated this playthrough — caller is responsible for the game-over fallback.
+        /// Used by both pit-death (PlayerDeathHandler) and battle defeat (PostBattleFlowController).
+        /// </summary>
+        public bool RespawnAtLastCheckpoint(TransitionStyle style)
+        {
+            EnsurePlayerState();
+            if (PlayerState.ActivatedCheckpointIds.Count == 0)
+                return false;
+
+            string sceneToLoad = string.IsNullOrWhiteSpace(PlayerState.LastCheckpointSceneName)
+                ? PlayerState.ActiveSceneName
+                : PlayerState.LastCheckpointSceneName;
+
+            if (string.IsNullOrWhiteSpace(sceneToLoad))
+                return false;
+
+            // Roll back progression to the checkpoint snapshot — Level/XP/stats/spells.
+            // Heal afterwards so MaxHp/MaxMp from the snapshot drive the full-heal target.
+            PlayerState.RestoreCheckpointProgression();
+            EnsureSpellUnlockService();
+            _spellUnlockService?.RestoreFromIds(PlayerState.UnlockedSpellIds);
+            _spellUnlockService?.NotifyPlayerLevel(PlayerState.Level);
+
+            PlayerState.SetCurrentHp(PlayerState.MaxHp);
+            PlayerState.SetCurrentMp(PlayerState.MaxMp);
+            PlayerState.SetWorldPosition(
+                PlayerState.LastCheckpointPositionX,
+                PlayerState.LastCheckpointPositionY);
+            PlayerState.SetActiveScene(sceneToLoad);
+
+            // Stale per-encounter state from the battle that just ended (or that the
+            // player was about to fight before falling in a pit) must not bleed into
+            // the respawn scene's restore step.
+            ClearPendingBattle();
+            ClearWorldSnapshot();
+
+            // Dying restarts the checkpoint scene only — defeated/damaged enemies in
+            // other scenes the player has already cleared stay defeated.
+            ClearDefeatedEnemiesInScene(sceneToLoad);
+            ClearAllDamagedEnemyHpInScene(sceneToLoad);
+
+            PersistToDisk();
+            LoadScene(sceneToLoad, style);
+            return true;
+        }
+
+        /// <summary>
+        /// Records the most recently touched save point's position and current scene as
+        /// the respawn destination, AND snapshots progression (Level/XP/stats/unlocked
+        /// spells) so a later death rolls those back too — preventing XP-farm loops.
+        /// Persists immediately so Continue from MainMenu and post-defeat respawn share
+        /// the same source of truth.
+        /// </summary>
+        public void SetLastCheckpoint(float positionX, float positionY)
+        {
+            EnsurePlayerState();
+            PlayerState.SetLastCheckpoint(
+                SceneManager.GetActiveScene().name,
+                positionX,
+                positionY);
+            PlayerState.CaptureCheckpointProgression();
+            EnsureSaveService();
+            _saveService.Save(BuildSaveData());
         }
 
         /// <summary>
@@ -536,14 +692,14 @@ namespace Axiom.Core
         /// Single entry point for scene loads from GameManager. Uses DEV-34
         /// <see cref="SceneTransitionController"/> when present; otherwise falls back to an immediate load.
         /// </summary>
-        private void LoadScene(string sceneName)
+        private void LoadScene(string sceneName, TransitionStyle style = TransitionStyle.BlackFade)
         {
             if (!Application.isPlaying)
                 return;
 
             SceneTransitionController transition = SceneTransition;
             if (transition != null)
-                transition.BeginTransition(sceneName, TransitionStyle.BlackFade);
+                transition.BeginTransition(sceneName, style);
             else
                 SceneManager.LoadScene(sceneName);
         }
@@ -585,29 +741,124 @@ namespace Axiom.Core
         /// </summary>
         public void RaiseSceneReady() => OnSceneReady?.Invoke();
 
-        private static EnemyHpSaveEntry[] BuildEnemyHpEntries(Dictionary<string, int> damagedHp)
+        private static DefeatedEnemiesSceneEntry[] BuildDefeatedEnemiesPerScene(
+            Dictionary<string, HashSet<string>> source)
         {
-            if (damagedHp == null || damagedHp.Count == 0)
-                return Array.Empty<EnemyHpSaveEntry>();
+            if (source == null || source.Count == 0)
+                return Array.Empty<DefeatedEnemiesSceneEntry>();
 
-            var entries = new EnemyHpSaveEntry[damagedHp.Count];
+            var entries = new DefeatedEnemiesSceneEntry[source.Count];
             int i = 0;
-            foreach (var kvp in damagedHp)
+            foreach (var kvp in source)
             {
-                entries[i++] = new EnemyHpSaveEntry { enemyId = kvp.Key, currentHp = kvp.Value };
+                string[] ids = new string[kvp.Value.Count];
+                kvp.Value.CopyTo(ids);
+                entries[i++] = new DefeatedEnemiesSceneEntry { sceneName = kvp.Key, enemyIds = ids };
             }
             return entries;
         }
 
-        private void RestoreDamagedEnemyHp(EnemyHpSaveEntry[] entries)
+        private static DamagedEnemyHpSceneEntry[] BuildDamagedEnemyHpPerScene(
+            Dictionary<string, Dictionary<string, int>> source)
         {
-            _damagedEnemyHp.Clear();
-            if (entries == null) return;
+            if (source == null || source.Count == 0)
+                return Array.Empty<DamagedEnemyHpSceneEntry>();
 
-            foreach (EnemyHpSaveEntry entry in entries)
+            var entries = new DamagedEnemyHpSceneEntry[source.Count];
+            int i = 0;
+            foreach (var kvp in source)
             {
-                if (!string.IsNullOrWhiteSpace(entry.enemyId) && entry.currentHp >= 0)
-                    _damagedEnemyHp[entry.enemyId] = entry.currentHp;
+                var perScene = new EnemyHpSaveEntry[kvp.Value.Count];
+                int j = 0;
+                foreach (var hp in kvp.Value)
+                    perScene[j++] = new EnemyHpSaveEntry { enemyId = hp.Key, currentHp = hp.Value };
+                entries[i++] = new DamagedEnemyHpSceneEntry { sceneName = kvp.Key, entries = perScene };
+            }
+            return entries;
+        }
+
+        private void RestoreDefeatedEnemiesPerScene(SaveData data)
+        {
+            _defeatedEnemiesByScene.Clear();
+            if (data == null) return;
+
+            if (data.defeatedEnemiesPerScene != null)
+            {
+                foreach (DefeatedEnemiesSceneEntry sceneEntry in data.defeatedEnemiesPerScene)
+                {
+                    string scene = sceneEntry.sceneName ?? string.Empty;
+                    if (sceneEntry.enemyIds == null) continue;
+
+                    HashSet<string> set = null;
+                    foreach (string id in sceneEntry.enemyIds)
+                    {
+                        if (string.IsNullOrWhiteSpace(id)) continue;
+                        if (set == null && !_defeatedEnemiesByScene.TryGetValue(scene, out set))
+                        {
+                            set = new HashSet<string>(StringComparer.Ordinal);
+                            _defeatedEnemiesByScene[scene] = set;
+                        }
+                        set.Add(id);
+                    }
+                }
+            }
+
+            // Migrate saveVersion 1: flat list goes under whichever scene the save was in.
+            if (data.saveVersion < 2 && data.defeatedEnemyIds != null && data.defeatedEnemyIds.Length > 0)
+            {
+                string scene = string.IsNullOrWhiteSpace(data.activeSceneName)
+                    ? string.Empty
+                    : data.activeSceneName;
+                if (!_defeatedEnemiesByScene.TryGetValue(scene, out HashSet<string> set))
+                {
+                    set = new HashSet<string>(StringComparer.Ordinal);
+                    _defeatedEnemiesByScene[scene] = set;
+                }
+                foreach (string id in data.defeatedEnemyIds)
+                    if (!string.IsNullOrWhiteSpace(id))
+                        set.Add(id);
+            }
+        }
+
+        private void RestoreDamagedEnemyHpPerScene(SaveData data)
+        {
+            _damagedEnemyHpByScene.Clear();
+            if (data == null) return;
+
+            if (data.damagedEnemyHpPerScene != null)
+            {
+                foreach (DamagedEnemyHpSceneEntry sceneEntry in data.damagedEnemyHpPerScene)
+                {
+                    string scene = sceneEntry.sceneName ?? string.Empty;
+                    if (sceneEntry.entries == null) continue;
+
+                    Dictionary<string, int> map = null;
+                    foreach (EnemyHpSaveEntry hp in sceneEntry.entries)
+                    {
+                        if (string.IsNullOrWhiteSpace(hp.enemyId) || hp.currentHp < 0) continue;
+                        if (map == null && !_damagedEnemyHpByScene.TryGetValue(scene, out map))
+                        {
+                            map = new Dictionary<string, int>(StringComparer.Ordinal);
+                            _damagedEnemyHpByScene[scene] = map;
+                        }
+                        map[hp.enemyId] = hp.currentHp;
+                    }
+                }
+            }
+
+            if (data.saveVersion < 2 && data.damagedEnemyHp != null && data.damagedEnemyHp.Length > 0)
+            {
+                string scene = string.IsNullOrWhiteSpace(data.activeSceneName)
+                    ? string.Empty
+                    : data.activeSceneName;
+                if (!_damagedEnemyHpByScene.TryGetValue(scene, out Dictionary<string, int> map))
+                {
+                    map = new Dictionary<string, int>(StringComparer.Ordinal);
+                    _damagedEnemyHpByScene[scene] = map;
+                }
+                foreach (EnemyHpSaveEntry hp in data.damagedEnemyHp)
+                    if (!string.IsNullOrWhiteSpace(hp.enemyId) && hp.currentHp >= 0)
+                        map[hp.enemyId] = hp.currentHp;
             }
         }
     }
