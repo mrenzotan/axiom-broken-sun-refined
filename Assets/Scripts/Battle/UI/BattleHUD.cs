@@ -64,10 +64,11 @@ namespace Axiom.Battle
             _statToRect[enemyStats]  = _enemySlotRect;
 
             // Wire action menu callbacks to BattleController
-            _actionMenuUI.OnAttack = _battleController.PlayerAttack;
-            _actionMenuUI.OnSpell  = _battleController.PlayerSpell;
-            _actionMenuUI.OnItem   = _battleController.PlayerItem;
-            _actionMenuUI.OnFlee   = _battleController.PlayerFlee;
+            _actionMenuUI.OnAttack   = _battleController.PlayerAttack;
+            _actionMenuUI.OnSpell    = _battleController.PlayerSpell;
+            _actionMenuUI.OnItem     = _battleController.PlayerItem;
+            _actionMenuUI.OnFlee     = _battleController.PlayerFlee;
+            _actionMenuUI.OnSpellList = _battleController.PlayerSpellList;
 
             // Subscribe to battle events
             _battleController.OnBattleStateChanged    += HandleStateChanged;

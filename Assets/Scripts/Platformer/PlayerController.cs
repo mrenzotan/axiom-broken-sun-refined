@@ -171,4 +171,17 @@ public class PlayerController : MonoBehaviour
         if (_pendingAttackTrigger != null) _pendingAttackTrigger.TriggerAdvantagedBattle();
         _pendingAttackTrigger = null;
     }
+
+    /// <summary>
+    /// Locks/unlocks player movement AND jump input for tutorial purposes — leaves
+    /// Attack input alive so the player can engage the locked-near-enemy battle trigger.
+    /// Different from the attack-anim lock (which uses _movement.SetMovementLocked alone).
+    /// Called by TutorialPromptTrigger when its _lockMovementWhileInside flag is true.
+    /// </summary>
+    public void SetTutorialMovementLocked(bool locked)
+    {
+        _movement.SetMovementLocked(locked);
+        if (locked) _input.Player.Jump.Disable();
+        else        _input.Player.Jump.Enable();
+    }
 }

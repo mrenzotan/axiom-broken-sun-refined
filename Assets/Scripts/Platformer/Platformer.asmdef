@@ -1,10 +1,12 @@
 {
     "name": "Axiom.Platformer",
     "references": [
+        "Axiom.Battle",
         "Axiom.Core",
         "Axiom.Data",
         "Unity.InputSystem",
-        "Unity.TextMeshPro"
+        "Unity.TextMeshPro",
+        "UnityEngine.UI"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

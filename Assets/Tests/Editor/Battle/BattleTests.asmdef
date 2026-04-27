@@ -2,6 +2,7 @@
     "name": "BattleTests",
     "references": [
         "Axiom.Battle",
+        "Axiom.Core",
         "Axiom.Data"
     ],
     "testReferences": [

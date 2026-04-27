@@ -60,6 +60,42 @@ namespace Axiom.Core
         public IReadOnlyList<string> CheckpointUnlockedSpellIds => _checkpointUnlockedSpellIds;
         public bool HasCheckpointProgression => CheckpointLevel > 0;
 
+        /// <summary>
+        /// Persisted across save/quit/reload. Set true the first time the player
+        /// dies and respawns. Used by FirstDeathPromptController to fire the
+        /// "you respawn at the last torch" prompt at most once per save.
+        /// </summary>
+        public bool HasSeenFirstDeath { get; private set; }
+
+        /// <summary>Persisted. Set true the first time the player takes spike contact damage.</summary>
+        public bool HasSeenFirstSpikeHit { get; private set; }
+
+        /// <summary>Persisted. Set true on Victory of the first battle (IceSlime, Surprised).</summary>
+        public bool HasCompletedFirstBattleTutorial { get; private set; }
+
+        /// <summary>Persisted. Set true on Victory of the spell-tutorial battle (Meltspawn, Advantaged).</summary>
+        public bool HasCompletedSpellTutorialBattle { get; private set; }
+
+        public void MarkFirstDeathSeen()                  { HasSeenFirstDeath = true; }
+        public void MarkFirstSpikeHitSeen()               { HasSeenFirstSpikeHit = true; }
+        public void MarkFirstBattleTutorialCompleted()    { HasCompletedFirstBattleTutorial = true; }
+        public void MarkSpellTutorialBattleCompleted()    { HasCompletedSpellTutorialBattle = true; }
+
+        /// <summary>
+        /// Bulk-applies persisted tutorial flags. Used by GameManager.ApplySaveData on load.
+        /// </summary>
+        public void RestoreTutorialFlags(
+            bool hasSeenFirstDeath,
+            bool hasSeenFirstSpikeHit,
+            bool hasCompletedFirstBattleTutorial,
+            bool hasCompletedSpellTutorialBattle)
+        {
+            HasSeenFirstDeath = hasSeenFirstDeath;
+            HasSeenFirstSpikeHit = hasSeenFirstSpikeHit;
+            HasCompletedFirstBattleTutorial = hasCompletedFirstBattleTutorial;
+            HasCompletedSpellTutorialBattle = hasCompletedSpellTutorialBattle;
+        }
+
         public PlayerState(int maxHp, int maxMp, int attack, int defense, int speed)
         {
             if (maxHp <= 0)  throw new ArgumentOutOfRangeException(nameof(maxHp),  "maxHp must be greater than zero.");

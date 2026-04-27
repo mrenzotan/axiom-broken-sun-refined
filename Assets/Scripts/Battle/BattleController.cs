@@ -74,6 +74,15 @@ namespace Axiom.Battle
         [Tooltip("Assign the PostBattleFlowController component that owns the Victory/Defeat UI flow.")]
         private PostBattleFlowController _postBattleFlow;
 
+        [SerializeField]
+        [Tooltip("Assign the SpellListPanelUI component from the Battle Canvas.")]
+        private SpellListPanelUI _spellListPanelUI;
+
+        [SerializeField]
+        [Tooltip("Optional. When the BattleEntry has a TutorialMode, this controller drives " +
+                 "the scripted in-Battle tutorial. Leave unassigned to skip tutorials in standalone testing.")]
+        private BattleTutorialController _tutorialController;
+
         // ── UI Events ────────────────────────────────────────────────────────
         /// <summary>Proxies BattleManager.OnStateChanged so BattleHUD can subscribe here.</summary>
         public event Action<BattleState> OnBattleStateChanged;
@@ -233,6 +242,8 @@ namespace Axiom.Battle
                 _battleEnemyId = pending.EnemyId;
                 _enemyStartHp  = pending.EnemyCurrentHp;
                 GameManager.Instance.ClearPendingBattle();
+                if (_tutorialController != null)
+                    _tutorialController.Setup(pending.TutorialMode);
             }
 
             // Apply dynamic battle background from the engagement origin (DEV-80).
@@ -284,6 +295,12 @@ namespace Axiom.Battle
             {
                 _itemMenuUI.OnItemSelected -= HandleItemSelected;
                 _itemMenuUI.OnCancelled    -= HandleItemCancelled;
+            }
+
+            if (_spellListPanelUI != null)
+            {
+                _spellListPanelUI.OnCloseClicked -= HandleSpellPanelClose;
+                _spellListPanelUI.Hide();
             }
 
             if (_playerData == null)
@@ -438,10 +455,34 @@ namespace Axiom.Battle
         {
             if (_battleManager.CurrentState != BattleState.PlayerTurn) return;
             if (_isProcessingAction) return;
-            _isProcessingAction   = true;
-            _isAwaitingVoiceSpell = true;
-            OnSpellChargeStarted?.Invoke();
-            OnSpellPhaseStarted?.Invoke();
+            StartVoiceSpellPhase();
+        }
+
+        public void PlayerSpellList()
+        {
+            if (_battleManager.CurrentState != BattleState.PlayerTurn) return;
+
+            if (_spellListPanelUI != null && _spellListPanelUI.IsVisible)
+            {
+                _spellListPanelUI.OnCloseClicked -= HandleSpellPanelClose;
+                _spellListPanelUI.Hide();
+                return;
+            }
+
+            if (_spellListPanelUI == null) return;
+
+            var gm = Axiom.Core.GameManager.Instance;
+            SpellListPanelLogic logic = gm != null
+                ? SpellListPanelLogic.BuildFromSpellUnlockService(gm.SpellUnlockService)
+                : null;
+
+            _spellListPanelUI.OnCloseClicked -= HandleSpellPanelClose;
+            _spellListPanelUI.OnCloseClicked += HandleSpellPanelClose;
+
+            if (logic == null)
+                logic = new SpellListPanelLogic(null);
+
+            _spellListPanelUI.Show(logic);
         }
 
         /// <summary>
@@ -651,6 +692,15 @@ namespace Axiom.Battle
             _battleManager.OnPlayerFled();
         }
 
+        private void HandleSpellPanelClose()
+        {
+            if (_spellListPanelUI != null)
+            {
+                _spellListPanelUI.Hide();
+                _spellListPanelUI.OnCloseClicked -= HandleSpellPanelClose;
+            }
+        }
+
         // ── Private ──────────────────────────────────────────────────────────
 
         private void HandleStateChanged(BattleState state)
@@ -719,6 +769,13 @@ namespace Axiom.Battle
             if (GameManager.Instance == null) return;
             GameManager.Instance.PlayerState.SetCurrentHp(_playerStats.CurrentHP);
             GameManager.Instance.PlayerState.SetCurrentMp(_playerStats.CurrentMP);
+        }
+
+        private void StartVoiceSpellPhase()
+        {
+            _isAwaitingVoiceSpell = true;
+            OnSpellChargeStarted?.Invoke();
+            OnSpellPhaseStarted?.Invoke();
         }
 
         private void ProcessPlayerTurnStart()
@@ -864,6 +921,11 @@ namespace Axiom.Battle
             {
                 _itemMenuUI.OnItemSelected -= HandleItemSelected;
                 _itemMenuUI.OnCancelled    -= HandleItemCancelled;
+            }
+
+            if (_spellListPanelUI != null)
+            {
+                _spellListPanelUI.OnCloseClicked -= HandleSpellPanelClose;
             }
         }
     }

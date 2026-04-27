@@ -1,38 +1,54 @@
+using Axiom.Battle;
 using Axiom.Core;
-using TMPro;
 using UnityEngine;
 
 namespace Axiom.Platformer.UI
 {
     /// <summary>
-    /// HUD display for the player's current HP in platformer scenes. Polls
-    /// GameManager.Instance.PlayerState each frame and refreshes the TMP label
-    /// when HP changes. PlayerState exposes no change event, so polling is the
-    /// simplest viable approach.
+    /// Drives player HP/MP bars in the platformer HUD. Polls GameManager.PlayerState
+    /// each frame and delegates to HealthBarUI for bar rendering and gradient color.
     /// </summary>
     public class PlatformerHpHudUI : MonoBehaviour
     {
         [SerializeField]
-        [Tooltip("TextMeshProUGUI element that renders the HP line.")]
-        private TMP_Text _hpLabel;
+        [Tooltip("HealthBarUI for the player's HP bar (with gradient fill).")]
+        private HealthBarUI _hpBar;
 
-        private int _lastRenderedHp = -1;
-        private int _lastRenderedMaxHp = -1;
+        [SerializeField]
+        [Tooltip("HealthBarUI for the player's MP bar.")]
+        private HealthBarUI _mpBar;
+
+        private int _lastHp = -1;
+        private int _lastMaxHp = -1;
+        private int _lastMp = -1;
+        private int _lastMaxMp = -1;
 
         private void Update()
         {
-            if (_hpLabel == null) return;
             if (GameManager.Instance == null) return;
 
             PlayerState state = GameManager.Instance.PlayerState;
             if (state == null) return;
 
-            if (state.CurrentHp == _lastRenderedHp && state.MaxHp == _lastRenderedMaxHp)
-                return;
+            if (_hpBar != null)
+            {
+                if (state.CurrentHp != _lastHp || state.MaxHp != _lastMaxHp)
+                {
+                    _hpBar.SetHP(state.CurrentHp, state.MaxHp);
+                    _lastHp = state.CurrentHp;
+                    _lastMaxHp = state.MaxHp;
+                }
+            }
 
-            _hpLabel.text = PlatformerHpHudFormatter.Format(state.CurrentHp, state.MaxHp);
-            _lastRenderedHp = state.CurrentHp;
-            _lastRenderedMaxHp = state.MaxHp;
+            if (_mpBar != null)
+            {
+                if (state.CurrentMp != _lastMp || state.MaxMp != _lastMaxMp)
+                {
+                    _mpBar.SetMP(state.CurrentMp, state.MaxMp);
+                    _lastMp = state.CurrentMp;
+                    _lastMaxMp = state.MaxMp;
+                }
+            }
         }
     }
 }

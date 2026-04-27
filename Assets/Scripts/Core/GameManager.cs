@@ -123,6 +123,33 @@ namespace Axiom.Core
         /// </summary>
         public void ClearPendingBattle() => PendingBattle = null;
 
+        // Transient (not persisted) — set when the player dies, consumed by the
+        // post-respawn FirstDeathPromptController exactly once. No-ops if the player
+        // has already seen the first-death prompt (HasSeenFirstDeath == true).
+        private bool _firstDeathPromptPending;
+
+        /// <summary>
+        /// Called by PlayerDeathHandler immediately before RespawnAtLastCheckpoint.
+        /// No-op when HasSeenFirstDeath is already true.
+        /// </summary>
+        public void NotifyDiedAndRespawning()
+        {
+            EnsurePlayerState();
+            if (_playerState != null && !_playerState.HasSeenFirstDeath)
+                _firstDeathPromptPending = true;
+        }
+
+        /// <summary>
+        /// Called by FirstDeathPromptController in the post-respawn scene.
+        /// Returns true at most once per pending death; clears the flag on read.
+        /// </summary>
+        public bool ConsumeFirstDeathPromptPending()
+        {
+            bool wasPending = _firstDeathPromptPending;
+            _firstDeathPromptPending = false;
+            return wasPending;
+        }
+
         /// <summary>
         /// Snapshot of the Platformer world state captured immediately before a battle.
         /// Non-null only between the battle transition and the first Platformer scene restore.
@@ -345,7 +372,11 @@ namespace Axiom.Core
                 checkpointUnlockedSpellIds = CopyReadOnlyStringList(PlayerState.CheckpointUnlockedSpellIds),
                 defeatedEnemiesPerScene = BuildDefeatedEnemiesPerScene(_defeatedEnemiesByScene),
                 damagedEnemyHpPerScene = BuildDamagedEnemyHpPerScene(_damagedEnemyHpByScene),
-                collectedPickupIds = CopyHashSet(_collectedPickupIds)
+                collectedPickupIds = CopyHashSet(_collectedPickupIds),
+                hasSeenFirstDeath = PlayerState.HasSeenFirstDeath,
+                hasSeenFirstSpikeHit = PlayerState.HasSeenFirstSpikeHit,
+                hasCompletedFirstBattleTutorial = PlayerState.HasCompletedFirstBattleTutorial,
+                hasCompletedSpellTutorialBattle = PlayerState.HasCompletedSpellTutorialBattle
             };
         }
 
@@ -391,6 +422,11 @@ namespace Axiom.Core
                 data.checkpointUnlockedSpellIds ?? Array.Empty<string>());
             RestoreDefeatedEnemiesPerScene(data);
             RestoreDamagedEnemyHpPerScene(data);
+            PlayerState.RestoreTutorialFlags(
+                data.hasSeenFirstDeath,
+                data.hasSeenFirstSpikeHit,
+                data.hasCompletedFirstBattleTutorial,
+                data.hasCompletedSpellTutorialBattle);
             RestoreCollectedPickups(data.collectedPickupIds);
         }
 

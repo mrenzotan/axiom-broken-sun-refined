@@ -84,5 +84,11 @@ namespace Axiom.Data
         public DamagedEnemyHpSceneEntry[] damagedEnemyHpPerScene = Array.Empty<DamagedEnemyHpSceneEntry>();
 
         public string[] collectedPickupIds = Array.Empty<string>();
+
+        // Tutorial completion flags (DEV-46). Default false on legacy saves missing these keys.
+        public bool hasSeenFirstDeath;
+        public bool hasSeenFirstSpikeHit;
+        public bool hasCompletedFirstBattleTutorial;
+        public bool hasCompletedSpellTutorialBattle;
     }
 }

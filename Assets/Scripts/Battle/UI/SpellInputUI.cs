@@ -23,6 +23,9 @@ namespace Axiom.Battle
         [Tooltip("The same PTT InputAction used by MicrophoneInputHandler — read here for visual feedback only.")]
         private InputActionReference _pushToTalkAction;
 
+        [Header("Root — the SpellInputPanel itself (self-reference)")]
+        [SerializeField] private GameObject _panel;
+
         [Header("Panels — assign child GameObjects from the Battle Canvas")]
         [SerializeField] private GameObject _promptPanel;
         [SerializeField] private GameObject _listeningPanel;
@@ -62,6 +65,11 @@ namespace Axiom.Battle
 
         // ── Unity lifecycle ───────────────────────────────────────────────────────
 
+        private void Awake()
+        {
+            if (_panel != null) _panel.SetActive(false);
+        }
+
         private void OnEnable()
         {
             if (_pushToTalkAction == null) return;
@@ -83,6 +91,7 @@ namespace Axiom.Battle
         private void HandleSpellPhaseStarted()
         {
             CancelAutoHide();
+            if (_panel != null) _panel.SetActive(true);
             _logic.ShowPrompt();
             Refresh();
         }
@@ -121,6 +130,7 @@ namespace Axiom.Battle
             CancelAutoHide();
             _logic.Hide();
             Refresh();
+            if (_panel != null) _panel.SetActive(false);
         }
 
         // ── PTT input handlers (visual only) ──────────────────────────────────────
@@ -186,6 +196,7 @@ namespace Axiom.Battle
             else
                 _logic.Hide();
             Refresh();
+            if (!returnToPrompt && _panel != null) _panel.SetActive(false);
             _autoHide = null;
         }
 

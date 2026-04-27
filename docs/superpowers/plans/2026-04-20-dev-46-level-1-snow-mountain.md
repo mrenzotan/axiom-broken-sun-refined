@@ -24,8 +24,9 @@
 
 | File                                    | Responsibility                                                                                    |
 | --------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `HazardDamageResolver.cs`               | Pure damage calculation for hazards                                                               |
-| `HazardTrigger.cs`                      | MonoBehaviour — OnTriggerEnter2D → resolver → `PlayerState.SetCurrentHp`                          |
+| `HazardDamageResolver.cs`               | Pure damage calculation for hazards (reused for first-hit and per-tick spike damage)              |
+| `HazardTrigger.cs`                      | MonoBehaviour — pits: instant KO on enter; spikes: first-hit damage + DoT ticks while overlapping (see spike-DoT spec) |
+| `PlayerHurtFeedback.cs`                 | MonoBehaviour on Player root — plays `Hurt` animator trigger and applies a sustained sprite tint while overlapping any spike hazard |
 | `LevelExitTrigger.cs`                   | MonoBehaviour — OnTriggerEnter2D → `SceneTransition.BeginTransition`                              |
 | `PlayerDeathResolver.cs`                | Decides respawn vs. Game Over from player state                                                   |
 | `PlayerDeathHandler.cs`                 | MonoBehaviour — polls HP each frame, invokes resolver                                             |
@@ -310,12 +311,15 @@ Unity Version Control → Pending Changes → stage the file below → Check in 
 
 ---
 
-## Task 5: HazardDamageResolver + HazardTrigger
+## Task 5: HazardDamageResolver + HazardTrigger + PlayerHurtFeedback
+
+**Spec:** [`docs/superpowers/specs/2026-04-26-dev-46-spike-hazard-dot-design.md`](../specs/2026-04-26-dev-46-spike-hazard-dot-design.md) — the spike hazard model evolved from one-shot 20% damage to a configurable first-hit + DoT system with sustained sprite-tint feedback. The spec is the source of truth for the `HazardTrigger` Inspector fields, the per-frame data flow, the `PlayerHurtFeedback` contract, and the full test list. Pit hazards (`HazardMode.InstantKO`) are unchanged.
 
 **Files:**
 
 - Create: `Assets/Scripts/Platformer/HazardDamageResolver.cs`
 - Create: `Assets/Scripts/Platformer/HazardTrigger.cs`
+- Create: `Assets/Scripts/Platformer/PlayerHurtFeedback.cs`
 - Create: `Assets/Tests/Editor/Platformer/HazardDamageResolverTests.cs`
 
 - [ ] **Step 1: Write failing tests**
@@ -454,69 +458,19 @@ namespace Axiom.Platformer
 
 > **Unity Editor task (user):** Test Runner → Edit Mode → Run All. All 5 `HazardDamageResolverTests` must pass.
 
-- [ ] **Step 5: Create `HazardTrigger` MonoBehaviour wrapper**
+- [ ] **Step 5: Create `HazardTrigger` MonoBehaviour wrapper, `PlayerHurtFeedback`, and the additional tick-damage tests**
 
-Create `Assets/Scripts/Platformer/HazardTrigger.cs`:
+> **Source of truth:** [`docs/superpowers/specs/2026-04-26-dev-46-spike-hazard-dot-design.md`](../specs/2026-04-26-dev-46-spike-hazard-dot-design.md). The implementation plan generated from that spec covers the full `HazardTrigger` DoT lifecycle (enter/stay/exit + tick timer with `while`-loop overshoot), the `PlayerHurtFeedback` overlap counter and tint, the four new `HazardDamageResolverTests` cases, and the Player prefab inspector wiring (`Hurt` animator trigger). Do not implement from this plan doc directly — execute the spec's plan instead.
 
-```csharp
-using Axiom.Core;
-using UnityEngine;
-
-namespace Axiom.Platformer
-{
-    /// <summary>
-    /// Attach to a trigger collider in a level scene. On player contact, applies damage
-    /// or instant KO by mutating GameManager.Instance.PlayerState.CurrentHp.
-    /// </summary>
-    [RequireComponent(typeof(Collider2D))]
-    public class HazardTrigger : MonoBehaviour
-    {
-        [SerializeField]
-        [Tooltip("InstantKO for pits; PercentMaxHpDamage for spikes.")]
-        private HazardMode _mode = HazardMode.PercentMaxHpDamage;
-
-        [SerializeField]
-        [Tooltip("Percent of MaxHp to subtract. Ignored when mode is InstantKO. Valid range 1–100.")]
-        [Range(1, 100)]
-        private int _percentMaxHpDamage = 20;
-
-        private void Reset()
-        {
-            Collider2D triggerCollider = GetComponent<Collider2D>();
-            if (triggerCollider != null)
-                triggerCollider.isTrigger = true;
-        }
-
-        private void OnTriggerEnter2D(Collider2D other)
-        {
-            if (!other.CompareTag("Player"))
-                return;
-
-            if (GameManager.Instance == null)
-            {
-                Debug.LogWarning("[HazardTrigger] GameManager not found — hazard ignored.", this);
-                return;
-            }
-
-            PlayerState state = GameManager.Instance.PlayerState;
-            HazardDamageResult result = HazardDamageResolver.Resolve(
-                currentHp: state.CurrentHp,
-                maxHp: state.MaxHp,
-                mode: _mode,
-                percentMaxHpDamage: _percentMaxHpDamage);
-
-            state.SetCurrentHp(result.NewHp);
-        }
-    }
-}
-```
+> **Legacy note:** earlier drafts of this plan listed a one-shot `OnTriggerEnter2D` HazardTrigger here. That sketch has been removed because it conflicts with the current spec. The pit-hazard path (`HazardMode.InstantKO`) is unchanged in behavior; the spike-hazard path is fully redesigned.
 
 - [ ] **Step 6: Check in via UVCS**
 
-Unity Version Control → Pending Changes → stage the files below → Check in with message: `feat(DEV-46): add HazardDamageResolver and HazardTrigger`
+Unity Version Control → Pending Changes → stage the files below → Check in with message: `feat(DEV-46): add HazardDamageResolver, HazardTrigger (DoT), PlayerHurtFeedback`
 
 - `Assets/Scripts/Platformer/HazardDamageResolver.cs` + `.meta`
 - `Assets/Scripts/Platformer/HazardTrigger.cs` + `.meta`
+- `Assets/Scripts/Platformer/PlayerHurtFeedback.cs` + `.meta`
 - `Assets/Tests/Editor/Platformer/HazardDamageResolverTests.cs` + `.meta`
 
 ---
@@ -1511,7 +1465,7 @@ Level_1-1 (scene root)
 
 - [ ] **Step 3: Place hazards**
 
-> **Unity Editor task (user):** For each pit area, create an empty GameObject with a `BoxCollider2D` (Is Trigger = true) spanning the bottom of the pit, plus a `HazardTrigger` component with `_mode = InstantKO`. Add HazardTriggers on top of each visual spike tile cluster with `_mode = PercentMaxHpDamage`, `_percentMaxHpDamage = 20`.
+> **Unity Editor task (user):** For each pit area, create an empty GameObject with a `BoxCollider2D` (Is Trigger = true) spanning the bottom of the pit, plus a `HazardTrigger` component with `_mode = InstantKO` (other fields ignored). For each visual spike cluster, place **one** HazardTrigger covering the whole cluster (one box, not one per tile — see the spec's "accepted limitations" on stacking). Use `_mode = PercentMaxHpDamage` and the **Tutorial gentle preset** from the spec: `_firstHitDamagePercent = 20`, `_damagePerTickPercent = 10`, `_tickIntervalSeconds = 0.5`. Time-to-die from full HP if the player just stands on spikes: ~4s.
 
 Checkpoint: tutorial stage is forgiving. No more than 2 spike clusters and 1 pit.
 
@@ -1554,7 +1508,7 @@ Since DEV-82 puzzles aren't built yet, the reward is visual/spatial only — an 
 
 - Tutorial prompts appear in sequence as you walk past triggers.
 - Meltspawn encounter loads Battle scene (Advantaged if you strike, Surprised if you walk into it).
-- Spike cluster deals 20% max HP.
+- Spike cluster: contact deals an immediate 20% first-hit, then ticks 10% every 0.5s while the player remains on spikes; player can run off and survive. Sprite tints red while overlapping; HUD HP visibly drops on first hit and on each tick.
 - Pit fall KOs player; if you touched the start checkpoint, scene reloads and you respawn at the checkpoint with full HP.
 - Ice Wall hint appears as you approach; pressing **M** while inside the proximity trigger fades the wall and lets you walk through. Pressing M outside the trigger does nothing.
 - `LevelExit_To_1-2` prints a warning (target scene not yet in Build Settings) — this is expected until Task 16.
@@ -1590,7 +1544,7 @@ Level_1-2 focus: Frostbite Creeper introduces the DoT status effect. Narrative b
 
 - Elevated platforms requiring ~70% of max jump height
 - 2–3 drop-through platforms in a vertical sequence
-- 2 spike clusters
+- 2 spike clusters — use the **Moderate preset** from the spike-DoT spec (`_firstHitDamagePercent = 20`, `_damagePerTickPercent = 15`, `_tickIntervalSeconds = 0.5`; ~3s time-to-die from full HP)
 - 1 pit hazard
 
 - [ ] **Step 3: Place 2–3 Frostbite Creeper instances**
@@ -1635,7 +1589,7 @@ Level_1-3 focus: Void Wraith introduces Vapor condition and the Combustion-on-Va
 > **Unity Editor task (user):** Hardest non-boss level. Introduce:
 
 - Multi-segment vertical climbing with drop-through platforms
-- 3–4 hazards including a "spike tunnel" forcing precise jumps
+- 3–4 hazards including a "spike tunnel" forcing precise jumps — use the **Spike tunnel preset** from the spike-DoT spec (`_firstHitDamagePercent = 25`, `_damagePerTickPercent = 15`, `_tickIntervalSeconds = 0.4`; ~2s time-to-die — real urgency, the player must move immediately)
 - Use `Decor/ClimberDecor.png` or `iceDecor.png` for mood
 
 - [ ] **Step 3: Place 2–3 Void Wraith instances**
@@ -1733,7 +1687,7 @@ Close the Build Settings window.
 - All 3 tutorial prompts fire in Level_1-1
 - All enemies transition to Battle scene with correct EnemyData
 - Advantaged and Surprised paths both produce correct battle start state
-- Spikes cost 20% max HP, pits instant-KO, death → respawn at last save point with full HP
+- Spikes deal a configurable first-hit + DoT ticks while standing on them (per-instance Inspector tuning; see [spike-DoT spec](../specs/2026-04-26-dev-46-spike-hazard-dot-design.md)); pits instant-KO; death → respawn at last save point with full HP
 - HpHud reflects HP changes in real time on the platformer side
 - Each substage's `LevelExitTrigger` transitions to the correct next scene
 - Frost-Melt Sentinel battle completes; ChapterCompleteCardUI appears on return; Continue loads MainMenu
