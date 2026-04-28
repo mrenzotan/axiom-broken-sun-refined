@@ -250,6 +250,14 @@ namespace Axiom.Battle
             _environmentService = new BattleEnvironmentService();
             _environmentService.Apply(pending?.EnvironmentData, _backgroundRenderer);
 
+            // Play battle music from the per-enemy BattleEnvironmentData.
+            AudioClip battleMusic = pending?.EnvironmentData?.BattleMusic;
+            if (battleMusic != null)
+            {
+                GameManager gm = GameManager.Instance;
+                gm?.AudioManager?.PlayBgm(battleMusic, 1f);
+            }
+
             if (GameManager.Instance?.SceneTransition?.IsTransitioning == true)
                 GameManager.Instance.OnSceneReady += InitializeFromTransition;
             else

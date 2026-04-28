@@ -90,6 +90,8 @@
 
 ## Task 1: UVCS branch + import Snow Mountain pack + create Tile Palette
 
+> **Update (2026-04-28):** Platform-palette tiles are now painted onto a sibling `Tilemap_OneWayPlatforms` GameObject (under `Grid`, on the `OneWayPlatform` layer) rather than `Tilemap_Ground`. The tile assets in `Assets/Art/Tilemaps/SnowMountain/Tiles/` are reused as-is — only the active paint target changes. See [`docs/superpowers/specs/2026-04-28-one-way-platforms-design.md`](../specs/2026-04-28-one-way-platforms-design.md) and [`docs/superpowers/plans/2026-04-28-one-way-platforms.md`](2026-04-28-one-way-platforms.md) for the mechanic and per-scene tilemap structure.
+
 **Files:**
 
 - Create: `Assets/Art/Tilemaps/SnowMountain/Palettes/Palette_SnowMountain.prefab` (Tile Palette)

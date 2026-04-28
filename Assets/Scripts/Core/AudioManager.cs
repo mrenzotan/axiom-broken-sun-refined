@@ -122,6 +122,12 @@ namespace Axiom.Core
         public void PlayUiClick() => _service?.PlayUiClick();
 
         /// <summary>
+        /// Play a looping <see cref="AudioClip"/> on the BGM bus (routed through MusicVol mixer group).
+        /// Null clip stops the bus. Used by CutsceneUI and BattleController for dynamic music.
+        /// </summary>
+        public void PlayBgm(AudioClip clip, float volume) => _service?.PlayBgm(clip, volume);
+
+        /// <summary>
         /// Sends gameplay or battle <see cref="AudioSource"/> output through the configured SFX mixer group
         /// so the SFX volume slider (<see cref="_sfxVolumeParameter"/>) affects it.
         /// </summary>

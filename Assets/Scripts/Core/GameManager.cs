@@ -34,6 +34,10 @@ namespace Axiom.Core
         [Tooltip("Master catalog of every SpellData in the game. Required for level-up spell grants and save-load ID resolution.")]
         private SpellCatalog _spellCatalog;
 
+        [SerializeField]
+        [Tooltip("Scene loaded for the opening cutscene when starting a new game.")]
+        private string _cutsceneSceneName = "Cutscene";
+
         private SpellUnlockService _spellUnlockService;
 
         /// <summary>
@@ -98,6 +102,14 @@ namespace Axiom.Core
         private SaveService _saveService;
         public SceneTransitionController SceneTransition =>
             _sceneTransition ??= GetComponentInChildren<SceneTransitionController>();
+
+        private AudioManager _audioManager;
+        /// <summary>
+        /// Public accessor for scene-specific controllers (CutsceneUI, BattleController)
+        /// to play dynamic music on the BGM bus.
+        /// </summary>
+        public AudioManager AudioManager =>
+            _audioManager ??= GetComponentInChildren<AudioManager>();
 
         /// <summary>
         /// Fires after the scene transition fade-in completes.
@@ -590,7 +602,7 @@ namespace Axiom.Core
                 _spellUnlockService.NotifyPlayerLevel(PlayerState.Level);
             }
 
-            LoadScene("Platformer");
+            LoadScene(_cutsceneSceneName);
         }
 
         /// <summary>

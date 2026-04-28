@@ -95,6 +95,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "DebugFreezeCast",
+                    "type": "Button",
+                    "id": "8b6b2fee-4317-4dbd-a8a8-74052e4a3582",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -480,6 +489,17 @@
                     "processors": "",
                     "groups": "Keyboard&Mouse",
                     "action": "DebugMeltCast",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "2d711179-4a06-4a4d-991d-daf4dcbd6b12",
+                    "path": "<Keyboard>/f",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "DebugFreezeCast",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

@@ -2,6 +2,7 @@
     "name": "Axiom.Core",
     "references": [
         "Axiom.Data",
+        "Unity.TextMeshPro",
         "UnityEngine.UI",
         "Unity.InputSystem"
     ],

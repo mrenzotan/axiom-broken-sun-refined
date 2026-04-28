@@ -16,6 +16,12 @@ namespace Axiom.Core
         /// <summary>Gameplay scene that receives the ambient / exploration loop (matches <c>GameManager</c> default).</summary>
         public const string PlatformerSceneName = "Platformer";
 
+        /// <summary>Cutscene scene name — music is driven by CutsceneUI, not scene name.</summary>
+        public const string CutsceneSceneName = "Cutscene";
+
+        /// <summary>Battle scene name — music is driven by BattleController, not scene name.</summary>
+        public const string BattleSceneName = "Battle";
+
         private readonly MenuAudioConfig _config;
         private readonly AudioSettingsStore _store;
         private readonly AudioSource _bgmSource;
@@ -75,12 +81,24 @@ namespace Axiom.Core
 
             if (sceneName == MainMenuSceneName)
                 ApplyMainMenuSceneAudio();
-            else if (string.Equals(sceneName, PlatformerSceneName, StringComparison.Ordinal))
-                ApplyPlatformerSceneAudio();
+            else if (sceneName == CutsceneSceneName)
+            {
+                // Music is driven by CutsceneUI via PlayBgm — do not stop buses.
+            }
+            else if (sceneName == BattleSceneName)
+            {
+                // Battle music is driven by BattleController via PlayBgm on the BGM bus.
+                // Stop the ambient bus so the exploration loop doesn't overlap with battle BGM.
+                StopAmbientBus();
+            }
             else
-                StopAllLoopingBuses();
+            {
+                // Default: play exploration ambient loop for all level scenes
+                // (Platformer, Level_1-1, Level_2-1, etc.)
+                ApplyPlatformerSceneAudio();
+            }
 
-            // Re-apply saved levels whenever the active scene changes so mixer RTPC matches prefs after menu → game.
+            // Re-apply saved levels whenever the active scene changes
             ApplyPersistedVolumesToMixer();
         }
 
@@ -118,6 +136,36 @@ namespace Axiom.Core
             float sfxMul = _amplifyUiOneShotWithStoredSfx ? GetSfxVolumeNormalized() : 1f;
             float vol = Mathf.Clamp01(_config.UiLinear * sfxMul);
             _uiSource.PlayOneShot(clip, vol);
+        }
+
+        /// <summary>
+        /// Play a specific <see cref="AudioClip"/> on the BGM bus.
+        /// Clip is looped. Volume is clamped [0,1]. Null clip stops the bus.
+        /// For cutscene music, battle music, or any scene-driven dynamic BGM.
+        /// </summary>
+        public void PlayBgm(AudioClip clip, float volume)
+        {
+            volume = Mathf.Clamp01(volume);
+
+            if (clip == null)
+            {
+                StopBgmBus();
+                return;
+            }
+
+            if (_bgmSource == null) return;
+
+            if (_bgmSource.isPlaying && _bgmSource.clip == clip)
+            {
+                _bgmSource.volume = volume;
+                return;
+            }
+
+            StopBgmBus();
+            _bgmSource.clip = clip;
+            _bgmSource.loop = true;
+            _bgmSource.volume = volume;
+            _bgmSource.Play();
         }
 
         internal static float LinearVolumeToDecibels(float linear01)

@@ -181,6 +181,15 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""DebugFreezeCast"",
+                    ""type"": ""Button"",
+                    ""id"": ""8b6b2fee-4317-4dbd-a8a8-74052e4a3582"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -566,6 +575,17 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""groups"": ""Keyboard&Mouse"",
                     ""action"": ""DebugMeltCast"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""2d711179-4a06-4a4d-991d-daf4dcbd6b12"",
+                    ""path"": ""<Keyboard>/f"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": """",
+                    ""action"": ""DebugFreezeCast"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 }
@@ -1191,6 +1211,7 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
         m_Player_Next = m_Player.FindAction("Next", throwIfNotFound: true);
         m_Player_Sprint = m_Player.FindAction("Sprint", throwIfNotFound: true);
         m_Player_DebugMeltCast = m_Player.FindAction("DebugMeltCast", throwIfNotFound: true);
+        m_Player_DebugFreezeCast = m_Player.FindAction("DebugFreezeCast", throwIfNotFound: true);
         // UI
         m_UI = asset.FindActionMap("UI", throwIfNotFound: true);
         m_UI_Navigate = m_UI.FindAction("Navigate", throwIfNotFound: true);
@@ -1298,6 +1319,7 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
     private readonly InputAction m_Player_Next;
     private readonly InputAction m_Player_Sprint;
     private readonly InputAction m_Player_DebugMeltCast;
+    private readonly InputAction m_Player_DebugFreezeCast;
     /// <summary>
     /// Provides access to input actions defined in input action map "Player".
     /// </summary>
@@ -1349,6 +1371,10 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "Player/DebugMeltCast".
         /// </summary>
         public InputAction @DebugMeltCast => m_Wrapper.m_Player_DebugMeltCast;
+        /// <summary>
+        /// Provides access to the underlying input action "Player/DebugFreezeCast".
+        /// </summary>
+        public InputAction @DebugFreezeCast => m_Wrapper.m_Player_DebugFreezeCast;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -1405,6 +1431,9 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
             @DebugMeltCast.started += instance.OnDebugMeltCast;
             @DebugMeltCast.performed += instance.OnDebugMeltCast;
             @DebugMeltCast.canceled += instance.OnDebugMeltCast;
+            @DebugFreezeCast.started += instance.OnDebugFreezeCast;
+            @DebugFreezeCast.performed += instance.OnDebugFreezeCast;
+            @DebugFreezeCast.canceled += instance.OnDebugFreezeCast;
         }
 
         /// <summary>
@@ -1446,6 +1475,9 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
             @DebugMeltCast.started -= instance.OnDebugMeltCast;
             @DebugMeltCast.performed -= instance.OnDebugMeltCast;
             @DebugMeltCast.canceled -= instance.OnDebugMeltCast;
+            @DebugFreezeCast.started -= instance.OnDebugFreezeCast;
+            @DebugFreezeCast.performed -= instance.OnDebugFreezeCast;
+            @DebugFreezeCast.canceled -= instance.OnDebugFreezeCast;
         }
 
         /// <summary>
@@ -1912,6 +1944,13 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnDebugMeltCast(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "DebugFreezeCast" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnDebugFreezeCast(InputAction.CallbackContext context);
     }
     /// <summary>
     /// Interface to implement callback methods for all input action callbacks associated with input actions defined by "UI" which allows adding and removing callbacks.

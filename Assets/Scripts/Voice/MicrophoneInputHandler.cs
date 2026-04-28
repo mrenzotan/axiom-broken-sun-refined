@@ -24,6 +24,11 @@ namespace Axiom.Voice
         /// </summary>
         [SerializeField] private int _sampleRate = 16000;
 
+        [SerializeField]
+        [Tooltip("Minimum audio samples to accumulate before enqueuing to Vosk. " +
+                 "4000 = 0.25s at 16kHz. Increase if recognition is unreliable.")]
+        private int _chunkSampleThreshold = 4000;
+
         private MicrophoneCapture     _capture;
         private VoskRecognizerService _recognizerService;
         private MicrophoneBufferPool  _bufferPool;
@@ -48,7 +53,7 @@ namespace Axiom.Voice
             VoskRecognizerService    recognizerService,
             MicrophoneBufferPool     bufferPool)
         {
-            _capture            = new MicrophoneCapture(inputQueue, bufferPool);
+            _capture            = new MicrophoneCapture(inputQueue, bufferPool, _chunkSampleThreshold);
             _recognizerService  = recognizerService;
             _bufferPool         = bufferPool;
         }
