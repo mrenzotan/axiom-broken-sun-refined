@@ -15,8 +15,18 @@ Enemy death is not handled when the enemy's HP bar goes to zero due to a status 
 
 ## Platformer scene
 
-### Player sprite doesn't slide down walls
+### ~~Player sprite doesn't slide down walls~~ (Resolved)
 
 In platformer scene, the player sprite doesn't slide down walls when colliding with them. This is likely due to a missing capsule collider material that should allow the player to slide along walls instead of sticking to them. This can disrupt the player's immersion and make it difficult to navigate the platformer scene, as they may find themselves stuck to walls and unable to move freely.
 
 ![alt text](./images/player-stuck-to-walls.png)
+
+**Resolution:** Created `Assets/Settings/Physics/PlayerFrictionless.physicsMaterial2D` (Friction = 0, Bounciness = 0) and assigned it to the **Rigidbody2D → Material** slot on `Player (Exploration).prefab`. Unity's default physics material applies friction = 0.4 when the slot is empty, which generated a static friction force at the wall contact opposing gravity. Assigning on the Rigidbody2D (rather than the CapsuleCollider2D) makes the material apply to all current and future colliders on the body. No code change required — `PlayerMovement.Move()` already preserves Y-velocity correctly.
+
+### ~~Player-wall collision interaction bug when jumping to a higher ground~~ (Resolved)
+
+When the player jumps to a higher ground, there's a collision behavioral bug in which if the player jumps just enough to land or hit the floor of the higher ground, the player slides off the corner edge and bounces up. This happens when the player taps the jump button and keeps on holding the movement input towards the higher ground, which causes the player to collide with the corner edge of the higher ground and then bounce off due to the collision. This can be frustrating for players, as it can make it difficult to successfully jump to higher grounds and can lead to unintended consequences such as overshooting the jump which is crucial for a platformer game. See images for more context. In the images, the player is trying to jump to the higher ground on the right, but instead of landing on it, the player slides off the corner edge and bounces up, which can be seen in the second and third images. This bug can disrupt the player's experience and make it difficult to navigate the platformer scene effectively.
+
+![alt text](image.png)
+![alt text](image-1.png)
+![alt text](image-2.png)

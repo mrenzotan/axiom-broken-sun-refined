@@ -151,6 +151,97 @@ namespace CoreTests
         }
 
         [Test]
+        public void SaveData_RoundTripsLastCheckpoint()
+        {
+            var saveData = new SaveData
+            {
+                maxHp = 100,
+                maxMp = 50,
+                activatedCheckpointIds = new[] { "cp_level1-1_01" },
+                lastCheckpointPositionX = 12.25f,
+                lastCheckpointPositionY = -3.5f,
+                lastCheckpointSceneName = "Level_1-1"
+            };
+
+            _gameManager.ApplySaveData(saveData);
+
+            Assert.AreEqual(12.25f, _gameManager.PlayerState.LastCheckpointPositionX);
+            Assert.AreEqual(-3.5f, _gameManager.PlayerState.LastCheckpointPositionY);
+            Assert.AreEqual("Level_1-1", _gameManager.PlayerState.LastCheckpointSceneName);
+
+            SaveData rebuilt = _gameManager.BuildSaveData();
+            Assert.AreEqual(12.25f, rebuilt.lastCheckpointPositionX);
+            Assert.AreEqual(-3.5f, rebuilt.lastCheckpointPositionY);
+            Assert.AreEqual("Level_1-1", rebuilt.lastCheckpointSceneName);
+        }
+
+        [Test]
+        public void SaveData_RoundTripsCheckpointProgression()
+        {
+            var saveData = new SaveData
+            {
+                maxHp = 100,
+                maxMp = 50,
+                checkpointLevel   = 3,
+                checkpointXp      = 220,
+                checkpointMaxHp   = 130,
+                checkpointMaxMp   = 60,
+                checkpointAttack  = 14,
+                checkpointDefense = 8,
+                checkpointSpeed   = 11,
+                checkpointUnlockedSpellIds = new[] { "spell_firebolt", "spell_icewall" }
+            };
+
+            _gameManager.ApplySaveData(saveData);
+
+            Assert.AreEqual(3,   _gameManager.PlayerState.CheckpointLevel);
+            Assert.AreEqual(220, _gameManager.PlayerState.CheckpointXp);
+            Assert.AreEqual(130, _gameManager.PlayerState.CheckpointMaxHp);
+            Assert.AreEqual(2,   _gameManager.PlayerState.CheckpointUnlockedSpellIds.Count);
+            Assert.IsTrue(_gameManager.PlayerState.HasCheckpointProgression);
+
+            SaveData rebuilt = _gameManager.BuildSaveData();
+            Assert.AreEqual(3,   rebuilt.checkpointLevel);
+            Assert.AreEqual(14,  rebuilt.checkpointAttack);
+            Assert.AreEqual(2,   rebuilt.checkpointUnlockedSpellIds.Length);
+        }
+
+        [Test]
+        public void CaptureCheckpointProgression_SnapshotsCurrentLevelAndStats()
+        {
+            _gameManager.PlayerState.ApplyProgression(level: 4, xp: 50);
+            _gameManager.PlayerState.ApplyVitals(maxHp: 130, maxMp: 60, currentHp: 100, currentMp: 30);
+            _gameManager.PlayerState.ApplyStats(attack: 15, defense: 9, speed: 12);
+
+            _gameManager.PlayerState.CaptureCheckpointProgression();
+
+            Assert.AreEqual(4,   _gameManager.PlayerState.CheckpointLevel);
+            Assert.AreEqual(50,  _gameManager.PlayerState.CheckpointXp);
+            Assert.AreEqual(130, _gameManager.PlayerState.CheckpointMaxHp);
+            Assert.AreEqual(15,  _gameManager.PlayerState.CheckpointAttack);
+        }
+
+        [Test]
+        public void RestoreCheckpointProgression_RollsBackLevelAndStats()
+        {
+            _gameManager.PlayerState.ApplyProgression(level: 3, xp: 10);
+            _gameManager.PlayerState.ApplyVitals(maxHp: 110, maxMp: 50, currentHp: 110, currentMp: 50);
+            _gameManager.PlayerState.ApplyStats(attack: 11, defense: 6, speed: 9);
+            _gameManager.PlayerState.CaptureCheckpointProgression();
+
+            // Simulate post-checkpoint progression: gain a level, level-up grows stats.
+            _gameManager.PlayerState.GrowStats(deltaMaxHp: 20, deltaMaxMp: 10, deltaAttack: 4, deltaDefense: 2, deltaSpeed: 3);
+            _gameManager.PlayerState.ApplyProgression(level: 4, xp: 0);
+
+            _gameManager.PlayerState.RestoreCheckpointProgression();
+
+            Assert.AreEqual(3,   _gameManager.PlayerState.Level);
+            Assert.AreEqual(10,  _gameManager.PlayerState.Xp);
+            Assert.AreEqual(110, _gameManager.PlayerState.MaxHp);
+            Assert.AreEqual(11,  _gameManager.PlayerState.Attack);
+        }
+
+        [Test]
         public void TryActivateCheckpointRegen_ReturnsTrueAndHeals_OnFirstActivation()
         {
             SaveService tempSaveService = CreateTempSaveService();
@@ -199,116 +290,138 @@ namespace CoreTests
         }
 
         [Test]
-        public void DefeatedEnemyIds_IsEmpty_ByDefault()
+        public void DefeatedEnemyIdsInScene_IsEmpty_ByDefault()
         {
-            Assert.IsNotNull(_gameManager.DefeatedEnemyIds);
-            using var enumerator = _gameManager.DefeatedEnemyIds.GetEnumerator();
+            using var enumerator = _gameManager.DefeatedEnemyIdsInScene("any_scene").GetEnumerator();
             Assert.IsFalse(enumerator.MoveNext());
         }
 
         [Test]
-        public void DefeatedEnemyIds_ReflectsMarkEnemyDefeated()
+        public void MarkEnemyDefeated_RecordsUnderActiveScene()
         {
+            _gameManager.PlayerState.SetActiveScene("Level_1-1");
             _gameManager.MarkEnemyDefeated("enemy_a");
             _gameManager.MarkEnemyDefeated("enemy_b");
 
-            var ids = new List<string>(_gameManager.DefeatedEnemyIds);
-            CollectionAssert.AreEquivalent(new[] { "enemy_a", "enemy_b" }, ids);
-        }
-
-        [Test]
-        public void RestoreDefeatedEnemies_ReplacesExistingSet()
-        {
-            _gameManager.MarkEnemyDefeated("stale_enemy");
-
-            _gameManager.RestoreDefeatedEnemies(new[] { "enemy_x", "enemy_y" });
-
-            Assert.IsFalse(_gameManager.IsEnemyDefeated("stale_enemy"));
-            Assert.IsTrue(_gameManager.IsEnemyDefeated("enemy_x"));
-            Assert.IsTrue(_gameManager.IsEnemyDefeated("enemy_y"));
-        }
-
-        [Test]
-        public void RestoreDefeatedEnemies_WithNull_ClearsSet()
-        {
-            _gameManager.MarkEnemyDefeated("enemy_a");
-
-            _gameManager.RestoreDefeatedEnemies(null);
-
-            Assert.IsFalse(_gameManager.IsEnemyDefeated("enemy_a"));
-            using var enumerator = _gameManager.DefeatedEnemyIds.GetEnumerator();
-            Assert.IsFalse(enumerator.MoveNext());
-        }
-
-        [Test]
-        public void RestoreDefeatedEnemies_SkipsNullAndEmptyIds()
-        {
-            _gameManager.RestoreDefeatedEnemies(new[] { "enemy_a", null, string.Empty, "enemy_b" });
-
-            Assert.IsTrue(_gameManager.IsEnemyDefeated("enemy_a"));
-            Assert.IsTrue(_gameManager.IsEnemyDefeated("enemy_b"));
-            var ids = new List<string>(_gameManager.DefeatedEnemyIds);
-            Assert.AreEqual(2, ids.Count);
-        }
-
-        [Test]
-        public void BuildSaveData_IncludesDefeatedEnemyIds()
-        {
-            _gameManager.MarkEnemyDefeated("enemy_slime_01");
-            _gameManager.MarkEnemyDefeated("enemy_bat_02");
-
-            SaveData data = _gameManager.BuildSaveData();
-
-            Assert.IsNotNull(data.defeatedEnemyIds);
-            Assert.AreEqual(2, data.defeatedEnemyIds.Length);
             CollectionAssert.AreEquivalent(
-                new[] { "enemy_slime_01", "enemy_bat_02" },
-                data.defeatedEnemyIds);
+                new[] { "enemy_a", "enemy_b" },
+                new List<string>(_gameManager.DefeatedEnemyIdsInScene("Level_1-1")));
+            // Other scenes unaffected.
+            using var other = _gameManager.DefeatedEnemyIdsInScene("Level_1-2").GetEnumerator();
+            Assert.IsFalse(other.MoveNext());
         }
 
         [Test]
-        public void BuildSaveData_DefeatedEnemyIds_IsEmptyArray_WhenNoneDefeated()
+        public void MarkEnemyDefeatedInScene_IsScopedToThatScene()
+        {
+            _gameManager.MarkEnemyDefeatedInScene("Level_1-1", "slime_01");
+            _gameManager.MarkEnemyDefeatedInScene("Level_1-2", "bat_02");
+
+            Assert.IsTrue(_gameManager.IsEnemyDefeatedInScene("Level_1-1", "slime_01"));
+            Assert.IsFalse(_gameManager.IsEnemyDefeatedInScene("Level_1-2", "slime_01"));
+            Assert.IsTrue(_gameManager.IsEnemyDefeatedInScene("Level_1-2", "bat_02"));
+            Assert.IsFalse(_gameManager.IsEnemyDefeatedInScene("Level_1-1", "bat_02"));
+        }
+
+        [Test]
+        public void ClearDefeatedEnemiesInScene_LeavesOtherScenesIntact()
+        {
+            _gameManager.MarkEnemyDefeatedInScene("Level_1-1", "slime_01");
+            _gameManager.MarkEnemyDefeatedInScene("Level_1-2", "bat_02");
+
+            _gameManager.ClearDefeatedEnemiesInScene("Level_1-1");
+
+            Assert.IsFalse(_gameManager.IsEnemyDefeatedInScene("Level_1-1", "slime_01"));
+            Assert.IsTrue(_gameManager.IsEnemyDefeatedInScene("Level_1-2", "bat_02"));
+        }
+
+        [Test]
+        public void BuildSaveData_IncludesDefeatedEnemiesPerScene()
+        {
+            _gameManager.MarkEnemyDefeatedInScene("Level_1-1", "enemy_slime_01");
+            _gameManager.MarkEnemyDefeatedInScene("Level_1-2", "enemy_bat_02");
+
+            SaveData data = _gameManager.BuildSaveData();
+
+            Assert.IsNotNull(data.defeatedEnemiesPerScene);
+            Assert.AreEqual(2, data.defeatedEnemiesPerScene.Length);
+
+            var lookup = new System.Collections.Generic.Dictionary<string, string[]>();
+            foreach (var entry in data.defeatedEnemiesPerScene)
+                lookup[entry.sceneName] = entry.enemyIds;
+
+            CollectionAssert.AreEquivalent(new[] { "enemy_slime_01" }, lookup["Level_1-1"]);
+            CollectionAssert.AreEquivalent(new[] { "enemy_bat_02" }, lookup["Level_1-2"]);
+        }
+
+        [Test]
+        public void BuildSaveData_DefeatedEnemiesPerScene_IsEmptyArray_WhenNoneDefeated()
         {
             SaveData data = _gameManager.BuildSaveData();
 
-            Assert.IsNotNull(data.defeatedEnemyIds);
-            Assert.AreEqual(0, data.defeatedEnemyIds.Length);
+            Assert.IsNotNull(data.defeatedEnemiesPerScene);
+            Assert.AreEqual(0, data.defeatedEnemiesPerScene.Length);
         }
 
         [Test]
-        public void ApplySaveData_RestoresDefeatedEnemyIds()
+        public void ApplySaveData_RestoresDefeatedEnemiesPerScene()
         {
-            _gameManager.MarkEnemyDefeated("stale_enemy");
+            _gameManager.MarkEnemyDefeatedInScene("Level_1-1", "stale_enemy");
 
             var saveData = new SaveData
             {
                 maxHp = 100,
                 maxMp = 50,
+                defeatedEnemiesPerScene = new[]
+                {
+                    new DefeatedEnemiesSceneEntry
+                    {
+                        sceneName = "Level_1-2",
+                        enemyIds = new[] { "enemy_a", "enemy_b" }
+                    }
+                }
+            };
+
+            _gameManager.ApplySaveData(saveData);
+
+            Assert.IsFalse(_gameManager.IsEnemyDefeatedInScene("Level_1-1", "stale_enemy"));
+            Assert.IsTrue(_gameManager.IsEnemyDefeatedInScene("Level_1-2", "enemy_a"));
+            Assert.IsTrue(_gameManager.IsEnemyDefeatedInScene("Level_1-2", "enemy_b"));
+        }
+
+        [Test]
+        public void ApplySaveData_MigratesLegacyDefeatedEnemyIds_UnderActiveSceneName()
+        {
+            var saveData = new SaveData
+            {
+                saveVersion = 1,
+                maxHp = 100,
+                maxMp = 50,
+                activeSceneName = "Level_1-1",
                 defeatedEnemyIds = new[] { "enemy_a", "enemy_b" }
             };
 
             _gameManager.ApplySaveData(saveData);
 
-            Assert.IsFalse(_gameManager.IsEnemyDefeated("stale_enemy"));
-            Assert.IsTrue(_gameManager.IsEnemyDefeated("enemy_a"));
-            Assert.IsTrue(_gameManager.IsEnemyDefeated("enemy_b"));
+            Assert.IsTrue(_gameManager.IsEnemyDefeatedInScene("Level_1-1", "enemy_a"));
+            Assert.IsTrue(_gameManager.IsEnemyDefeatedInScene("Level_1-1", "enemy_b"));
         }
 
         [Test]
-        public void ApplySaveData_NullDefeatedEnemyIds_ClearsSet()
+        public void ApplySaveData_NullDefeatedEnemiesPerScene_ClearsAllScenes()
         {
-            _gameManager.MarkEnemyDefeated("stale_enemy");
+            _gameManager.MarkEnemyDefeatedInScene("Level_1-1", "stale_enemy");
 
             var saveData = new SaveData
             {
                 maxHp = 100,
                 maxMp = 50,
-                defeatedEnemyIds = null
+                defeatedEnemiesPerScene = null
             };
 
             _gameManager.ApplySaveData(saveData);
 
-            Assert.IsFalse(_gameManager.IsEnemyDefeated("stale_enemy"));
+            Assert.IsFalse(_gameManager.IsEnemyDefeatedInScene("Level_1-1", "stale_enemy"));
         }
 
         [Test]
@@ -400,70 +513,103 @@ namespace CoreTests
         }
 
         [Test]
-        public void BuildSaveData_IncludesDamagedEnemyHp()
+        public void BuildSaveData_IncludesDamagedEnemyHpPerScene()
         {
-            _gameManager.SetDamagedEnemyHp("enemy_slime_01", 25);
-            _gameManager.SetDamagedEnemyHp("enemy_bat_02", 40);
+            _gameManager.SetDamagedEnemyHpInScene("Level_1-1", "enemy_slime_01", 25);
+            _gameManager.SetDamagedEnemyHpInScene("Level_1-2", "enemy_bat_02", 40);
 
             SaveData data = _gameManager.BuildSaveData();
 
-            Assert.IsNotNull(data.damagedEnemyHp);
-            Assert.AreEqual(2, data.damagedEnemyHp.Length);
+            Assert.IsNotNull(data.damagedEnemyHpPerScene);
+            Assert.AreEqual(2, data.damagedEnemyHpPerScene.Length);
 
-            var lookup = new System.Collections.Generic.Dictionary<string, int>();
-            foreach (var entry in data.damagedEnemyHp)
-                lookup[entry.enemyId] = entry.currentHp;
-            Assert.AreEqual(25, lookup["enemy_slime_01"]);
-            Assert.AreEqual(40, lookup["enemy_bat_02"]);
+            var lookup = new System.Collections.Generic.Dictionary<string, EnemyHpSaveEntry[]>();
+            foreach (var entry in data.damagedEnemyHpPerScene)
+                lookup[entry.sceneName] = entry.entries;
+
+            Assert.AreEqual(1, lookup["Level_1-1"].Length);
+            Assert.AreEqual("enemy_slime_01", lookup["Level_1-1"][0].enemyId);
+            Assert.AreEqual(25, lookup["Level_1-1"][0].currentHp);
+
+            Assert.AreEqual(1, lookup["Level_1-2"].Length);
+            Assert.AreEqual("enemy_bat_02", lookup["Level_1-2"][0].enemyId);
+            Assert.AreEqual(40, lookup["Level_1-2"][0].currentHp);
         }
 
         [Test]
-        public void BuildSaveData_DamagedEnemyHp_IsEmptyArray_WhenNoneDamaged()
+        public void BuildSaveData_DamagedEnemyHpPerScene_IsEmptyArray_WhenNoneDamaged()
         {
             SaveData data = _gameManager.BuildSaveData();
 
-            Assert.IsNotNull(data.damagedEnemyHp);
-            Assert.AreEqual(0, data.damagedEnemyHp.Length);
+            Assert.IsNotNull(data.damagedEnemyHpPerScene);
+            Assert.AreEqual(0, data.damagedEnemyHpPerScene.Length);
         }
 
         [Test]
-        public void ApplySaveData_RestoresDamagedEnemyHp()
+        public void ApplySaveData_RestoresDamagedEnemyHpPerScene()
         {
-            _gameManager.SetDamagedEnemyHp("stale_enemy", 99);
+            _gameManager.SetDamagedEnemyHpInScene("Level_1-1", "stale_enemy", 99);
 
             var saveData = new SaveData
             {
                 maxHp = 100,
                 maxMp = 50,
-                damagedEnemyHp = new[]
+                damagedEnemyHpPerScene = new[]
                 {
-                    new EnemyHpSaveEntry { enemyId = "enemy_a", currentHp = 30 },
-                    new EnemyHpSaveEntry { enemyId = "enemy_b", currentHp = 15 }
+                    new DamagedEnemyHpSceneEntry
+                    {
+                        sceneName = "Level_1-2",
+                        entries = new[]
+                        {
+                            new EnemyHpSaveEntry { enemyId = "enemy_a", currentHp = 30 },
+                            new EnemyHpSaveEntry { enemyId = "enemy_b", currentHp = 15 }
+                        }
+                    }
                 }
             };
 
             _gameManager.ApplySaveData(saveData);
 
-            Assert.AreEqual(-1, _gameManager.GetDamagedEnemyHp("stale_enemy"));
-            Assert.AreEqual(30, _gameManager.GetDamagedEnemyHp("enemy_a"));
-            Assert.AreEqual(15, _gameManager.GetDamagedEnemyHp("enemy_b"));
+            Assert.AreEqual(-1, _gameManager.GetDamagedEnemyHpInScene("Level_1-1", "stale_enemy"));
+            Assert.AreEqual(30, _gameManager.GetDamagedEnemyHpInScene("Level_1-2", "enemy_a"));
+            Assert.AreEqual(15, _gameManager.GetDamagedEnemyHpInScene("Level_1-2", "enemy_b"));
         }
 
         [Test]
-        public void ApplySaveData_NullDamagedEnemyHp_ClearsDictionary()
+        public void ApplySaveData_MigratesLegacyDamagedEnemyHp_UnderActiveSceneName()
         {
-            _gameManager.SetDamagedEnemyHp("stale", 50);
+            var saveData = new SaveData
+            {
+                saveVersion = 1,
+                maxHp = 100,
+                maxMp = 50,
+                activeSceneName = "Level_1-1",
+                damagedEnemyHp = new[]
+                {
+                    new EnemyHpSaveEntry { enemyId = "enemy_a", currentHp = 30 }
+                }
+            };
+
+            _gameManager.ApplySaveData(saveData);
+
+            Assert.AreEqual(30, _gameManager.GetDamagedEnemyHpInScene("Level_1-1", "enemy_a"));
+        }
+
+        [Test]
+        public void ApplySaveData_NullDamagedEnemyHpPerScene_ClearsDictionary()
+        {
+            _gameManager.SetDamagedEnemyHpInScene("Level_1-1", "stale", 50);
 
             var saveData = new SaveData
             {
                 maxHp = 100,
                 maxMp = 50,
-                damagedEnemyHp = null
+                damagedEnemyHpPerScene = null
             };
 
             _gameManager.ApplySaveData(saveData);
 
-            Assert.AreEqual(-1, _gameManager.GetDamagedEnemyHp("stale"));
+            Assert.AreEqual(-1, _gameManager.GetDamagedEnemyHpInScene("Level_1-1", "stale"));
         }
 
         [Test]
@@ -487,18 +633,18 @@ namespace CoreTests
         }
 
         [Test]
-        public void ApplySaveData_MissingDamagedEnemyHp_DefaultsToEmpty()
+        public void ApplySaveData_MissingDamagedEnemyHpPerScene_DefaultsToEmpty()
         {
             var saveData = new SaveData
             {
                 maxHp = 100,
                 maxMp = 50,
-                damagedEnemyHp = null
+                damagedEnemyHpPerScene = null
             };
 
             _gameManager.ApplySaveData(saveData);
 
-            Assert.AreEqual(-1, _gameManager.GetDamagedEnemyHp("any_enemy"));
+            Assert.AreEqual(-1, _gameManager.GetDamagedEnemyHpInScene("Level_1-1", "any_enemy"));
         }
 
         [Test]

@@ -15,7 +15,8 @@
       "Bash(cm ci *)",
       "Bash(git *)",
       "Bash(cm checkin *)",
-      "mcp__atlassian__createJiraIssue"
+      "mcp__atlassian__createJiraIssue",
+      "Bash(file *)"
     ]
   }
 }

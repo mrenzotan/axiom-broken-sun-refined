@@ -86,10 +86,11 @@ namespace Axiom.Voice.Tests
         public void Inject_NullRecognizerService_DoesNotThrow()
         {
             var inputQueue = new ConcurrentQueue<short[]>();
+            var bufferPool = new MicrophoneBufferPool();
 
             Assert.DoesNotThrow(() =>
             {
-                _handler.Inject(inputQueue, null);
+                _handler.Inject(inputQueue, null, bufferPool);
             });
         }
 

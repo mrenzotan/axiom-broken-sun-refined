@@ -22,8 +22,9 @@ namespace Axiom.Battle
     ///
     /// Defeat flow:
     ///   1. Show <see cref="DefeatScreenUI"/>.
-    ///   2. On continue, call <see cref="GameManager.TryContinueGame"/>.
-    ///   3. If no save exists, transition to MainMenu.
+    ///   2. On continue, call <see cref="GameManager.RespawnAtLastCheckpoint"/> — heals the
+    ///      player and loads the level scene of the most recently touched save point.
+    ///   3. If no checkpoint has been activated, transition to MainMenu.
     /// </summary>
     public class PostBattleFlowController : MonoBehaviour
     {
@@ -53,10 +54,6 @@ namespace Axiom.Battle
         private float _fadeDuration = 0.2f;
 
         [SerializeField]
-        [Tooltip("Scene to load after Victory and after Continue. Usually Platformer.")]
-        private string _returnScene = "Platformer";
-
-        [SerializeField]
         [Tooltip("Scene to fall back to on Defeat if no save file exists. Usually MainMenu.")]
         private string _noSaveFallbackScene = "MainMenu";
 
@@ -81,14 +78,30 @@ namespace Axiom.Battle
                 : new PostBattleResult(0, Array.Empty<ItemGrant>());
 
             GameManager gm = GameManager.Instance;
+
+            XpProgress xpBefore = gm?.ProgressionService != null
+                ? gm.ProgressionService.GetXpProgress()
+                : new XpProgress(currentXp: 0, xpForNextLevel: 0, isAtLevelCap: true, progress01: 0f);
+
+            int levelsGained = 0;
+
             if (gm != null)
             {
+                ProgressionService progression = gm.ProgressionService;
+                if (progression != null)
+                    progression.OnLevelUp += OnLevelUpDuringAward;
+
                 if (result.Xp > 0)
                     gm.AwardXp(result.Xp);
+
+                if (progression != null)
+                    progression.OnLevelUp -= OnLevelUpDuringAward;
 
                 for (int i = 0; i < result.Items.Count; i++)
                     gm.PlayerState.Inventory.Add(result.Items[i].ItemId, result.Items[i].Quantity);
             }
+
+            void OnLevelUpDuringAward(LevelUpResult _) => levelsGained++;
 
             if (_victoryScreenUI == null)
             {
@@ -98,7 +111,7 @@ namespace Axiom.Battle
                 return;
             }
 
-            XpProgress xpProgress = gm?.ProgressionService != null
+            XpProgress xpAfter = gm?.ProgressionService != null
                 ? gm.ProgressionService.GetXpProgress()
                 : new XpProgress(currentXp: 0, xpForNextLevel: 0, isAtLevelCap: true, progress01: 0f);
 
@@ -107,7 +120,7 @@ namespace Axiom.Battle
             if (_victoryCanvasGroup != null)
                 SetCanvasGroupAlpha(_victoryCanvasGroup, 1f, interactable: true);
 
-            _victoryScreenUI.Show(result, xpProgress);
+            _victoryScreenUI.Show(result, xpBefore, xpAfter, levelsGained);
         }
 
         private void HandleVictoryScreenDismissed()
@@ -206,10 +219,10 @@ namespace Axiom.Battle
             _pendingEnemy   = null;
             _pendingEnemyId = null;
 
-            if (gm?.SceneTransition != null)
-                gm.SceneTransition.BeginTransition(_returnScene, TransitionStyle.BlackFade);
+            if (gm != null)
+                gm.ReturnToWorldScene();
             else
-                SceneManager.LoadScene(_returnScene);
+                SceneManager.LoadScene("Platformer");
         }
 
         /// <summary>
@@ -235,13 +248,10 @@ namespace Axiom.Battle
                 _defeatScreenUI.OnContinueClicked -= HandleDefeatContinue;
 
             GameManager gm = GameManager.Instance;
-            if (gm != null && gm.HasSaveFile())
-            {
-                gm.TryContinueGame();
+            if (gm != null && gm.RespawnAtLastCheckpoint(TransitionStyle.BlackFade))
                 return;
-            }
 
-            // No save — fall back to MainMenu.
+            // No checkpoint activated (or no GameManager) — fall back to MainMenu.
             if (gm?.SceneTransition != null)
                 gm.SceneTransition.BeginTransition(_noSaveFallbackScene, TransitionStyle.BlackFade);
             else

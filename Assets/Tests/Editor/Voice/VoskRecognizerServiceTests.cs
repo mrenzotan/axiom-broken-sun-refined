@@ -117,18 +117,47 @@ namespace Axiom.Voice.Tests
         // --- FinalResult flushing ---
 
         [Test]
-        public void RequestFinalResult_EnqueuesAtLeastOneResult()
+        public void Sentinel_EnqueuesAtLeastOneResult()
         {
             _service.Start();
 
-            _service.RequestFinalResult();
-            // Give the background thread up to 200 ms to process the flag.
+            _inputQueue.Enqueue(null);
+            // Give the background thread up to 200 ms to process the sentinel.
             Thread.Sleep(200);
 
             _service.Stop();
 
             Assert.GreaterOrEqual(_resultQueue.Count, 1,
-                "Expected at least one result in queue after RequestFinalResult()");
+                "Expected at least one result in queue after null sentinel is processed");
+        }
+
+        [Test]
+        public void SentinelInInputQueue_TriggersFinalResult_AndResetsRecognizerState()
+        {
+            // Arrange: recognizer with grammar ["ignis", "aqua"]
+            _recognizer = new VoskRecognizer(s_model, 16000f, "[\"ignis\", \"aqua\"]");
+            _service = new VoskRecognizerService(_recognizer, _inputQueue, _resultQueue);
+            _service.Start();
+
+            // Act: enqueue audio samples followed by a null sentinel, then more audio
+            short[] samples1 = new short[800]; // ~50 ms of audio
+            short[] samples2 = new short[800];
+            _inputQueue.Enqueue(samples1);
+            _inputQueue.Enqueue(null); // sentinel
+            _inputQueue.Enqueue(samples2);
+
+            // Wait for the background thread to process sentinel + samples2
+            Thread.Sleep(300);
+            _service.Stop();
+
+            // Assert:
+            // 1. At least one result was produced (sentinel triggered FinalResult)
+            Assert.GreaterOrEqual(_resultQueue.Count, 1,
+                "Expected at least one result after sentinel was processed");
+
+            // 2. samples2 audio was accepted after the sentinel reset
+            Assert.GreaterOrEqual(_resultQueue.Count, 2,
+                "Expected a second result for samples2 audio processed after reset");
         }
 
         [Test]

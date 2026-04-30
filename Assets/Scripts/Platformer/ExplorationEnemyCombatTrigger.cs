@@ -20,6 +20,16 @@ namespace Axiom.Platformer
         [Tooltip("EnemyData ScriptableObject for this enemy. Passed to BattleController at battle load.")]
         private EnemyData _enemyData;
 
+        [SerializeField]
+        [Tooltip("BattleEnvironmentData for this engagement. Determines which background sprite the Battle scene shows. Leave null to use the Battle scene's default background.")]
+        private BattleEnvironmentData _battleEnvironment;
+
+        [SerializeField]
+        [Tooltip("DEV-46. Set to FirstBattle on the IceSlime in Level_1-1 (locks Spell/Item/Flee). " +
+                 "Set to SpellTutorial on the Meltspawn in Level_1-1 (multi-step Liquid → Freeze → Solid flow). " +
+                 "Leave None for all other enemies.")]
+        private BattleTutorialMode _tutorialMode = BattleTutorialMode.None;
+
         // Set once a battle path is committed — blocks any further trigger on this enemy.
         private bool _triggered;
         // Set by PlayerController.BeginAttack — blocks the Surprised path while the
@@ -124,7 +134,8 @@ namespace Axiom.Platformer
             string enemyId = GetComponent<EnemyController>()?.EnemyId;
             int enemyCurrentHp = GameManager.Instance.GetDamagedEnemyHp(enemyId);
             GameManager.Instance.SetPendingBattle(
-                new BattleEntry(startState, _enemyData, enemyId, enemyCurrentHp));
+                new BattleEntry(startState, _enemyData, enemyId, enemyCurrentHp,
+                    _battleEnvironment, _tutorialMode));
 
             Vector2 playerWorldPosition = ResolvePlayerWorldPosition(playerCollider);
             

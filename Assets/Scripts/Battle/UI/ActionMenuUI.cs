@@ -5,9 +5,10 @@ using UnityEngine.UI;
 namespace Axiom.Battle
 {
     /// <summary>
-    /// Manages the 2×2 battle action menu (Attack, Spell, Item, Flee).
+    /// Manages the 2×2 battle action menu (Attack, Spell, Item, Flee)
+    /// plus a small Spell List info button beside the grid.
     ///
-    /// BattleHUD wires OnAttack/OnSpell/OnItem/OnFlee to BattleController methods.
+    /// BattleHUD wires OnXxx to BattleController methods.
     /// SetInteractable(false) is called on EnemyTurn, Victory, and Defeat.
     /// </summary>
     public class ActionMenuUI : MonoBehaviour
@@ -16,12 +17,13 @@ namespace Axiom.Battle
         [SerializeField] private Button _spellButton;
         [SerializeField] private Button _itemButton;
         [SerializeField] private Button _fleeButton;
+        [SerializeField] private Button _spellListButton;
 
-        /// <summary>Wire these to BattleController.PlayerAttack / PlayerSpell / PlayerItem / PlayerFlee.</summary>
         public Action OnAttack;
         public Action OnSpell;
         public Action OnItem;
         public Action OnFlee;
+        public Action OnSpellList;
 
         private void Start()
         {
@@ -29,10 +31,11 @@ namespace Axiom.Battle
             _spellButton.onClick.AddListener(() => OnSpell?.Invoke());
             _itemButton.onClick.AddListener(() => OnItem?.Invoke());
             _fleeButton.onClick.AddListener(() => OnFlee?.Invoke());
+            _spellListButton.onClick.AddListener(() => OnSpellList?.Invoke());
         }
 
         /// <summary>
-        /// Enables or disables all four buttons.
+        /// Enables or disables all four buttons plus the Spell List button.
         /// Call with false during EnemyTurn, Victory, and Defeat states.
         /// </summary>
         public void SetInteractable(bool interactable)
@@ -41,15 +44,30 @@ namespace Axiom.Battle
             _spellButton.interactable  = interactable;
             _itemButton.interactable   = interactable;
             _fleeButton.interactable   = interactable;
+            _spellListButton.interactable = interactable;
         }
 
-        /// <summary>
-        /// Enables or disables only the Spell button independently of the other three actions.
-        /// Call with false when voice recognition is unavailable (model missing, no mic device).
-        /// </summary>
         public void SetSpellInteractable(bool interactable)
         {
             _spellButton.interactable = interactable;
+        }
+
+        /// <summary>Enables or disables only the Attack button. Used by BattleTutorialController.</summary>
+        public void SetAttackInteractable(bool interactable)
+        {
+            _attackButton.interactable = interactable;
+        }
+
+        /// <summary>Enables or disables only the Item button. Used by BattleTutorialController.</summary>
+        public void SetItemInteractable(bool interactable)
+        {
+            _itemButton.interactable = interactable;
+        }
+
+        /// <summary>Enables or disables only the Flee button. Used by BattleTutorialController.</summary>
+        public void SetFleeInteractable(bool interactable)
+        {
+            _fleeButton.interactable = interactable;
         }
 
         private void OnDestroy()
@@ -58,6 +76,7 @@ namespace Axiom.Battle
             _spellButton.onClick.RemoveAllListeners();
             _itemButton.onClick.RemoveAllListeners();
             _fleeButton.onClick.RemoveAllListeners();
+            _spellListButton.onClick.RemoveAllListeners();
         }
     }
 }

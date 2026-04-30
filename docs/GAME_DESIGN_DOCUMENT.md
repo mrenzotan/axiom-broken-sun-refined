@@ -113,12 +113,49 @@ Enemies are designed as "Chemical Puzzles" that require specific reactions to de
 
 ## **4\. Game Asset Design**
 
-### **4.1 Visual Style (Pixel Art Resolution)**
+### **4.1 Visual Style (Pixel Art)**
 
-The game utilizes a hybrid pixel art resolution to balance production efficiency with visual depth.
+The game uses a mixed sprite-dimension pixel art style with a single, uniform project-wide pixel density.
 
-* **Environment & Tilesets (16x16):** The world shards and platforms are designed at a lower resolution to evoke a classic retro aesthetic and allow for faster level iteration.  
-* **Characters & Bosses (32x32):** **Kaelen** and the various **Glimmerlings** and **Bosses** use a higher resolution. This allows for detailed textures on the **Catalyst Arm** and clearer visual feedback during combat and chemical reactions.
+**Project-wide world-space Pixels Per Unit (PPU): 16.**
+
+This is the **density rule**, not a dimension rule. Every world-space sprite (tilesets, character sprites, enemy sprites, VFX sheets, background parallax layers) imports at `Pixels Per Unit = 16`, regardless of its source pixel dimensions. The `PixelPerfectCamera` component on the Platformer scene's Main Camera is configured to match:
+
+| Pixel Perfect Camera field | Value | Why |
+| --- | --- | --- |
+| Assets Pixels Per Unit | **16** | Matches the world-space PPU rule above. |
+| Reference Resolution X | **480** | Pixel-art canvas width; with PPU 16 this yields a 30-unit wide camera view. |
+| Reference Resolution Y | **270** | Pixel-art canvas height; with PPU 16 this yields a 16.875-unit tall camera view (`270 / (2×16)`). |
+| Grid Snapping | **Pixel Snapping** | Snaps sprite positions to the pixel grid each frame to prevent sub-pixel shimmer when the camera moves, while rendering at the window's native resolution. The alternative `Upscale Render Texture` mode was tested and rejected because it routes the whole world through a small 480×270 render target, which mangles world-space `TextMeshPro` glyphs (floating heal/damage numbers, etc.) into illegible blobs. Pixel Snapping keeps sprites crisp and world-space text legible. |
+
+Orthographic size is derived: `RefResolutionY / (2 × AssetsPPU) = 270 / 32 ≈ 8.44` units — the visible world is a **~30 × 16.875 unit** area regardless of window size. In the Platformer scene the Cinemachine Virtual Camera driving Main Camera is set to the same orthographic size (8.44) so its framing matches the PixelPerfectCamera's derived size.
+
+The `PixelPerfectCamera` component is attached only to the Platformer scene's Main Camera. The Battle scene's Main Camera does not use `PixelPerfectCamera` — battle visuals are framed at their own orthographic size and battle UI lives on a Screen Space Canvas.
+
+**Consequence — on-screen footprint scales with sprite dimension:**
+
+| Sprite dimension | World-space footprint under PPU 16 |
+| --- | --- |
+| 8x8 | 0.5 units (half a tile) |
+| 16x16 | 1 unit (nominal tile size) |
+| 32x32 | 2 units |
+| 64x64 | 4 units |
+
+All sprites end up at **identical on-screen pixel size** — only the world-space footprint differs. Mixing dimensions is fine; mixing PPU values is not.
+
+**Sprite dimension guidance (non-binding, for art authors):**
+
+* **Environment & tilesets:** 16x16 base tiles are the standard. 8x8 sub-variants (e.g. the Snow Mountain `Tilesets/` folder) are acceptable for extra detail and tile around the 16x16 grid as half-tiles.
+* **Characters & enemies:** 32x32 per frame for small enemies (Glimmerlings, slimes); 48x48 or 64x64 for the protagonist and bosses where the Catalyst Arm detail needs more resolution.
+* **Reactive VFX:** 16x16 or 32x32 per frame, designed to read at a glance during combat.
+
+**Out of scope for PPU 16 (stay at PPU 100):**
+
+* UI sprites (`Assets/Art/UI/**`) — render in Screen Space Canvas, do not participate in world-space pixel density.
+* Font atlases (`Assets/Art/Font/**`).
+* Main Menu backgrounds used as full-screen Canvas art.
+
+**Enforcement:** New imports into `Assets/Art/Sprites/`, `Assets/Art/Backgrounds/`, `Assets/Art/Tilemaps/`, and `Assets/Art/AssetPacks/` inherit PPU 16 automatically via a Preset Manager default (`Assets/Editor/Presets/SpriteImporter_PPU16.preset`).
 
 ### **4.2 Color Palette: The "Reactive" Palette**
 

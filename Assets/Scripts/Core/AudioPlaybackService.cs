@@ -5,8 +5,9 @@ using UnityEngine;
 namespace Axiom.Core
 {
     /// <summary>
-    /// Plain C# audio policy: main-menu BGM on <see cref="MainMenuSceneName"/>, in-game ambient on
-    /// <see cref="PlatformerSceneName"/>, UI clicks, mixer RTPC from persisted levels, idempotent scene hooks.
+    /// Plain C# audio policy: main-menu BGM on <see cref="MainMenuSceneName"/>, in-game exploration loop on
+    /// <see cref="PlatformerSceneName"/> (same <see cref="AudioSettingsStore"/> music level as BGM),
+    /// UI clicks, mixer RTPC from persisted levels, idempotent scene hooks.
     /// </summary>
     public sealed class AudioPlaybackService
     {
@@ -15,6 +16,12 @@ namespace Axiom.Core
         /// <summary>Gameplay scene that receives the ambient / exploration loop (matches <c>GameManager</c> default).</summary>
         public const string PlatformerSceneName = "Platformer";
 
+        /// <summary>Cutscene scene name — music is driven by CutsceneUI, not scene name.</summary>
+        public const string CutsceneSceneName = "Cutscene";
+
+        /// <summary>Battle scene name — music is driven by BattleController, not scene name.</summary>
+        public const string BattleSceneName = "Battle";
+
         private readonly MenuAudioConfig _config;
         private readonly AudioSettingsStore _store;
         private readonly AudioSource _bgmSource;
@@ -22,7 +29,6 @@ namespace Axiom.Core
         private readonly AudioSource _uiSource;
         private readonly System.Action<string, float> _setMixerParam;
         private readonly string _musicParam;
-        private readonly string _ambientParam;
         private readonly string _sfxParam;
 
         /// <summary>
@@ -45,7 +51,6 @@ namespace Axiom.Core
             AudioSource uiSource,
             System.Action<string, float> setMixerParam,
             string musicMixerParameterName,
-            string ambientMixerParameterName,
             string sfxMixerParameterName,
             bool amplifyUiOneShotWithStoredSfx = true)
         {
@@ -56,7 +61,6 @@ namespace Axiom.Core
             _uiSource = uiSource;
             _setMixerParam = setMixerParam;
             _musicParam = musicMixerParameterName;
-            _ambientParam = ambientMixerParameterName;
             _sfxParam = sfxMixerParameterName;
             _amplifyUiOneShotWithStoredSfx = amplifyUiOneShotWithStoredSfx;
         }
@@ -66,10 +70,8 @@ namespace Axiom.Core
             if (_store == null) return;
 
             float music = _store.GetMusicVolumeNormalized();
-            float ambient = _store.GetAmbientVolumeNormalized();
             float sfx = _store.GetSfxVolumeNormalized();
             ApplyMusicMixerOnly(music);
-            ApplyAmbientMixerOnly(ambient);
             ApplySfxMixerOnly(sfx);
         }
 
@@ -79,12 +81,24 @@ namespace Axiom.Core
 
             if (sceneName == MainMenuSceneName)
                 ApplyMainMenuSceneAudio();
-            else if (string.Equals(sceneName, PlatformerSceneName, StringComparison.Ordinal))
-                ApplyPlatformerSceneAudio();
+            else if (sceneName == CutsceneSceneName)
+            {
+                // Music is driven by CutsceneUI via PlayBgm — do not stop buses.
+            }
+            else if (sceneName == BattleSceneName)
+            {
+                // Battle music is driven by BattleController via PlayBgm on the BGM bus.
+                // Stop the ambient bus so the exploration loop doesn't overlap with battle BGM.
+                StopAmbientBus();
+            }
             else
-                StopAllLoopingBuses();
+            {
+                // Default: play exploration ambient loop for all level scenes
+                // (Platformer, Level_1-1, Level_2-1, etc.)
+                ApplyPlatformerSceneAudio();
+            }
 
-            // Re-apply saved levels whenever the active scene changes so mixer RTPC matches prefs after menu → game.
+            // Re-apply saved levels whenever the active scene changes
             ApplyPersistedVolumesToMixer();
         }
 
@@ -95,18 +109,6 @@ namespace Axiom.Core
                 _store.SetMusicVolume(linear01);
 
             ApplyMusicMixerOnly(linear01);
-            // When ambient has never been saved, store resolves ambient from music; otherwise ambient stays independent.
-            float ambientLevel = _store != null ? _store.GetAmbientVolumeNormalized() : linear01;
-            ApplyAmbientMixerOnly(ambientLevel);
-        }
-
-        public void SetAmbientVolume(float linear01)
-        {
-            linear01 = Mathf.Clamp01(linear01);
-            if (_store != null)
-                _store.SetAmbientVolume(linear01);
-
-            ApplyAmbientMixerOnly(linear01);
         }
 
         public void SetSfxVolume(float linear01)
@@ -121,9 +123,6 @@ namespace Axiom.Core
         public float GetMusicVolumeNormalized() =>
             _store != null ? _store.GetMusicVolumeNormalized() : 1f;
 
-        public float GetAmbientVolumeNormalized() =>
-            _store != null ? _store.GetAmbientVolumeNormalized() : 1f;
-
         public float GetSfxVolumeNormalized() =>
             _store != null ? _store.GetSfxVolumeNormalized() : 1f;
 
@@ -137,6 +136,36 @@ namespace Axiom.Core
             float sfxMul = _amplifyUiOneShotWithStoredSfx ? GetSfxVolumeNormalized() : 1f;
             float vol = Mathf.Clamp01(_config.UiLinear * sfxMul);
             _uiSource.PlayOneShot(clip, vol);
+        }
+
+        /// <summary>
+        /// Play a specific <see cref="AudioClip"/> on the BGM bus.
+        /// Clip is looped. Volume is clamped [0,1]. Null clip stops the bus.
+        /// For cutscene music, battle music, or any scene-driven dynamic BGM.
+        /// </summary>
+        public void PlayBgm(AudioClip clip, float volume)
+        {
+            volume = Mathf.Clamp01(volume);
+
+            if (clip == null)
+            {
+                StopBgmBus();
+                return;
+            }
+
+            if (_bgmSource == null) return;
+
+            if (_bgmSource.isPlaying && _bgmSource.clip == clip)
+            {
+                _bgmSource.volume = volume;
+                return;
+            }
+
+            StopBgmBus();
+            _bgmSource.clip = clip;
+            _bgmSource.loop = true;
+            _bgmSource.volume = volume;
+            _bgmSource.Play();
         }
 
         internal static float LinearVolumeToDecibels(float linear01)
@@ -226,11 +255,6 @@ namespace Axiom.Core
         private void ApplyMusicMixerOnly(float linear01)
         {
             TrySetMixer(_musicParam, linear01);
-        }
-
-        private void ApplyAmbientMixerOnly(float linear01)
-        {
-            TrySetMixer(_ambientParam, linear01);
         }
 
         private void ApplySfxMixerOnly(float linear01)

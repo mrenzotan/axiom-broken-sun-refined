@@ -1,6 +1,7 @@
 using System;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 namespace Axiom.Core
@@ -9,7 +10,7 @@ namespace Axiom.Core
     /// MonoBehaviour wrapper for <see cref="MainMenuController"/>.
     /// Handles Unity lifecycle only: creates the controller in Start(),
     /// wires button listeners, drives Continue interactability, routes menu audio,
-    /// and toggles the settings view (music / ambient / SFX sliders + back) versus primary menu buttons.
+    /// and toggles the settings view (master / music / SFX sliders + back) versus primary menu buttons.
     /// </summary>
     public class MainMenuUI : MonoBehaviour
     {
@@ -46,19 +47,25 @@ namespace Axiom.Core
         [Tooltip("Root object that contains the volume sliders and back button. Hidden until Settings is pressed.")]
         private GameObject _settingsViewRoot;
 
+        [FormerlySerializedAs("_ambientVolumeSlider")]
+        [SerializeField]
+        [Tooltip("Overall output level (AudioListener). Affects all buses.")]
+        private Slider _masterVolumeSlider;
+
         [SerializeField] private Slider _musicVolumeSlider;
-        [SerializeField] private Slider _ambientVolumeSlider;
         [SerializeField] private Slider _sfxVolumeSlider;
 
         private MainMenuController _controller;
 
+        /// <summary>
+        /// Scene-saved <see cref="_audioManager"/> can point at a destroyed instance after gameplay.
+        /// Always prefer the persistent <see cref="GameManager"/> hierarchy so sliders and prefs stay wired.
+        /// </summary>
+        private AudioManager _persistedAudioLevelsSubscription;
+
         private void Start()
         {
-            if (_audioManager == null && GameManager.Instance != null)
-                _audioManager = GameManager.Instance.GetComponentInChildren<AudioManager>();
-
-            if (_audioManager == null)
-                _audioManager = FindAnyObjectByType<AudioManager>();
+            ResolveAudioManager();
 
             TryAutoBindSettingsReferences();
             LogSettingsWiringIssues();
@@ -86,8 +93,41 @@ namespace Axiom.Core
             WireVolumeSliders();
             LogSliderWiringIssues();
 
+            SubscribePersistedAudioLevelsChanged();
+
             if (_settingsViewRoot != null)
                 _settingsViewRoot.SetActive(false);
+        }
+
+        private void OnEnable()
+        {
+            ResolveAudioManager();
+            SubscribePersistedAudioLevelsChanged();
+            RefreshSliderValuesWithoutNotify();
+        }
+
+        private void ResolveAudioManager()
+        {
+            AudioManager fromGameManager = null;
+            if (GameManager.Instance != null)
+                fromGameManager = GameManager.Instance.GetComponentInChildren<AudioManager>(true);
+
+            _audioManager = fromGameManager != null ? fromGameManager : FindAnyObjectByType<AudioManager>();
+        }
+
+        private void SubscribePersistedAudioLevelsChanged()
+        {
+            ResolveAudioManager();
+            if (_persistedAudioLevelsSubscription == _audioManager)
+                return;
+
+            if (_persistedAudioLevelsSubscription != null)
+                _persistedAudioLevelsSubscription.PersistedAudioLevelsChanged -= RefreshSliderValuesWithoutNotify;
+
+            _persistedAudioLevelsSubscription = _audioManager;
+
+            if (_persistedAudioLevelsSubscription != null)
+                _persistedAudioLevelsSubscription.PersistedAudioLevelsChanged += RefreshSliderValuesWithoutNotify;
         }
 
         private void WireButtonWithOptionalUiClick(Button button, UnityAction handler)
@@ -96,6 +136,7 @@ namespace Axiom.Core
 
             button.onClick.AddListener(() =>
             {
+                ResolveAudioManager();
                 if (button.interactable)
                     _audioManager?.PlayUiClick();
 
@@ -106,6 +147,8 @@ namespace Axiom.Core
         private void OnSettingsButtonClicked()
         {
             if (_settingsButton != null && !_settingsButton.interactable) return;
+
+            ResolveAudioManager();
 
             if (_settingsViewRoot == null)
             {
@@ -124,6 +167,7 @@ namespace Axiom.Core
         {
             if (_backFromSettingsButton != null && !_backFromSettingsButton.interactable) return;
 
+            ResolveAudioManager();
             _audioManager?.PlayUiClick();
             HideSettingsPanel();
         }
@@ -153,7 +197,7 @@ namespace Axiom.Core
 
         private void LogSliderWiringIssues()
         {
-            bool anySlider = _musicVolumeSlider != null || _ambientVolumeSlider != null ||
+            bool anySlider = _masterVolumeSlider != null || _musicVolumeSlider != null ||
                              _sfxVolumeSlider != null;
             if (!anySlider || _audioManager != null)
                 return;
@@ -167,36 +211,59 @@ namespace Axiom.Core
 
         private void WireVolumeSliders()
         {
+            ResolveAudioManager();
             if (_audioManager == null) return;
+
+            if (_masterVolumeSlider != null)
+            {
+                _masterVolumeSlider.onValueChanged.RemoveListener(OnMainMenuMasterVolumeSliderChanged);
+                _masterVolumeSlider.SetValueWithoutNotify(_audioManager.GetMasterVolumeNormalized());
+                _masterVolumeSlider.onValueChanged.AddListener(OnMainMenuMasterVolumeSliderChanged);
+            }
 
             if (_musicVolumeSlider != null)
             {
+                _musicVolumeSlider.onValueChanged.RemoveListener(OnMainMenuMusicVolumeSliderChanged);
                 _musicVolumeSlider.SetValueWithoutNotify(_audioManager.GetMusicVolumeNormalized());
-                _musicVolumeSlider.onValueChanged.AddListener(_audioManager.SetMusicVolume);
-            }
-
-            if (_ambientVolumeSlider != null)
-            {
-                _ambientVolumeSlider.SetValueWithoutNotify(_audioManager.GetAmbientVolumeNormalized());
-                _ambientVolumeSlider.onValueChanged.AddListener(_audioManager.SetAmbientVolume);
+                _musicVolumeSlider.onValueChanged.AddListener(OnMainMenuMusicVolumeSliderChanged);
             }
 
             if (_sfxVolumeSlider != null)
             {
+                _sfxVolumeSlider.onValueChanged.RemoveListener(OnMainMenuSfxVolumeSliderChanged);
                 _sfxVolumeSlider.SetValueWithoutNotify(_audioManager.GetSfxVolumeNormalized());
-                _sfxVolumeSlider.onValueChanged.AddListener(_audioManager.SetSfxVolume);
+                _sfxVolumeSlider.onValueChanged.AddListener(OnMainMenuSfxVolumeSliderChanged);
             }
+        }
+
+        private void OnMainMenuMasterVolumeSliderChanged(float value)
+        {
+            ResolveAudioManager();
+            _audioManager?.SetMasterVolume(value);
+        }
+
+        private void OnMainMenuMusicVolumeSliderChanged(float value)
+        {
+            ResolveAudioManager();
+            _audioManager?.SetMusicVolume(value);
+        }
+
+        private void OnMainMenuSfxVolumeSliderChanged(float value)
+        {
+            ResolveAudioManager();
+            _audioManager?.SetSfxVolume(value);
         }
 
         private void RefreshSliderValuesWithoutNotify()
         {
+            ResolveAudioManager();
             if (_audioManager == null) return;
+
+            if (_masterVolumeSlider != null)
+                _masterVolumeSlider.SetValueWithoutNotify(_audioManager.GetMasterVolumeNormalized());
 
             if (_musicVolumeSlider != null)
                 _musicVolumeSlider.SetValueWithoutNotify(_audioManager.GetMusicVolumeNormalized());
-
-            if (_ambientVolumeSlider != null)
-                _ambientVolumeSlider.SetValueWithoutNotify(_audioManager.GetAmbientVolumeNormalized());
 
             if (_sfxVolumeSlider != null)
                 _sfxVolumeSlider.SetValueWithoutNotify(_audioManager.GetSfxVolumeNormalized());
@@ -213,14 +280,19 @@ namespace Axiom.Core
 
         private void OnDestroy()
         {
+            if (_persistedAudioLevelsSubscription != null)
+                _persistedAudioLevelsSubscription.PersistedAudioLevelsChanged -= RefreshSliderValuesWithoutNotify;
+            _persistedAudioLevelsSubscription = null;
+
+            _masterVolumeSlider?.onValueChanged.RemoveListener(OnMainMenuMasterVolumeSliderChanged);
+            _musicVolumeSlider?.onValueChanged.RemoveListener(OnMainMenuMusicVolumeSliderChanged);
+            _sfxVolumeSlider?.onValueChanged.RemoveListener(OnMainMenuSfxVolumeSliderChanged);
+
             _newGameButton?.onClick.RemoveAllListeners();
             _continueButton?.onClick.RemoveAllListeners();
             _quitButton?.onClick.RemoveAllListeners();
             _settingsButton?.onClick.RemoveAllListeners();
             _backFromSettingsButton?.onClick.RemoveAllListeners();
-            _musicVolumeSlider?.onValueChanged.RemoveAllListeners();
-            _ambientVolumeSlider?.onValueChanged.RemoveAllListeners();
-            _sfxVolumeSlider?.onValueChanged.RemoveAllListeners();
         }
 
         private static void QuitApplication()
@@ -296,7 +368,9 @@ namespace Axiom.Core
                 }
             }
 
-            Slider settingsRefSlider = _musicVolumeSlider != null ? _musicVolumeSlider : _ambientVolumeSlider;
+            Slider settingsRefSlider = _musicVolumeSlider != null
+                ? _musicVolumeSlider
+                : (_masterVolumeSlider != null ? _masterVolumeSlider : _sfxVolumeSlider);
             if (settingsRefSlider != null && _backFromSettingsButton != null)
             {
                 Transform canvasTr = settingsRefSlider.GetComponentInParent<Canvas>()?.transform;

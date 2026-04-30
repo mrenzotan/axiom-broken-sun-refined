@@ -66,5 +66,14 @@ namespace Axiom.Battle
             if (_mpText != null)
                 _mpText.text = $"{current} / {max}";
         }
+
+        /// <summary>Shows the health bar GameObject.</summary>
+        public void Show() => gameObject.SetActive(true);
+
+        /// <summary>Hides the health bar GameObject.</summary>
+        public void Hide() => gameObject.SetActive(false);
+
+        /// <summary>Sets the health bar GameObject active state.</summary>
+        public void SetVisible(bool visible) => gameObject.SetActive(visible);
     }
 }

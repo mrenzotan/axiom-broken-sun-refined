@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 using Axiom.Data;
@@ -12,6 +13,7 @@ namespace Axiom.Battle
         [SerializeField] private Transform _contentParent;
         [SerializeField] private ItemSlotUI _slotPrefab;
         [SerializeField] private Button _backButton;
+        [SerializeField] private TMP_Text _emptyMessageText;
 
         public event Action<ItemData> OnItemSelected;
         public event Action OnCancelled;
@@ -27,12 +29,28 @@ namespace Axiom.Battle
         public void Show(IReadOnlyList<(ItemData item, int quantity)> items)
         {
             ClearSlots();
-            foreach ((ItemData item, int quantity) in items)
+
+            if (items == null || items.Count == 0)
             {
-                ItemSlotUI slot = Instantiate(_slotPrefab, _contentParent);
-                slot.Setup(item, quantity, HandleSlotClicked);
-                _activeSlots.Add(slot);
+                if (_emptyMessageText != null)
+                {
+                    _emptyMessageText.gameObject.SetActive(true);
+                    _emptyMessageText.text = "Inventory Empty";
+                }
             }
+            else
+            {
+                if (_emptyMessageText != null)
+                    _emptyMessageText.gameObject.SetActive(false);
+
+                foreach ((ItemData item, int quantity) in items)
+                {
+                    ItemSlotUI slot = Instantiate(_slotPrefab, _contentParent);
+                    slot.Setup(item, quantity, HandleSlotClicked);
+                    _activeSlots.Add(slot);
+                }
+            }
+
             _panel.SetActive(true);
         }
 

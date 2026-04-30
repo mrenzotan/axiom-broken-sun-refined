@@ -1,5 +1,6 @@
 // Assets/Scripts/Platformer/PlatformerWorldRestoreController.cs
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using Axiom.Core;
 
 namespace Axiom.Platformer
@@ -14,9 +15,10 @@ namespace Axiom.Platformer
     /// Start places the player at the correct position before the first rendered frame
     /// the user sees, so they never glimpse the initial spawn point (Bug 1).
     ///
-    /// Defeated enemies are destroyed unconditionally each Start() so returning from a
-    /// Victory battle does not re-spawn the enemy inside the player's restored trigger
-    /// zone, which would re-launch the same battle (Bug 2).
+    /// Defeated enemies and collected pickups are destroyed unconditionally each Start()
+    /// so returning from a Victory battle does not re-spawn them inside the player's
+    /// restored trigger zone, which would re-launch the same battle (Bug 2) or re-grant
+    /// the same item.
     ///
     /// Script Execution Order: set to -10 (Edit → Project Settings → Script Execution Order)
     /// so this runs before PlayerController's Start, ensuring position is teleported
@@ -28,7 +30,13 @@ namespace Axiom.Platformer
         {
             if (GameManager.Instance == null) return;
 
+            // Per-scene enemy state (DEV-XX) keys off PlayerState.ActiveSceneName. After a
+            // LevelExitTrigger transition, that field still names the previous scene until
+            // the player touches a save point — so we resync here on every level-scene load.
+            GameManager.Instance.PlayerState.SetActiveScene(SceneManager.GetActiveScene().name);
+
             DestroyDefeatedEnemies();
+            DestroyCollectedPickups();
 
             if (GameManager.Instance.CurrentWorldSnapshot != null)
                 RestoreWorldState();
@@ -41,6 +49,16 @@ namespace Axiom.Platformer
             {
                 if (GameManager.Instance.IsEnemyDefeated(enemy.EnemyId))
                     Destroy(enemy.gameObject);
+            }
+        }
+
+        private void DestroyCollectedPickups()
+        {
+            ItemPickup[] pickups = FindObjectsByType<ItemPickup>(FindObjectsInactive.Exclude);
+            foreach (ItemPickup pickup in pickups)
+            {
+                if (GameManager.Instance.IsPickupCollected(pickup.PickupId))
+                    Destroy(pickup.gameObject);
             }
         }
 

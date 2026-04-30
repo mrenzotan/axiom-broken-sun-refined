@@ -64,10 +64,11 @@ namespace Axiom.Battle
             _statToRect[enemyStats]  = _enemySlotRect;
 
             // Wire action menu callbacks to BattleController
-            _actionMenuUI.OnAttack = _battleController.PlayerAttack;
-            _actionMenuUI.OnSpell  = _battleController.PlayerSpell;
-            _actionMenuUI.OnItem   = _battleController.PlayerItem;
-            _actionMenuUI.OnFlee   = _battleController.PlayerFlee;
+            _actionMenuUI.OnAttack   = _battleController.PlayerAttack;
+            _actionMenuUI.OnSpell    = _battleController.PlayerSpell;
+            _actionMenuUI.OnItem     = _battleController.PlayerItem;
+            _actionMenuUI.OnFlee     = _battleController.PlayerFlee;
+            _actionMenuUI.OnSpellList = _battleController.PlayerSpellList;
 
             // Subscribe to battle events
             _battleController.OnBattleStateChanged    += HandleStateChanged;
@@ -273,7 +274,7 @@ namespace Axiom.Battle
             if (amount > 0 && _statToRect.TryGetValue(target, out RectTransform rect))
             {
                 var numberType = effectType == Axiom.Data.ItemEffectType.RestoreMP
-                    ? FloatingNumberSpawner.NumberType.Shield  // blue number for MP restore
+                    ? FloatingNumberSpawner.NumberType.Mana    // blue number for MP restore
                     : FloatingNumberSpawner.NumberType.Heal;   // green number for HP restore / Revive
                 _floatingNumberSpawner.Spawn(rect, amount, numberType);
             }

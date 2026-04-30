@@ -1,5 +1,7 @@
+using System;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.SceneManagement;
 using Axiom.Core;
 
 /// <summary>
@@ -24,6 +26,10 @@ public class PlayerController : MonoBehaviour
     [SerializeField] private LayerMask groundLayer;
     [SerializeField] private float groundCheckRadius = 0.1f;
 
+    [Header("Drop-Through")]
+    [SerializeField] private LayerMask oneWayPlatformLayer;
+    [SerializeField] private float dropThroughDuration = 0.2f;
+
     private Rigidbody2D _rb;
     private Animator _animator;
     private PlayerMovement _movement;
@@ -43,11 +49,14 @@ public class PlayerController : MonoBehaviour
                 Debug.LogWarning($"PlayerController: Animator not found on Player hierarchy. Using '{_animator.gameObject.name}' from scene search — assign it to the Player or a child in the Inspector.", this);
         }
 
+        int playerLayerIndex = gameObject.layer;
         _movement = new PlayerMovement(
             _rb, groundCheck, groundLayer,
+            oneWayPlatformLayer, playerLayerIndex,
             moveSpeed, jumpForce,
             coyoteTime, jumpBufferTime,
-            fallGravityMultiplier, groundCheckRadius);
+            fallGravityMultiplier, groundCheckRadius,
+            dropThroughDuration);
 
         _playerAnimator = new PlayerAnimator(_animator, _movement);
 
@@ -70,6 +79,7 @@ public class PlayerController : MonoBehaviour
         _input.Player.Jump.performed -= OnJumpPerformed;
         _input.Player.Jump.canceled -= OnJumpCanceled;
         _input.Player.Disable();
+        _movement?.ResetDropThrough();
     }
 
     private void Start()
@@ -107,6 +117,16 @@ public class PlayerController : MonoBehaviour
         if (state == null || !state.HasPendingWorldPositionApply)
             return;
 
+        // After a LevelExitTrigger transition the persisted position lives in the
+        // previous scene's coordinate space. Skip the apply when scenes mismatch
+        // so the new scene's player prefab spawn wins.
+        string activeScene = SceneManager.GetActiveScene().name;
+        if (!string.Equals(state.ActiveSceneName, activeScene, StringComparison.Ordinal))
+        {
+            state.ClearPendingWorldPositionApply();
+            return;
+        }
+
         float z = transform.position.z;
         var world = new Vector3(state.WorldPositionX, state.WorldPositionY, z);
         transform.SetPositionAndRotation(world, transform.rotation);
@@ -119,12 +139,17 @@ public class PlayerController : MonoBehaviour
     {
         if (GameManager.Instance != null)
             GameManager.Instance.OnSceneReady -= InitializeFromTransition;
+        _movement?.ResetDropThrough();
     }
 
     private void Update()
     {
         _moveInput = _input.Player.Move.ReadValue<Vector2>().x;
-        _movement.UpdateConfig(moveSpeed, jumpForce, coyoteTime, jumpBufferTime, fallGravityMultiplier, groundCheckRadius);
+        _movement.UpdateConfig(
+            oneWayPlatformLayer,
+            moveSpeed, jumpForce, coyoteTime, jumpBufferTime,
+            fallGravityMultiplier, groundCheckRadius,
+            dropThroughDuration);
         _movement.Tick(Time.deltaTime);
         _movement.TryConsumeJumpBuffer();
         _playerAnimator.Tick(_moveInput);
@@ -137,6 +162,16 @@ public class PlayerController : MonoBehaviour
 
     private void OnJumpPerformed(InputAction.CallbackContext ctx)
     {
+        // Sample Move.y at the moment Jump is pressed. If the player is holding
+        // Down (move.y < -0.5) and movement isn't locked, attempt drop-through
+        // instead of buffering a jump. The lock check is required because the
+        // attack-lock path leaves Jump enabled (only the tutorial-lock path
+        // disables Jump outright).
+        Vector2 move = _input.Player.Move.ReadValue<Vector2>();
+        if (move.y < -0.5f && !_movement.IsMovementLocked)
+        {
+            if (_movement.TryDropThrough()) return;
+        }
         _movement.BufferJump();
     }
 
@@ -170,5 +205,18 @@ public class PlayerController : MonoBehaviour
         _movement.SetMovementLocked(false);
         if (_pendingAttackTrigger != null) _pendingAttackTrigger.TriggerAdvantagedBattle();
         _pendingAttackTrigger = null;
+    }
+
+    /// <summary>
+    /// Locks/unlocks player movement AND jump input for tutorial purposes — leaves
+    /// Attack input alive so the player can engage the locked-near-enemy battle trigger.
+    /// Different from the attack-anim lock (which uses _movement.SetMovementLocked alone).
+    /// Called by TutorialPromptTrigger when its _lockMovementWhileInside flag is true.
+    /// </summary>
+    public void SetTutorialMovementLocked(bool locked)
+    {
+        _movement.SetMovementLocked(locked);
+        if (locked) _input.Player.Jump.Disable();
+        else        _input.Player.Jump.Enable();
     }
 }

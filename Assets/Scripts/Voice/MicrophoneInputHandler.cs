@@ -7,7 +7,7 @@ namespace Axiom.Voice
     /// <summary>
     /// MonoBehaviour responsible solely for Unity microphone lifecycle and
     /// push-to-talk input wiring. Calls <see cref="MicrophoneCapture.ProcessSamples"/>
-    /// each frame while recording; calls <see cref="VoskRecognizerService.RequestFinalResult"/>
+    /// each frame while recording; enqueues a sentinel via <see cref="MicrophoneCapture.EnqueueSentinel"/>
     /// on PTT release. Contains no recognition logic.
     ///
     /// Call <see cref="Inject"/> with the shared queue and service before this
@@ -24,12 +24,19 @@ namespace Axiom.Voice
         /// </summary>
         [SerializeField] private int _sampleRate = 16000;
 
+        [SerializeField]
+        [Tooltip("Minimum audio samples to accumulate before enqueuing to Vosk. " +
+                 "4000 = 0.25s at 16kHz. Increase if recognition is unreliable.")]
+        private int _chunkSampleThreshold = 4000;
+
         private MicrophoneCapture     _capture;
         private VoskRecognizerService _recognizerService;
+        private MicrophoneBufferPool  _bufferPool;
 
         private AudioClip _clip;
         private int       _lastSamplePos;
         private bool      _isCapturing;
+        private float[]   _reusableFloatBuffer;
 
         // null → Unity picks the default microphone device.
         // Expose via a public setter if a device-selection UI is added later.
@@ -43,10 +50,12 @@ namespace Axiom.Voice
         /// </summary>
         public void Inject(
             ConcurrentQueue<short[]> inputQueue,
-            VoskRecognizerService    recognizerService)
+            VoskRecognizerService    recognizerService,
+            MicrophoneBufferPool     bufferPool)
         {
-            _capture           = new MicrophoneCapture(inputQueue);
-            _recognizerService = recognizerService;
+            _capture            = new MicrophoneCapture(inputQueue, bufferPool, _chunkSampleThreshold);
+            _recognizerService  = recognizerService;
+            _bufferPool         = bufferPool;
         }
 
         // ── Unity lifecycle ───────────────────────────────────────────────────────
@@ -88,9 +97,12 @@ namespace Axiom.Voice
             int newSamples = currentPos - _lastSamplePos;
             if (newSamples < 0) newSamples += _clip.samples; // ring-buffer wrap
 
-            float[] buffer = new float[newSamples];
-            _clip.GetData(buffer, _lastSamplePos % _clip.samples);
-            _capture.ProcessSamples(buffer);
+            // Grow the reusable buffer if needed (should rarely happen)
+            if (_reusableFloatBuffer == null || _reusableFloatBuffer.Length < newSamples)
+                _reusableFloatBuffer = new float[newSamples];
+
+            _clip.GetData(_reusableFloatBuffer, _lastSamplePos % _clip.samples);
+            _capture.ProcessSamples(_reusableFloatBuffer, newSamples);
             _lastSamplePos = currentPos;
         }
 
@@ -114,6 +126,7 @@ namespace Axiom.Voice
 
             _lastSamplePos = 0;
             _isCapturing   = true;
+            _reusableFloatBuffer = new float[_clip.samples];
         }
 
         private void OnPushToTalkCanceled(InputAction.CallbackContext _) => StopCapture();
@@ -126,7 +139,8 @@ namespace Axiom.Voice
             _isCapturing = false;
             Microphone.End(_deviceName);
             _clip = null;
-            _recognizerService?.RequestFinalResult();
+            _reusableFloatBuffer = null;
+            _capture?.EnqueueSentinel();
         }
     }
 }

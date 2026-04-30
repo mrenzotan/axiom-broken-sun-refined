@@ -32,6 +32,76 @@ namespace Axiom.Core
         /// <summary>Ordered list of activated checkpoint IDs.</summary>
         public IReadOnlyList<string> ActivatedCheckpointIds => _activatedCheckpointIdsList;
 
+        /// <summary>
+        /// World position of the most recently touched save point. Used by
+        /// <c>GameManager.RespawnAtLastCheckpoint</c> after pit-death and battle defeat.
+        /// Independent of <see cref="WorldPositionX"/>/<see cref="WorldPositionY"/>, which
+        /// also captures pre-battle position and would otherwise overwrite the respawn point.
+        /// </summary>
+        public float LastCheckpointPositionX { get; private set; }
+        public float LastCheckpointPositionY { get; private set; }
+        public string LastCheckpointSceneName { get; private set; } = string.Empty;
+
+        /// <summary>
+        /// Progression snapshot captured by <see cref="CaptureCheckpointProgression"/> when
+        /// the player touches a save point. Restored by <see cref="RestoreCheckpointProgression"/>
+        /// on death, so XP/levels gained between checkpoints roll back — preventing
+        /// die-and-respawn XP farming. <see cref="HasCheckpointProgression"/> is true
+        /// once a checkpoint has captured a snapshot.
+        /// </summary>
+        public int CheckpointLevel { get; private set; }
+        public int CheckpointXp { get; private set; }
+        public int CheckpointMaxHp { get; private set; }
+        public int CheckpointMaxMp { get; private set; }
+        public int CheckpointAttack { get; private set; }
+        public int CheckpointDefense { get; private set; }
+        public int CheckpointSpeed { get; private set; }
+        private List<string> _checkpointUnlockedSpellIds = new List<string>();
+        public IReadOnlyList<string> CheckpointUnlockedSpellIds => _checkpointUnlockedSpellIds;
+        public bool HasCheckpointProgression => CheckpointLevel > 0;
+
+        /// <summary>
+        /// Persisted across save/quit/reload. Set true the first time the player
+        /// dies and respawns. Used by FirstDeathPromptController to fire the
+        /// "you respawn at the last torch" prompt at most once per save.
+        /// </summary>
+        public bool HasSeenFirstDeath { get; private set; }
+
+        /// <summary>Persisted. Set true the first time the player takes spike contact damage.</summary>
+        public bool HasSeenFirstSpikeHit { get; private set; }
+
+        /// <summary>Persisted. Set true on Victory of the first battle (IceSlime, Surprised).</summary>
+        public bool HasCompletedFirstBattleTutorial { get; private set; }
+
+        /// <summary>Persisted. Set true on Victory of the spell-tutorial battle (Meltspawn, Advantaged).</summary>
+        public bool HasCompletedSpellTutorialBattle { get; private set; }
+
+        /// <summary>
+        /// Persisted. Set true when the player reaches the Level_1-2 exit,
+        /// unlocking spellbook and items buttons in all subsequent exploration scenes.
+        /// </summary>
+        public bool ExplorationMenusUnlocked { get; set; }
+
+        public void MarkFirstDeathSeen()                  { HasSeenFirstDeath = true; }
+        public void MarkFirstSpikeHitSeen()               { HasSeenFirstSpikeHit = true; }
+        public void MarkFirstBattleTutorialCompleted()    { HasCompletedFirstBattleTutorial = true; }
+        public void MarkSpellTutorialBattleCompleted()    { HasCompletedSpellTutorialBattle = true; }
+
+        /// <summary>
+        /// Bulk-applies persisted tutorial flags. Used by GameManager.ApplySaveData on load.
+        /// </summary>
+        public void RestoreTutorialFlags(
+            bool hasSeenFirstDeath,
+            bool hasSeenFirstSpikeHit,
+            bool hasCompletedFirstBattleTutorial,
+            bool hasCompletedSpellTutorialBattle)
+        {
+            HasSeenFirstDeath = hasSeenFirstDeath;
+            HasSeenFirstSpikeHit = hasSeenFirstSpikeHit;
+            HasCompletedFirstBattleTutorial = hasCompletedFirstBattleTutorial;
+            HasCompletedSpellTutorialBattle = hasCompletedSpellTutorialBattle;
+        }
+
         public PlayerState(int maxHp, int maxMp, int attack, int defense, int speed)
         {
             if (maxHp <= 0)  throw new ArgumentOutOfRangeException(nameof(maxHp),  "maxHp must be greater than zero.");
@@ -150,6 +220,75 @@ namespace Axiom.Core
 
         public void SetActiveScene(string sceneName) =>
             ActiveSceneName = sceneName ?? string.Empty;
+
+        /// <summary>
+        /// Records the most recently touched save point so respawn after defeat returns
+        /// the player there even if a later <see cref="SetWorldPosition"/> call overwrote
+        /// <see cref="WorldPositionX"/>/<see cref="WorldPositionY"/> (e.g. battle entry).
+        /// </summary>
+        public void SetLastCheckpoint(string sceneName, float positionX, float positionY)
+        {
+            LastCheckpointSceneName = sceneName ?? string.Empty;
+            LastCheckpointPositionX = positionX;
+            LastCheckpointPositionY = positionY;
+        }
+
+        /// <summary>
+        /// Snapshots Level/XP/stats and unlocked spells so a later death can roll them
+        /// back to this checkpoint state. Called by <c>GameManager.SetLastCheckpoint</c>.
+        /// </summary>
+        public void CaptureCheckpointProgression()
+        {
+            CheckpointLevel   = Level;
+            CheckpointXp      = Xp;
+            CheckpointMaxHp   = MaxHp;
+            CheckpointMaxMp   = MaxMp;
+            CheckpointAttack  = Attack;
+            CheckpointDefense = Defense;
+            CheckpointSpeed   = Speed;
+
+            _checkpointUnlockedSpellIds.Clear();
+            _checkpointUnlockedSpellIds.AddRange(UnlockedSpellIds);
+        }
+
+        /// <summary>
+        /// Restores the snapshot captured by <see cref="CaptureCheckpointProgression"/>.
+        /// No-op when no snapshot exists (legacy save or pre-checkpoint death).
+        /// </summary>
+        public void RestoreCheckpointProgression()
+        {
+            if (!HasCheckpointProgression) return;
+
+            ApplyVitals(CheckpointMaxHp, CheckpointMaxMp, CheckpointMaxHp, CheckpointMaxMp);
+            ApplyStats(CheckpointAttack, CheckpointDefense, CheckpointSpeed);
+            ApplyProgression(CheckpointLevel, CheckpointXp);
+            SetUnlockedSpellIds(_checkpointUnlockedSpellIds);
+        }
+
+        /// <summary>
+        /// Bulk setter for the snapshot fields. Used by <c>GameManager.ApplySaveData</c>
+        /// to restore the snapshot from disk.
+        /// </summary>
+        public void SetCheckpointProgression(
+            int level, int xp,
+            int maxHp, int maxMp,
+            int attack, int defense, int speed,
+            IEnumerable<string> unlockedSpellIds)
+        {
+            CheckpointLevel   = level;
+            CheckpointXp      = xp;
+            CheckpointMaxHp   = maxHp;
+            CheckpointMaxMp   = maxMp;
+            CheckpointAttack  = attack;
+            CheckpointDefense = defense;
+            CheckpointSpeed   = speed;
+
+            _checkpointUnlockedSpellIds.Clear();
+            if (unlockedSpellIds == null) return;
+            foreach (string id in unlockedSpellIds)
+                if (!string.IsNullOrWhiteSpace(id))
+                    _checkpointUnlockedSpellIds.Add(id);
+        }
 
         /// <summary>Returns true if the given checkpoint has been activated this session.</summary>
         public bool HasActivatedCheckpoint(string checkpointId)

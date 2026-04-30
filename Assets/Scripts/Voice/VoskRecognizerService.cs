@@ -17,7 +17,7 @@ namespace Axiom.Voice
     ///   3. Call <see cref="Start"/> to begin processing.
     ///   4. Main thread enqueues <c>short[]</c> PCM16 chunks into <paramref name="inputQueue"/>.
     ///   5. Main thread dequeues JSON result strings from <paramref name="resultQueue"/> in Update().
-    ///   6. Call <see cref="RequestFinalResult"/> when push-to-talk key is released.
+    ///   6. Enqueue a <c>null</c> sentinel into <paramref name="inputQueue"/> when push-to-talk key is released.
     ///   7. Call <see cref="Stop"/> or <see cref="Dispose"/> to shut down cleanly.
     /// </summary>
     public class VoskRecognizerService : IDisposable
@@ -25,13 +25,13 @@ namespace Axiom.Voice
         private readonly VoskRecognizer _recognizer;
         private readonly ConcurrentQueue<short[]> _inputQueue;
         private readonly ConcurrentQueue<string> _resultQueue;
+        private readonly MicrophoneBufferPool _bufferPool;
 
         public ConcurrentQueue<short[]> InputQueue => _inputQueue;
         public ConcurrentQueue<string> ResultQueue => _resultQueue;
 
         private CancellationTokenSource _cts;
         private Task _recognitionTask;
-        private volatile bool _finalResultRequested;
         private bool _disposed;
 
         private const int ShutdownTimeoutMs = 2000;
@@ -39,11 +39,13 @@ namespace Axiom.Voice
         public VoskRecognizerService(
             VoskRecognizer recognizer,
             ConcurrentQueue<short[]> inputQueue,
-            ConcurrentQueue<string> resultQueue)
+            ConcurrentQueue<string> resultQueue,
+            MicrophoneBufferPool bufferPool = null)
         {
             _recognizer = recognizer ?? throw new ArgumentNullException(nameof(recognizer));
             _inputQueue = inputQueue ?? throw new ArgumentNullException(nameof(inputQueue));
             _resultQueue = resultQueue ?? throw new ArgumentNullException(nameof(resultQueue));
+            _bufferPool = bufferPool;
         }
 
         /// <summary>
@@ -57,17 +59,7 @@ namespace Axiom.Voice
             _recognitionTask = Task.Run(() => RecognitionLoop(_cts.Token));
         }
 
-        /// <summary>
-        /// Signals the background task to call <c>FinalResult()</c> and enqueue the result.
-        /// Call this when push-to-talk is released.
-        /// Thread-safe; safe to call from any thread.
-        /// </summary>
-        public void RequestFinalResult()
-        {
-            _finalResultRequested = true;
-        }
-
-        /// <summary>
+    /// <summary>
         /// Cancels the background task and waits up to <see cref="ShutdownTimeoutMs"/> for it
         /// to exit. Drains any remaining audio and flushes a final result. No-op if not started.
         /// After this call, the service can be restarted by calling <see cref="Start"/>.
@@ -115,14 +107,19 @@ namespace Axiom.Voice
             {
                 if (_inputQueue.TryDequeue(out short[] samples))
                 {
-                    // AcceptWaveform returns true when it detects a complete utterance.
-                    if (_recognizer.AcceptWaveform(samples, samples.Length))
-                        _resultQueue.Enqueue(_recognizer.Result());
-                }
-                else if (_finalResultRequested)
-                {
-                    _finalResultRequested = false;
-                    _resultQueue.Enqueue(_recognizer.FinalResult());
+                    if (samples == null)
+                    {
+                        // Sentinel: trigger FinalResult() to reset recognizer state
+                        // between push-to-talk sessions.
+                        _resultQueue.Enqueue(_recognizer.FinalResult());
+                    }
+                    else
+                    {
+                        // AcceptWaveform returns true when it detects a complete utterance.
+                        if (_recognizer.AcceptWaveform(samples, samples.Length))
+                            _resultQueue.Enqueue(_recognizer.Result());
+                        _bufferPool?.ReturnShort(samples);
+                    }
                 }
                 else
                 {
@@ -133,7 +130,11 @@ namespace Axiom.Voice
 
             // Drain any audio chunks enqueued after cancellation was requested.
             while (_inputQueue.TryDequeue(out short[] remaining))
+            {
+                if (remaining == null) continue; // skip sentinels during shutdown drain
                 _recognizer.AcceptWaveform(remaining, remaining.Length);
+                _bufferPool?.ReturnShort(remaining);
+            }
 
             // Always flush a final result on Stop() so no partial recognition is lost.
             _resultQueue.Enqueue(_recognizer.FinalResult());

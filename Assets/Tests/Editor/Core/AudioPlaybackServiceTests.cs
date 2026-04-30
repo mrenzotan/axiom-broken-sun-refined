@@ -8,14 +8,11 @@ namespace CoreTests
 {
     public class AudioPlaybackServiceTests
     {
-        /// <summary>
-        /// Editor / Play Mode can leave keys on disk; clear before each test so ambient-mirror logic is deterministic.
-        /// </summary>
         [SetUp]
         public void SetUp()
         {
+            PlayerPrefs.DeleteKey(AudioSettingsStore.PlayerPrefsKeyMaster);
             PlayerPrefs.DeleteKey(AudioSettingsStore.PlayerPrefsKeyMusic);
-            PlayerPrefs.DeleteKey(AudioSettingsStore.PlayerPrefsKeyAmbient);
             PlayerPrefs.DeleteKey(AudioSettingsStore.PlayerPrefsKeySfx);
             PlayerPrefs.Save();
         }
@@ -23,47 +20,35 @@ namespace CoreTests
         [TearDown]
         public void TearDown()
         {
+            PlayerPrefs.DeleteKey(AudioSettingsStore.PlayerPrefsKeyMaster);
             PlayerPrefs.DeleteKey(AudioSettingsStore.PlayerPrefsKeyMusic);
-            PlayerPrefs.DeleteKey(AudioSettingsStore.PlayerPrefsKeyAmbient);
             PlayerPrefs.DeleteKey(AudioSettingsStore.PlayerPrefsKeySfx);
             PlayerPrefs.Save();
         }
 
         [Test]
-        public void AudioSettingsStore_RoundTripsMusicAndSfx()
+        public void AudioSettingsStore_RoundTripsMusicSfxAndMaster()
         {
             var store = new AudioSettingsStore();
+            store.SetMasterVolume(0.8f);
             store.SetMusicVolume(0.35f);
             store.SetSfxVolume(0.62f);
 
+            Assert.That(store.GetMasterVolumeNormalized(), Is.EqualTo(0.8f).Within(0.0001f));
             Assert.That(store.GetMusicVolumeNormalized(), Is.EqualTo(0.35f).Within(0.0001f));
             Assert.That(store.GetSfxVolumeNormalized(), Is.EqualTo(0.62f).Within(0.0001f));
-        }
-
-        [Test]
-        public void AudioSettingsStore_AmbientMirrorsMusicUntilExplicitlySet()
-        {
-            var store = new AudioSettingsStore();
-            store.SetMusicVolume(0.4f);
-            Assert.That(store.GetAmbientVolumeNormalized(), Is.EqualTo(0.4f).Within(0.0001f));
-
-            store.SetAmbientVolume(0.77f);
-            Assert.That(store.GetAmbientVolumeNormalized(), Is.EqualTo(0.77f).Within(0.0001f));
-
-            store.SetMusicVolume(0.2f);
-            Assert.That(store.GetAmbientVolumeNormalized(), Is.EqualTo(0.77f).Within(0.0001f));
         }
 
         [Test]
         public void AudioSettingsStore_ClampsToUnitRange()
         {
             var store = new AudioSettingsStore();
+            store.SetMasterVolume(2f);
             store.SetMusicVolume(2f);
-            store.SetAmbientVolume(-2f);
             store.SetSfxVolume(-1f);
 
+            Assert.That(store.GetMasterVolumeNormalized(), Is.EqualTo(1f));
             Assert.That(store.GetMusicVolumeNormalized(), Is.EqualTo(1f));
-            Assert.That(store.GetAmbientVolumeNormalized(), Is.EqualTo(0f));
             Assert.That(store.GetSfxVolumeNormalized(), Is.EqualTo(0f));
         }
 
@@ -74,7 +59,7 @@ namespace CoreTests
         }
 
         [Test]
-        public void SetMusicVolume_InvokesMixerForMusicAndAmbient()
+        public void SetMusicVolume_InvokesMixerForMusicOnly()
         {
             var cfg = ScriptableObject.CreateInstance<MenuAudioConfig>();
             cfg.SetClipsForTests(
@@ -100,14 +85,12 @@ namespace CoreTests
                     ui,
                     (n, d) => calls.Add((n, d)),
                     "Music",
-                    "Ambient",
                     "Sfx");
 
                 svc.SetMusicVolume(0.5f);
 
-                Assert.That(calls.Count, Is.EqualTo(2));
+                Assert.That(calls.Count, Is.EqualTo(1));
                 Assert.That(calls[0].name, Is.EqualTo("Music"));
-                Assert.That(calls[1].name, Is.EqualTo("Ambient"));
             }
             finally
             {
@@ -116,7 +99,7 @@ namespace CoreTests
         }
 
         [Test]
-        public void SetAmbientVolume_InvokesMixerForAmbientOnly()
+        public void SetSfxVolume_InvokesMixerForSfxOnly()
         {
             var cfg = ScriptableObject.CreateInstance<MenuAudioConfig>();
             cfg.SetClipsForTests(
@@ -142,13 +125,12 @@ namespace CoreTests
                     ui,
                     (n, d) => calls.Add((n, d)),
                     "Music",
-                    "Ambient",
                     "Sfx");
 
-                svc.SetAmbientVolume(0.25f);
+                svc.SetSfxVolume(0.25f);
 
                 Assert.That(calls.Count, Is.EqualTo(1));
-                Assert.That(calls[0].name, Is.EqualTo("Ambient"));
+                Assert.That(calls[0].name, Is.EqualTo("Sfx"));
             }
             finally
             {
@@ -182,7 +164,6 @@ namespace CoreTests
                     ui,
                     null,
                     "Music",
-                    "Ambient",
                     "Sfx");
 
                 svc.OnSceneBecameActive(AudioPlaybackService.MainMenuSceneName);
@@ -223,7 +204,6 @@ namespace CoreTests
                     ui,
                     null,
                     "Music",
-                    "Ambient",
                     "Sfx");
 
                 svc.OnSceneBecameActive(AudioPlaybackService.MainMenuSceneName);

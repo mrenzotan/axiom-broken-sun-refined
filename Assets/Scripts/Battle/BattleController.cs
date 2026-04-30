@@ -59,6 +59,12 @@ namespace Axiom.Battle
         private Axiom.Data.EnemyData _enemyData;
 
         [SerializeField]
+        [Tooltip("Empty Transform marking where the enemy battle visual is spawned. " +
+                 "BattleController instantiates EnemyData.battleVisualPrefab as a child of this anchor " +
+                 "in Start() and reassigns _enemyAnimator to the spawned instance.")]
+        private Transform _enemySpawnAnchor;
+
+        [SerializeField]
         [Tooltip("Seconds to pause after an action so the message log is readable before the next turn begins.")]
         private float _actionDelay = 1f;
 
@@ -73,6 +79,15 @@ namespace Axiom.Battle
         [SerializeField]
         [Tooltip("Assign the PostBattleFlowController component that owns the Victory/Defeat UI flow.")]
         private PostBattleFlowController _postBattleFlow;
+
+        [SerializeField]
+        [Tooltip("Assign the SpellListPanelUI component from the Battle Canvas.")]
+        private SpellListPanelUI _spellListPanelUI;
+
+        [SerializeField]
+        [Tooltip("Optional. When the BattleEntry has a TutorialMode, this controller drives " +
+                 "the scripted in-Battle tutorial. Leave unassigned to skip tutorials in standalone testing.")]
+        private BattleTutorialController _tutorialController;
 
         // ── UI Events ────────────────────────────────────────────────────────
         /// <summary>Proxies BattleManager.OnStateChanged so BattleHUD can subscribe here.</summary>
@@ -211,6 +226,13 @@ namespace Axiom.Battle
 
         private Coroutine _spellFireTimeoutCoroutine;
 
+        [SerializeField]
+        [Tooltip("Background SpriteRenderer in the Battle scene. BattleEnvironmentService sets its sprite and tint based on the player's origin region. Leave unassigned to keep the static background.")]
+        private SpriteRenderer _backgroundRenderer;
+
+        private BattleEnvironmentService _environmentService;
+        private EnemyVisualSpawner _visualSpawner;
+
         // EnemyId of the enemy triggering this battle. Propagated from BattleEntry;
         // used on Victory to mark the enemy defeated so the Platformer restore step
         // can destroy it, preventing an infinite re-trigger loop.
@@ -227,7 +249,27 @@ namespace Axiom.Battle
                 _battleEnemyId = pending.EnemyId;
                 _enemyStartHp  = pending.EnemyCurrentHp;
                 GameManager.Instance.ClearPendingBattle();
+                if (_tutorialController != null)
+                    _tutorialController.Setup(pending.TutorialMode);
             }
+
+            // Apply dynamic battle background from the engagement origin (DEV-80).
+            _environmentService = new BattleEnvironmentService();
+            _environmentService.Apply(pending?.EnvironmentData, _backgroundRenderer);
+
+            // Play battle music from the per-enemy BattleEnvironmentData.
+            AudioClip battleMusic = pending?.EnvironmentData?.BattleMusic;
+            if (battleMusic != null)
+            {
+                GameManager gm = GameManager.Instance;
+                gm?.AudioManager?.PlayBgm(battleMusic, 1f);
+            }
+
+            // DEV-89: swap the enemy visual GameObject to match the triggering EnemyData.
+            // Must run before InitializeFromTransition() so animator-event wiring inside
+            // Initialize() hooks the live spawned instance, not the deleted scene placeholder.
+            _visualSpawner = new EnemyVisualSpawner();
+            _enemyAnimator = _visualSpawner.Spawn(_enemyData, _enemySpawnAnchor, _enemyAnimator);
 
             if (GameManager.Instance?.SceneTransition?.IsTransitioning == true)
                 GameManager.Instance.OnSceneReady += InitializeFromTransition;
@@ -274,6 +316,12 @@ namespace Axiom.Battle
             {
                 _itemMenuUI.OnItemSelected -= HandleItemSelected;
                 _itemMenuUI.OnCancelled    -= HandleItemCancelled;
+            }
+
+            if (_spellListPanelUI != null)
+            {
+                _spellListPanelUI.OnCloseClicked -= HandleSpellPanelClose;
+                _spellListPanelUI.Hide();
             }
 
             if (_playerData == null)
@@ -428,10 +476,34 @@ namespace Axiom.Battle
         {
             if (_battleManager.CurrentState != BattleState.PlayerTurn) return;
             if (_isProcessingAction) return;
-            _isProcessingAction   = true;
-            _isAwaitingVoiceSpell = true;
-            OnSpellChargeStarted?.Invoke();
-            OnSpellPhaseStarted?.Invoke();
+            StartVoiceSpellPhase();
+        }
+
+        public void PlayerSpellList()
+        {
+            if (_battleManager.CurrentState != BattleState.PlayerTurn) return;
+
+            if (_spellListPanelUI != null && _spellListPanelUI.IsVisible)
+            {
+                _spellListPanelUI.OnCloseClicked -= HandleSpellPanelClose;
+                _spellListPanelUI.Hide();
+                return;
+            }
+
+            if (_spellListPanelUI == null) return;
+
+            var gm = Axiom.Core.GameManager.Instance;
+            SpellListPanelLogic logic = gm != null
+                ? SpellListPanelLogic.BuildFromSpellUnlockService(gm.SpellUnlockService)
+                : null;
+
+            _spellListPanelUI.OnCloseClicked -= HandleSpellPanelClose;
+            _spellListPanelUI.OnCloseClicked += HandleSpellPanelClose;
+
+            if (logic == null)
+                logic = new SpellListPanelLogic(null);
+
+            _spellListPanelUI.Show(logic);
         }
 
         /// <summary>
@@ -589,12 +661,6 @@ namespace Axiom.Battle
                 availableItems.Add((itemData, kvp.Value));
             }
 
-            if (availableItems.Count == 0)
-            {
-                Debug.Log("[Battle] No usable items in inventory.");
-                return;
-            }
-
             _isProcessingAction = true;
             _itemMenuUI.Show(availableItems);
         }
@@ -641,6 +707,15 @@ namespace Axiom.Battle
             _battleManager.OnPlayerFled();
         }
 
+        private void HandleSpellPanelClose()
+        {
+            if (_spellListPanelUI != null)
+            {
+                _spellListPanelUI.Hide();
+                _spellListPanelUI.OnCloseClicked -= HandleSpellPanelClose;
+            }
+        }
+
         // ── Private ──────────────────────────────────────────────────────────
 
         private void HandleStateChanged(BattleState state)
@@ -658,8 +733,8 @@ namespace Axiom.Battle
                 if (GameManager.Instance != null && !string.IsNullOrEmpty(_battleEnemyId))
                     GameManager.Instance.SetDamagedEnemyHp(_battleEnemyId, _enemyStats.CurrentHP);
                 GameManager.Instance?.PersistToDisk();
-                if (GameManager.Instance?.SceneTransition != null)
-                    GameManager.Instance.SceneTransition.BeginTransition("Platformer", TransitionStyle.BlackFade);
+                if (GameManager.Instance != null)
+                    GameManager.Instance.ReturnToWorldScene();
                 else
                     SceneManager.LoadScene("Platformer"); // Standalone Battle scene testing fallback
             }
@@ -682,8 +757,8 @@ namespace Axiom.Battle
                         GameManager.Instance.ClearDamagedEnemyHp(_battleEnemyId);
                     }
                     GameManager.Instance?.PersistToDisk();
-                    if (GameManager.Instance?.SceneTransition != null)
-                        GameManager.Instance.SceneTransition.BeginTransition("Platformer", TransitionStyle.BlackFade);
+                    if (GameManager.Instance != null)
+                        GameManager.Instance.ReturnToWorldScene();
                     else
                         SceneManager.LoadScene("Platformer");
                 }
@@ -709,6 +784,13 @@ namespace Axiom.Battle
             if (GameManager.Instance == null) return;
             GameManager.Instance.PlayerState.SetCurrentHp(_playerStats.CurrentHP);
             GameManager.Instance.PlayerState.SetCurrentMp(_playerStats.CurrentMP);
+        }
+
+        private void StartVoiceSpellPhase()
+        {
+            _isAwaitingVoiceSpell = true;
+            OnSpellChargeStarted?.Invoke();
+            OnSpellPhaseStarted?.Invoke();
         }
 
         private void ProcessPlayerTurnStart()
@@ -854,6 +936,11 @@ namespace Axiom.Battle
             {
                 _itemMenuUI.OnItemSelected -= HandleItemSelected;
                 _itemMenuUI.OnCancelled    -= HandleItemCancelled;
+            }
+
+            if (_spellListPanelUI != null)
+            {
+                _spellListPanelUI.OnCloseClicked -= HandleSpellPanelClose;
             }
         }
     }
