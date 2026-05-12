@@ -150,6 +150,14 @@ namespace Axiom.Voice
             _recognizerService = new VoskRecognizerService(recognizerTask.Result, inputQueue, resultQueue, _bufferPool);
             _recognizerService.Start();
 
+            // Pre-warm the OS mic device BEFORE wiring MicrophoneInputHandler. On macOS,
+            // the first Microphone.Start has activation latency (Microphone.GetPosition
+            // returns 0 for ~100–500ms), which would otherwise eat the leading audio of
+            // the player's very first PTT press and silently send an empty result.
+            // Running this before Inject() ensures PTT can't fire during the warm-up
+            // window and conflict with the Microphone.End that ends pre-warm.
+            yield return PrewarmMicrophone();
+
             _microphoneInputHandler.Inject(inputQueue, _recognizerService, _bufferPool);
             _spellCastController.Inject(resultQueue, spells);
 
@@ -157,6 +165,21 @@ namespace Axiom.Voice
 
             if (_spellUnlockService != null)
                 _spellUnlockService.OnSpellUnlocked += HandleSpellUnlocked;
+        }
+
+        private IEnumerator PrewarmMicrophone()
+        {
+            AudioClip warmClip = Microphone.Start(null, loop: false, lengthSec: 1, frequency: _sampleRate);
+            if (warmClip == null) yield break;
+
+            const float timeoutSeconds = 1f;
+            float elapsed = 0f;
+            while (Microphone.GetPosition(null) <= 0 && elapsed < timeoutSeconds)
+            {
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+            Microphone.End(null);
         }
 
         private void DisableSpell()

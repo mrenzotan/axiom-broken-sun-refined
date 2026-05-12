@@ -38,6 +38,8 @@ namespace Axiom.Core
         [Tooltip("Scene loaded for the opening cutscene when starting a new game.")]
         private string _cutsceneSceneName = "Cutscene";
 
+        private CutsceneData _pendingCutsceneData;
+
         private SpellUnlockService _spellUnlockService;
 
         /// <summary>
@@ -112,6 +114,26 @@ namespace Axiom.Core
             _audioManager ??= GetComponentInChildren<AudioManager>();
 
         /// <summary>
+        /// Stores a cutscene to play on the Cutscene scene load.
+        /// </summary>
+        public void BeginCutscene(CutsceneData data, TransitionStyle style = TransitionStyle.BlackFade)
+        {
+            if (data == null) return;
+            _pendingCutsceneData = data;
+            LoadScene(_cutsceneSceneName, style);
+        }
+
+        /// <summary>
+        /// Consumes the pending cutscene payload for the Cutscene scene.
+        /// </summary>
+        public CutsceneData ConsumePendingCutsceneData()
+        {
+            CutsceneData data = _pendingCutsceneData;
+            _pendingCutsceneData = null;
+            return data;
+        }
+
+        /// <summary>
         /// Fires after the scene transition fade-in completes.
         /// Subscribers must unsubscribe immediately in their callback to prevent phantom calls
         /// on subsequent transitions.
@@ -134,6 +156,16 @@ namespace Axiom.Core
         /// Safe to call when PendingBattle is already null.
         /// </summary>
         public void ClearPendingBattle() => PendingBattle = null;
+
+        /// <summary>
+        /// True while a modal in the active scene wants to consume Esc / Start itself
+        /// instead of letting <see cref="PauseMenuUI"/> open the pause menu.
+        ///
+        /// Set true by the modal on open, false on close. Currently used by
+        /// <see cref="Axiom.Battle.BattleController"/> during the voice spell phase so
+        /// pressing Esc cancels the spell instead of pausing the game.
+        /// </summary>
+        public bool SuppressPauseToggle { get; set; }
 
         // Transient (not persisted) — set when the player dies, consumed by the
         // post-respawn FirstDeathPromptController exactly once. No-ops if the player
@@ -388,7 +420,8 @@ namespace Axiom.Core
                 hasSeenFirstDeath = PlayerState.HasSeenFirstDeath,
                 hasSeenFirstSpikeHit = PlayerState.HasSeenFirstSpikeHit,
                 hasCompletedFirstBattleTutorial = PlayerState.HasCompletedFirstBattleTutorial,
-                hasCompletedSpellTutorialBattle = PlayerState.HasCompletedSpellTutorialBattle
+                hasCompletedSpellTutorialBattle = PlayerState.HasCompletedSpellTutorialBattle,
+                hasExplorationMenusUnlocked = PlayerState.ExplorationMenusUnlocked
             };
         }
 
@@ -439,6 +472,7 @@ namespace Axiom.Core
                 data.hasSeenFirstSpikeHit,
                 data.hasCompletedFirstBattleTutorial,
                 data.hasCompletedSpellTutorialBattle);
+            PlayerState.ExplorationMenusUnlocked = data.hasExplorationMenusUnlocked;
             RestoreCollectedPickups(data.collectedPickupIds);
         }
 

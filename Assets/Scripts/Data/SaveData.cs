@@ -90,5 +90,7 @@ namespace Axiom.Data
         public bool hasSeenFirstSpikeHit;
         public bool hasCompletedFirstBattleTutorial;
         public bool hasCompletedSpellTutorialBattle;
+
+        public bool hasExplorationMenusUnlocked;
     }
 }

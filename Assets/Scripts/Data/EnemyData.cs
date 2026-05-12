@@ -26,6 +26,12 @@ namespace Axiom.Data
         [Tooltip("1–2 material conditions the enemy starts every combat with. Defines what the enemy is made of — determines physical immunity, reaction targets, and other combat interactions.")]
         public List<ChemicalCondition> innateConditions = new List<ChemicalCondition>();
 
+        [Tooltip("Battle scene prefab instantiated by BattleController on scene load. " +
+                 "Must contain (or have a child with) SpriteRenderer + Animator + EnemyBattleAnimator. " +
+                 "Leave null only for enemies whose battle prefab has not been authored yet — " +
+                 "BattleController will warn and fall back to the Inspector-assigned animator.")]
+        public GameObject battleVisualPrefab;
+
         [Tooltip("Possible item drops. Each entry rolls independently against its dropChance.")]
         public List<LootEntry> loot = new List<LootEntry>();
     }

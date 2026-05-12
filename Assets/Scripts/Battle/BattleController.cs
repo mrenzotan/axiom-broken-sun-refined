@@ -59,6 +59,12 @@ namespace Axiom.Battle
         private Axiom.Data.EnemyData _enemyData;
 
         [SerializeField]
+        [Tooltip("Empty Transform marking where the enemy battle visual is spawned. " +
+                 "BattleController instantiates EnemyData.battleVisualPrefab as a child of this anchor " +
+                 "in Start() and reassigns _enemyAnimator to the spawned instance.")]
+        private Transform _enemySpawnAnchor;
+
+        [SerializeField]
         [Tooltip("Seconds to pause after an action so the message log is readable before the next turn begins.")]
         private float _actionDelay = 1f;
 
@@ -148,6 +154,16 @@ namespace Axiom.Battle
         public event Action OnSpellChargeAborted;
 
         /// <summary>
+        /// Fires when the player explicitly cancels the voice spell phase via
+        /// <see cref="CancelSpellPhase"/>. Distinct from <see cref="OnSpellChargeAborted"/>:
+        /// charge-aborted only resets the animator, while spell-phase-cancelled also tells
+        /// <see cref="SpellInputUI"/> to hide every panel and return the player to the
+        /// action menu. Cancel does not fire <see cref="OnSpellNotRecognized"/> — it is
+        /// a deliberate opt-out, not an error path.
+        /// </summary>
+        public event Action OnSpellPhaseCancelled;
+
+        /// <summary>
         /// Fires when a Heal spell resolves. Parameters: target CharacterStats, HP amount healed.
         /// BattleHUD subscribes to update the HP bar.
         /// </summary>
@@ -225,6 +241,7 @@ namespace Axiom.Battle
         private SpriteRenderer _backgroundRenderer;
 
         private BattleEnvironmentService _environmentService;
+        private EnemyVisualSpawner _visualSpawner;
 
         // EnemyId of the enemy triggering this battle. Propagated from BattleEntry;
         // used on Victory to mark the enemy defeated so the Platformer restore step
@@ -257,6 +274,12 @@ namespace Axiom.Battle
                 GameManager gm = GameManager.Instance;
                 gm?.AudioManager?.PlayBgm(battleMusic, 1f);
             }
+
+            // DEV-89: swap the enemy visual GameObject to match the triggering EnemyData.
+            // Must run before InitializeFromTransition() so animator-event wiring inside
+            // Initialize() hooks the live spawned instance, not the deleted scene placeholder.
+            _visualSpawner = new EnemyVisualSpawner();
+            _enemyAnimator = _visualSpawner.Spawn(_enemyData, _enemySpawnAnchor, _enemyAnimator);
 
             if (GameManager.Instance?.SceneTransition?.IsTransitioning == true)
                 GameManager.Instance.OnSceneReady += InitializeFromTransition;
@@ -372,7 +395,7 @@ namespace Axiom.Battle
                 startHp: enemyStartHp);
 
             _isProcessingAction   = false;
-            _isAwaitingVoiceSpell = false;
+            SetAwaitingVoiceSpell(false);
 
             _actionHandler      = new PlayerActionHandler(_playerStats, _enemyStats);
             _enemyActionHandler = new EnemyActionHandler(_enemyStats, _playerStats);
@@ -507,14 +530,14 @@ namespace Axiom.Battle
 
             if (!_playerStats.SpendMP(spell.mpCost))
             {
-                _isAwaitingVoiceSpell = false;
+                SetAwaitingVoiceSpell(false);
                 _isProcessingAction   = false;
                 OnSpellCastRejected?.Invoke($"Not enough MP to cast {spell.spellName}.");
                 Debug.Log($"[Battle] Spell rejected — insufficient MP for {spell.spellName}.");
                 return;
             }
 
-            _isAwaitingVoiceSpell = false;
+            SetAwaitingVoiceSpell(false);
             _pendingSpell         = spell;
             _playerDamageVisualsFired = true; // Spell path does not go through FirePlayerDamageVisuals
 
@@ -595,7 +618,7 @@ namespace Axiom.Battle
         {
             if (!_isAwaitingVoiceSpell) return;
             if (_battleManager.CurrentState != BattleState.PlayerTurn) return;
-            _isAwaitingVoiceSpell = false;
+            SetAwaitingVoiceSpell(false);
             _isProcessingAction   = false;
             OnSpellNotRecognized?.Invoke();
             OnSpellChargeAborted?.Invoke();
@@ -603,16 +626,39 @@ namespace Axiom.Battle
 
         /// <summary>
         /// Called by <see cref="Axiom.Voice.SpellCastController"/> when Vosk returns a final
-        /// result with empty text (e.g. PTT released without speaking). Resets the charge
-        /// animation if the player is still in the voice spell phase.
+        /// result with empty text (e.g. PTT released without speaking, or first-call
+        /// mic-activation latency on macOS leaving no captured audio). Stays in the voice
+        /// spell phase so the player can simply press PTT again without re-clicking Spell.
         /// No-op outside the voice spell phase or outside PlayerTurn.
         /// </summary>
         public void NotifyVoiceResultEmpty()
         {
             if (!_isAwaitingVoiceSpell) return;
             if (_battleManager.CurrentState != BattleState.PlayerTurn) return;
-            _isAwaitingVoiceSpell = false;
+            // Intentionally do NOT reset _isAwaitingVoiceSpell or fire OnSpellChargeAborted —
+            // an empty result is "the player is still preparing", not "abort spell phase".
+        }
+
+        /// <summary>
+        /// Aborts the voice spell phase at the player's request, returning to the action
+        /// menu without consuming the turn or any MP. Fires <see cref="OnSpellChargeAborted"/>
+        /// so the player animator returns to Idle, and <see cref="OnSpellPhaseCancelled"/>
+        /// so <see cref="SpellInputUI"/> hides every panel.
+        ///
+        /// No-op outside the voice spell phase or outside <see cref="BattleState.PlayerTurn"/> —
+        /// satisfying the DEV-91 AC that the cancel input does nothing when pressed from the
+        /// action menu or during the enemy's turn.
+        /// </summary>
+        public void CancelSpellPhase()
+        {
+            if (!_isAwaitingVoiceSpell) return;
+            if (_battleManager.CurrentState != BattleState.PlayerTurn) return;
+
+            SetAwaitingVoiceSpell(false);
             _isProcessingAction   = false;
+            // UI panel hide fires before animator reset so any OnSpellChargeAborted
+            // subscriber sees the post-hide panel state.
+            OnSpellPhaseCancelled?.Invoke();
             OnSpellChargeAborted?.Invoke();
         }
 
@@ -646,12 +692,6 @@ namespace Axiom.Battle
                 if (!_itemCatalog.TryGetItem(kvp.Key, out Axiom.Data.ItemData itemData)) continue;
                 if (itemData.itemType != Axiom.Data.ItemType.Consumable) continue;
                 availableItems.Add((itemData, kvp.Value));
-            }
-
-            if (availableItems.Count == 0)
-            {
-                Debug.Log("[Battle] No usable items in inventory.");
-                return;
             }
 
             _isProcessingAction = true;
@@ -781,9 +821,22 @@ namespace Axiom.Battle
 
         private void StartVoiceSpellPhase()
         {
-            _isAwaitingVoiceSpell = true;
+            SetAwaitingVoiceSpell(true);
             OnSpellChargeStarted?.Invoke();
             OnSpellPhaseStarted?.Invoke();
+        }
+
+        /// <summary>
+        /// Single mutation point for <see cref="_isAwaitingVoiceSpell"/>. Mirrors the value
+        /// onto <see cref="GameManager.SuppressPauseToggle"/> so the pause menu's Esc/Start
+        /// poll yields to the voice spell phase. No-op when GameManager is absent (Edit
+        /// Mode tests, standalone Battle scene without GameManager).
+        /// </summary>
+        private void SetAwaitingVoiceSpell(bool value)
+        {
+            _isAwaitingVoiceSpell = value;
+            if (GameManager.Instance != null)
+                GameManager.Instance.SuppressPauseToggle = value;
         }
 
         private void ProcessPlayerTurnStart()
@@ -903,7 +956,13 @@ namespace Axiom.Battle
         private void OnDestroy()
         {
             if (GameManager.Instance != null)
+            {
                 GameManager.Instance.OnSceneReady -= InitializeFromTransition;
+                // Clear the suppress flag in case the controller is destroyed mid-spell-phase
+                // (e.g. scene transition during a stuck SpellInputPanel) — without this the
+                // pause menu would stay yielding in the next scene.
+                GameManager.Instance.SuppressPauseToggle = false;
+            }
 
             if (_battleManager != null)
                 _battleManager.OnStateChanged -= HandleStateChanged;

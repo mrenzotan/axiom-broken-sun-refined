@@ -29,8 +29,32 @@ namespace Axiom.Core
         [Tooltip("Transition style used when loading the next scene.")]
         private TransitionStyle _exitTransitionStyle = TransitionStyle.BlackFade;
 
+        [Header("Hold-to-Skip")]
+        [SerializeField]
+        [Tooltip("Seconds to hold Enter before skipping the entire cutscene.")]
+        [Min(0.1f)]
+        private float _holdToSkipDuration = 3f;
+
+        [SerializeField]
+        [Tooltip("Max hold duration (seconds) considered a tap. Releases below this threshold advance the slide.")]
+        [Min(0.01f)]
+        private float _tapThreshold = 0.2f;
+
+        [SerializeField]
+        [Tooltip("Image component for the radial progress ring (Image Type: Filled, Fill Method: Radial 360). Shown while holding Enter.")]
+        private Image _skipRingImage;
+
+        [SerializeField]
+        [Tooltip("Fill portion of the radial ring. Must be a child of _skipRingImage or share same rect.")]
+        private Image _skipRingFill;
+
+        [SerializeField]
+        [Tooltip("TMP_Text label shown alongside the ring (e.g. 'Hold Enter to skip').")]
+        private TMP_Text _skipPromptText;
+
         private CutscenePlayer _player;
         private TypewriterEffect _typewriter;
+        private CutsceneInputHandler _inputHandler;
         private float _autoAdvanceTimer;
 
         public bool IsPlaying => _player != null && !_player.IsComplete;
@@ -52,6 +76,18 @@ namespace Axiom.Core
         {
             _player = new CutscenePlayer();
             _typewriter = new TypewriterEffect();
+            _inputHandler = new CutsceneInputHandler
+            {
+                HoldToSkipDuration = _holdToSkipDuration,
+                TapThreshold = _tapThreshold
+            };
+
+            if (GameManager.Instance != null)
+            {
+                CutsceneData pending = GameManager.Instance.ConsumePendingCutsceneData();
+                if (pending != null)
+                    _cutsceneData = pending;
+            }
 
             if (_cutsceneData == null)
             {
@@ -65,6 +101,7 @@ namespace Axiom.Core
                 Debug.LogError("[CutsceneUI] _textBox (TMP_Text) is not assigned in the Inspector. Text will not display.", this);
 
             EnsureSlideImageReady();
+            HideSkipRingUI();
 
             _player.Start(_cutsceneData);
 
@@ -84,6 +121,7 @@ namespace Axiom.Core
             }
 
             HandleInput();
+            UpdateSkipRingUI();
 
             if (_typewriter != null && !_typewriter.IsComplete)
             {
@@ -110,23 +148,45 @@ namespace Axiom.Core
         {
             if (_player == null || _player.IsComplete) return;
 
-            // Enter key skips the entire cutscene immediately
-            if (Keyboard.current != null && Keyboard.current.enterKey.wasPressedThisFrame)
+            Keyboard kb = Keyboard.current;
+
+            if (kb != null)
             {
-                _player.Skip();
-                return;
+                var result = _inputHandler.ProcessEnterInput(
+                    kb.enterKey.wasPressedThisFrame,
+                    kb.enterKey.wasReleasedThisFrame,
+                    Time.deltaTime
+                );
+
+                switch (result)
+                {
+                    case CutsceneInputResult.Skip:
+                        Debug.Log("[CutsceneUI] Hold-to-skip triggered.");
+                        _player.Skip();
+                        return;
+                    case CutsceneInputResult.Advance:
+                        TryAdvanceOrFinishTypewriter();
+                        return;
+                }
+            }
+            else if (_inputHandler.IsHoldingEnter)
+            {
+                _inputHandler.Reset();
             }
 
-            // Space, mouse click, or gamepad A advances the current slide (or finishes typewriter)
             bool advancePressed =
-                (Keyboard.current != null && Keyboard.current.spaceKey.wasPressedThisFrame) ||
+                (kb != null && kb.spaceKey.wasPressedThisFrame) ||
                 (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame);
 
             if (Gamepad.current != null && Gamepad.current.aButton.wasPressedThisFrame)
                 advancePressed = true;
 
-            if (!advancePressed) return;
+            if (advancePressed)
+                TryAdvanceOrFinishTypewriter();
+        }
 
+        private void TryAdvanceOrFinishTypewriter()
+        {
             if (_typewriter != null && !_typewriter.IsComplete)
             {
                 _typewriter.SkipToEnd();
@@ -138,6 +198,36 @@ namespace Axiom.Core
             {
                 AdvanceSlide();
             }
+        }
+
+        private void UpdateSkipRingUI()
+        {
+            if (_inputHandler == null) return;
+
+            bool show = _inputHandler.IsHoldingEnter;
+
+            if (_skipRingImage != null)
+                _skipRingImage.gameObject.SetActive(show);
+
+            if (_skipRingFill != null)
+            {
+                _skipRingFill.gameObject.SetActive(show);
+                if (show)
+                    _skipRingFill.fillAmount = _inputHandler.SkipProgress;
+            }
+
+            if (_skipPromptText != null)
+                _skipPromptText.gameObject.SetActive(show);
+        }
+
+        private void HideSkipRingUI()
+        {
+            if (_skipRingImage != null)
+                _skipRingImage.gameObject.SetActive(false);
+            if (_skipRingFill != null)
+                _skipRingFill.gameObject.SetActive(false);
+            if (_skipPromptText != null)
+                _skipPromptText.gameObject.SetActive(false);
         }
 
         private void AdvanceSlide()
@@ -186,7 +276,6 @@ namespace Axiom.Core
 
             RectTransform rt = _slideImage.rectTransform;
 
-            // Ensure the image fills the canvas (stretch to all four edges)
             rt.anchorMin = Vector2.zero;
             rt.anchorMax = Vector2.one;
             rt.offsetMin = Vector2.zero;
@@ -194,7 +283,6 @@ namespace Axiom.Core
             rt.anchoredPosition = Vector2.zero;
             rt.sizeDelta = Vector2.zero;
 
-            // Ensure fully opaque white so the sprite renders at full opacity
             _slideImage.color = Color.white;
             _slideImage.enabled = true;
             _slideImage.raycastTarget = false;

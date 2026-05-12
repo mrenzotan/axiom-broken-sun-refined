@@ -1119,6 +1119,15 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""interactions"": """",
                     ""initialStateCheck"": false
+                },
+                {
+                    ""name"": ""CancelSpell"",
+                    ""type"": ""Button"",
+                    ""id"": ""f1d4355d-2a04-48b0-965e-4931a208623c"",
+                    ""expectedControlType"": """",
+                    ""processors"": """",
+                    ""interactions"": """",
+                    ""initialStateCheck"": false
                 }
             ],
             ""bindings"": [
@@ -1130,6 +1139,28 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
                     ""processors"": """",
                     ""groups"": """",
                     ""action"": ""PushToTalk"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""1b6f5715-0abd-4c79-aacf-3bb7c57a6491"",
+                    ""path"": ""<Keyboard>/escape"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": "";Keyboard&Mouse"",
+                    ""action"": ""CancelSpell"",
+                    ""isComposite"": false,
+                    ""isPartOfComposite"": false
+                },
+                {
+                    ""name"": """",
+                    ""id"": ""d33b9874-1c14-46eb-ac33-1a4340bccc87"",
+                    ""path"": ""<Gamepad>/buttonEast"",
+                    ""interactions"": """",
+                    ""processors"": """",
+                    ""groups"": "";Gamepad"",
+                    ""action"": ""CancelSpell"",
                     ""isComposite"": false,
                     ""isPartOfComposite"": false
                 }
@@ -1227,6 +1258,7 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
         // Voice
         m_Voice = asset.FindActionMap("Voice", throwIfNotFound: true);
         m_Voice_PushToTalk = m_Voice.FindAction("PushToTalk", throwIfNotFound: true);
+        m_Voice_CancelSpell = m_Voice.FindAction("CancelSpell", throwIfNotFound: true);
     }
 
     ~@InputSystem_Actions()
@@ -1711,6 +1743,7 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
     private readonly InputActionMap m_Voice;
     private List<IVoiceActions> m_VoiceActionsCallbackInterfaces = new List<IVoiceActions>();
     private readonly InputAction m_Voice_PushToTalk;
+    private readonly InputAction m_Voice_CancelSpell;
     /// <summary>
     /// Provides access to input actions defined in input action map "Voice".
     /// </summary>
@@ -1726,6 +1759,10 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
         /// Provides access to the underlying input action "Voice/PushToTalk".
         /// </summary>
         public InputAction @PushToTalk => m_Wrapper.m_Voice_PushToTalk;
+        /// <summary>
+        /// Provides access to the underlying input action "Voice/CancelSpell".
+        /// </summary>
+        public InputAction @CancelSpell => m_Wrapper.m_Voice_CancelSpell;
         /// <summary>
         /// Provides access to the underlying input action map instance.
         /// </summary>
@@ -1755,6 +1792,9 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
             @PushToTalk.started += instance.OnPushToTalk;
             @PushToTalk.performed += instance.OnPushToTalk;
             @PushToTalk.canceled += instance.OnPushToTalk;
+            @CancelSpell.started += instance.OnCancelSpell;
+            @CancelSpell.performed += instance.OnCancelSpell;
+            @CancelSpell.canceled += instance.OnCancelSpell;
         }
 
         /// <summary>
@@ -1769,6 +1809,9 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
             @PushToTalk.started -= instance.OnPushToTalk;
             @PushToTalk.performed -= instance.OnPushToTalk;
             @PushToTalk.canceled -= instance.OnPushToTalk;
+            @CancelSpell.started -= instance.OnCancelSpell;
+            @CancelSpell.performed -= instance.OnCancelSpell;
+            @CancelSpell.canceled -= instance.OnCancelSpell;
         }
 
         /// <summary>
@@ -2044,5 +2087,12 @@ public partial class @InputSystem_Actions: IInputActionCollection2, IDisposable
         /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
         /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
         void OnPushToTalk(InputAction.CallbackContext context);
+        /// <summary>
+        /// Method invoked when associated input action "CancelSpell" is either <see cref="UnityEngine.InputSystem.InputAction.started" />, <see cref="UnityEngine.InputSystem.InputAction.performed" /> or <see cref="UnityEngine.InputSystem.InputAction.canceled" />.
+        /// </summary>
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.started" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.performed" />
+        /// <seealso cref="UnityEngine.InputSystem.InputAction.canceled" />
+        void OnCancelSpell(InputAction.CallbackContext context);
     }
 }

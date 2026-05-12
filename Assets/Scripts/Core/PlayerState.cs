@@ -76,6 +76,12 @@ namespace Axiom.Core
         /// <summary>Persisted. Set true on Victory of the spell-tutorial battle (Meltspawn, Advantaged).</summary>
         public bool HasCompletedSpellTutorialBattle { get; private set; }
 
+        /// <summary>
+        /// Persisted. Set true when the player reaches the Level_1-2 exit,
+        /// unlocking spellbook and items buttons in all subsequent exploration scenes.
+        /// </summary>
+        public bool ExplorationMenusUnlocked { get; set; }
+
         public void MarkFirstDeathSeen()                  { HasSeenFirstDeath = true; }
         public void MarkFirstSpikeHitSeen()               { HasSeenFirstSpikeHit = true; }
         public void MarkFirstBattleTutorialCompleted()    { HasCompletedFirstBattleTutorial = true; }

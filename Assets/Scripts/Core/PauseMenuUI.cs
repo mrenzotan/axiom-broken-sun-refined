@@ -131,6 +131,14 @@ namespace Axiom.Core
                 (Keyboard.current != null && Keyboard.current.escapeKey.wasPressedThisFrame) ||
                 (Gamepad.current != null && Gamepad.current.startButton.wasPressedThisFrame);
 
+            // A modal in the active scene (e.g. the voice spell phase) may want to
+            // consume Esc / Start itself — yield to it unless the pause menu is
+            // already open, in which case the player should always be able to close it.
+            if (toggleRequested && !_logic.IsPaused
+                && GameManager.Instance != null
+                && GameManager.Instance.SuppressPauseToggle)
+                return;
+
             if (toggleRequested)
             {
                 if (_logic.ActivePanel == PauseMenuPanel.Settings)

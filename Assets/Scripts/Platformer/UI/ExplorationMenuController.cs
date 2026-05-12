@@ -26,10 +26,12 @@ namespace Axiom.Platformer.UI
 
         private void Awake()
         {
+            Debug.Log("[ExplorationMenu] Awake — buttons start hidden.", this);
+
             if (_spellbookButton != null)
             {
                 _spellbookButton.onClick.AddListener(ToggleSpellbook);
-                _spellbookButton.interactable = false;
+                _spellbookButton.gameObject.SetActive(false);
             }
             else
                 Debug.LogError("[ExplorationMenu] _spellbookButton is not assigned.", this);
@@ -37,17 +39,33 @@ namespace Axiom.Platformer.UI
             if (_itemsButton != null)
             {
                 _itemsButton.onClick.AddListener(OpenItems);
-                _itemsButton.interactable = false;
+                _itemsButton.gameObject.SetActive(false);
             }
             else
                 Debug.LogError("[ExplorationMenu] _itemsButton is not assigned.", this);
+
+            var gm = GameManager.Instance;
+            if (gm != null && gm.PlayerState.ExplorationMenusUnlocked)
+                EnableButtons();
         }
 
         public void EnableButtons()
         {
+            if (_areEnabled) return;
             _areEnabled = true;
-            if (_spellbookButton != null) _spellbookButton.interactable = true;
-            if (_itemsButton != null) _itemsButton.interactable = true;
+            var gm = GameManager.Instance;
+            if (gm != null)
+                gm.PlayerState.ExplorationMenusUnlocked = true;
+            if (_spellbookButton != null)
+            {
+                _spellbookButton.gameObject.SetActive(true);
+                Debug.Log("[ExplorationMenu] Spellbook button enabled.", this);
+            }
+            if (_itemsButton != null)
+            {
+                _itemsButton.gameObject.SetActive(true);
+                Debug.Log("[ExplorationMenu] Items button enabled.", this);
+            }
         }
 
         private void Update()

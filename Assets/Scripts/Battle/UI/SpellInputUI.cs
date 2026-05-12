@@ -38,6 +38,16 @@ namespace Axiom.Battle
         [Tooltip("Seconds before the feedback panel auto-hides after a recognition result.")]
         private float _feedbackAutoHideDelay = 2f;
 
+        [Header("Cancel input — DEV-91")]
+
+        [SerializeField]
+        [Tooltip("Cancel InputAction (Esc on keyboard, B on gamepad). Wired to BattleController.CancelSpellPhase. Required for keyboard/gamepad cancel — leave unassigned only if the Cancel button is the sole cancel route.")]
+        private InputActionReference _cancelSpellAction;
+
+        [SerializeField]
+        [Tooltip("Optional. Visible Cancel button child of the SpellInputPanel. Provides discoverable cancel for mouse/touch users; clicks call the same path as the Cancel input action.")]
+        private UnityEngine.UI.Button _cancelButton;
+
         private readonly SpellInputUILogic _logic = new SpellInputUILogic();
         private BattleController           _battleController;
         private Coroutine                  _autoHide;
@@ -53,11 +63,12 @@ namespace Axiom.Battle
             if (_battleController != null) Unsubscribe();
 
             _battleController = battleController;
-            _battleController.OnSpellPhaseStarted  += HandleSpellPhaseStarted;
-            _battleController.OnSpellRecognized    += HandleSpellRecognized;
-            _battleController.OnSpellNotRecognized += HandleSpellNotRecognized;
-            _battleController.OnSpellCastRejected  += HandleSpellCastRejected;
-            _battleController.OnBattleStateChanged += HandleBattleStateChanged;
+            _battleController.OnSpellPhaseStarted   += HandleSpellPhaseStarted;
+            _battleController.OnSpellRecognized     += HandleSpellRecognized;
+            _battleController.OnSpellNotRecognized  += HandleSpellNotRecognized;
+            _battleController.OnSpellCastRejected   += HandleSpellCastRejected;
+            _battleController.OnBattleStateChanged  += HandleBattleStateChanged;
+            _battleController.OnSpellPhaseCancelled += HandleSpellPhaseCancelled;
 
             _logic.Hide();
             Refresh();
@@ -72,16 +83,38 @@ namespace Axiom.Battle
 
         private void OnEnable()
         {
-            if (_pushToTalkAction == null) return;
-            _pushToTalkAction.action.started  += OnPTTStarted;
-            _pushToTalkAction.action.canceled += OnPTTCanceled;
+            if (_pushToTalkAction != null)
+            {
+                _pushToTalkAction.action.started  += OnPTTStarted;
+                _pushToTalkAction.action.canceled += OnPTTCanceled;
+            }
+
+            if (_cancelSpellAction != null && _cancelSpellAction.action != null)
+            {
+                _cancelSpellAction.action.performed += OnCancelSpellPerformed;
+                _cancelSpellAction.action.Enable();
+            }
+
+            if (_cancelButton != null)
+                _cancelButton.onClick.AddListener(OnCancelButtonClicked);
         }
 
         private void OnDisable()
         {
-            if (_pushToTalkAction == null) return;
-            _pushToTalkAction.action.started  -= OnPTTStarted;
-            _pushToTalkAction.action.canceled -= OnPTTCanceled;
+            if (_pushToTalkAction != null)
+            {
+                _pushToTalkAction.action.started  -= OnPTTStarted;
+                _pushToTalkAction.action.canceled -= OnPTTCanceled;
+            }
+
+            if (_cancelSpellAction != null && _cancelSpellAction.action != null)
+            {
+                _cancelSpellAction.action.performed -= OnCancelSpellPerformed;
+                _cancelSpellAction.action.Disable();
+            }
+
+            if (_cancelButton != null)
+                _cancelButton.onClick.RemoveListener(OnCancelButtonClicked);
         }
 
         private void OnDestroy() => Unsubscribe();
@@ -200,16 +233,37 @@ namespace Axiom.Battle
             _autoHide = null;
         }
 
+        // ── Cancel handlers (DEV-91) ──────────────────────────────────────────────
+
+        private void OnCancelSpellPerformed(InputAction.CallbackContext _) => RequestCancel();
+
+        private void OnCancelButtonClicked() => RequestCancel();
+
+        private void RequestCancel()
+        {
+            if (_battleController == null) return;
+            _battleController.CancelSpellPhase();
+        }
+
+        private void HandleSpellPhaseCancelled()
+        {
+            CancelAutoHide();
+            _logic.Hide();
+            Refresh();
+            if (_panel != null) _panel.SetActive(false);
+        }
+
         // ── Cleanup ───────────────────────────────────────────────────────────────
 
         private void Unsubscribe()
         {
             if (_battleController == null) return;
-            _battleController.OnSpellPhaseStarted  -= HandleSpellPhaseStarted;
-            _battleController.OnSpellRecognized    -= HandleSpellRecognized;
-            _battleController.OnSpellNotRecognized -= HandleSpellNotRecognized;
-            _battleController.OnSpellCastRejected  -= HandleSpellCastRejected;
-            _battleController.OnBattleStateChanged -= HandleBattleStateChanged;
+            _battleController.OnSpellPhaseStarted   -= HandleSpellPhaseStarted;
+            _battleController.OnSpellRecognized     -= HandleSpellRecognized;
+            _battleController.OnSpellNotRecognized  -= HandleSpellNotRecognized;
+            _battleController.OnSpellCastRejected   -= HandleSpellCastRejected;
+            _battleController.OnBattleStateChanged  -= HandleBattleStateChanged;
+            _battleController.OnSpellPhaseCancelled -= HandleSpellPhaseCancelled;
         }
     }
 }

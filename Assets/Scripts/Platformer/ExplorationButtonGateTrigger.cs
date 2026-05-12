@@ -17,20 +17,39 @@ namespace Axiom.Platformer
                 triggerCollider.isTrigger = true;
         }
 
-        private void OnTriggerEnter2D(Collider2D other)
+        private void Start()
         {
-            if (_triggered) return;
-            if (!other.CompareTag("Player")) return;
+            if (_menuController == null)
+                _menuController = FindAnyObjectByType<ExplorationMenuController>();
 
             if (_menuController == null)
             {
-                Debug.LogWarning("[ExplorationButtonGateTrigger] _menuController is not assigned.", this);
+                Debug.LogError("[ExplorationButtonGateTrigger] No ExplorationMenuController found in scene. " +
+                               "Create one or assign it manually in the Inspector.", this);
                 return;
             }
 
+            Collider2D col = GetComponent<Collider2D>();
+            if (col == null)
+            {
+                Debug.LogError("[ExplorationButtonGateTrigger] No Collider2D on this GameObject. " +
+                               "Attach one and enable IsTrigger.", this);
+            }
+            else if (!col.isTrigger)
+            {
+                Debug.LogWarning("[ExplorationButtonGateTrigger] Collider2D.IsTrigger is false. " +
+                                 "OnTriggerEnter2D will not fire.", this);
+            }
+        }
+
+        private void OnTriggerEnter2D(Collider2D other)
+        {
+            if (_triggered) return;
+            if (_menuController == null) return;
+            if (!other.CompareTag("Player")) return;
+
             _triggered = true;
             _menuController.EnableButtons();
-            Debug.Log("[ExplorationButtonGateTrigger] Spellbook and Items buttons enabled.", this);
         }
     }
 }

@@ -43,21 +43,21 @@ Quietly:
 
 *Kaelen walks forward and sees a girl who stops him from going further.*
 
-Senna : "Wait. It's dangerous to go any further. Ever since the sun shattered to pieces strange creatures have been showing up.
+Lois : "Wait. It's dangerous to go any further. Ever since the sun shattered to pieces strange creatures have been showing up."
 
 Kaelen: "Strange creatures? What do they look like?"
 
-Senna : "They look like amalgamations of beasts and incomplete reactions. Reactions forced into perpetual motion by a force that refuses to let them settle."
+Lois : "They look like amalgamations of beasts and incomplete reactions. Reactions forced into perpetual motion by a force that refuses to let them settle."
 
 *Upon hearing this, one word popped into kaelen's head;*
 
 Kaelen: "Glimmerlings..."
 
-Senna : "You know what they are?"
+Lois : "You know what they are?"
 
 Kaelen: "Not exactly, that word just popped into my head for some reason."
 
-Senna : "Either way, with those things walking around, you'd be better off just turning back"
+Lois : "Either way, with those things walking around, you'd be better off just turning back"
 
 Kaelen: "Well lucky for me I don't have anywhere to go back to. Don't worry I can take care of myself."
 
@@ -415,7 +415,7 @@ Kaelen: "You were eating away without end. Breaking down everything."
 
 Kaelen: "The Sentinel taught me balance. The Furnace taught me how to direct fire. But you... you represent something else."
 
-*Kaelent watches as the creature dissolves.*
+*Kaelen watches as the creature dissolves.*
 
 Kaelen: "Not all excess can be controlled. Some breaking down can't be stopped."
 

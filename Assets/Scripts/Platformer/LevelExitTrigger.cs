@@ -1,5 +1,7 @@
 using Axiom.Core;
+using Axiom.Data;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 namespace Axiom.Platformer
 {
@@ -17,6 +19,15 @@ namespace Axiom.Platformer
         [SerializeField]
         [Tooltip("Visual style of the scene transition. Defaults to WhiteFlash to match battle transitions.")]
         private TransitionStyle _transitionStyle = TransitionStyle.WhiteFlash;
+
+        [Header("Post-Boss Cutscene")]
+        [SerializeField]
+        [Tooltip("If set, plays a cutscene before exiting when the boss is defeated.")]
+        private CutsceneData _postBossCutscene;
+
+        [SerializeField]
+        [Tooltip("Boss enemy id required to trigger the post-boss cutscene.")]
+        private string _bossEnemyId = string.Empty;
 
         private bool _triggered;
 
@@ -48,6 +59,16 @@ namespace Axiom.Platformer
 
             GameManager.Instance.CaptureWorldSnapshot(other.transform.position);
             GameManager.Instance.PersistToDisk();
+
+            if (_postBossCutscene != null &&
+                BossVictoryChecker.IsVictorious(
+                    defeatedEnemyIds: GameManager.Instance.DefeatedEnemyIdsInScene(SceneManager.GetActiveScene().name),
+                    bossEnemyId: _bossEnemyId))
+            {
+                GameManager.Instance.BeginCutscene(_postBossCutscene, _transitionStyle);
+                return;
+            }
+
             GameManager.Instance.SceneTransition.BeginTransition(_targetSceneName, _transitionStyle);
         }
     }
