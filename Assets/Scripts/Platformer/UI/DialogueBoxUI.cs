@@ -1,17 +1,19 @@
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.InputSystem;
 using Axiom.Data;
+using Axiom.Core;
 
 namespace Axiom.Platformer.UI
 {
     /// <summary>
-    /// MonoBehaviour that displays dialogue one line at a time in the platformer scene.
-    /// Shows speaker name, portrait placeholder, and current dialogue line.
-    /// Supports advancing via button press and skipping/fast-forwarding via held input.
+    /// MonoBehaviour that displays dialogue one line at a time in turn-based conversation style.
+    /// The protagonist and NPC take turns speaking — each line is shown individually with typewriter effect.
+    /// Player advances via spacebar, enter key, or mouse click (skips typewriter if still animating).
     ///
-    /// Lifecycle: wired by a CutsceneController or DialogueTriggerZone.
-    /// Updates game state: not a state owner itself.
+    /// Portraits change based on the current speaker's name.
+    /// Wired by CutsceneController or DialogueTriggerZone.
     /// </summary>
     public class DialogueBoxUI : MonoBehaviour
     {
@@ -19,14 +21,19 @@ namespace Axiom.Platformer.UI
         [SerializeField] private TextMeshProUGUI _speakerNameText;
         [SerializeField] private Image _portraitImage;
         [SerializeField] private TextMeshProUGUI _dialogueLineText;
-        [SerializeField] private Button _advanceButton;
-        [SerializeField] private Button _responseButton;
-        [SerializeField] private TextMeshProUGUI _responseText;
+        [SerializeField] private TextMeshProUGUI _continuePromptText;
+
+        [SerializeField]
+        [Tooltip("Characters revealed per second in typewriter effect. Default: 40.")]
+        [Min(1f)]
+        private float _charsPerSecond = 40f;
 
         private DialogueData _currentDialogue;
         private System.Collections.Generic.List<DialogueData.ParsedLine> _activeLines;
         private int _currentLineIndex;
         private bool _isDisplaying;
+        private TypewriterEffect _typewriter;
+        private bool _typewriterStarted;
 
         public bool IsDisplaying => _isDisplaying;
 
@@ -36,31 +43,58 @@ namespace Axiom.Platformer.UI
         /// <summary>Fired when all dialogue lines have been displayed and dismissed.</summary>
         public event System.Action OnDialogueDismissed;
 
-        private void OnEnable()
+        private void Update()
         {
-            if (_advanceButton != null)
-                _advanceButton.onClick.AddListener(OnAdvanceButtonClicked);
+            if (!_isDisplaying) return;
 
-            if (_responseButton != null)
-                _responseButton.onClick.AddListener(OnResponseButtonClicked);
-        }
+            // Update typewriter effect if running
+            if (_typewriter != null && _typewriterStarted && !_typewriter.IsComplete)
+            {
+                _typewriter.Update(Time.deltaTime);
+                if (_dialogueLineText != null)
+                    _dialogueLineText.text = _typewriter.VisibleText;
+            }
 
-        private void OnDisable()
-        {
-            if (_advanceButton != null)
-                _advanceButton.onClick.RemoveListener(OnAdvanceButtonClicked);
+            // Check for advance/skip input: spacebar, enter, or mouse click
+            bool inputPressed = false;
 
-            if (_responseButton != null)
-                _responseButton.onClick.RemoveListener(OnResponseButtonClicked);
+            if (Keyboard.current != null)
+            {
+                if (Keyboard.current.spaceKey.wasPressedThisFrame ||
+                    Keyboard.current.enterKey.wasPressedThisFrame)
+                {
+                    inputPressed = true;
+                }
+            }
+
+            if (Mouse.current != null && Mouse.current.leftButton.wasPressedThisFrame)
+            {
+                inputPressed = true;
+            }
+
+            if (inputPressed)
+            {
+                // If typewriter is still running, skip it to the end
+                if (_typewriter != null && !_typewriter.IsComplete)
+                {
+                    _typewriter.SkipToEnd();
+                    if (_dialogueLineText != null)
+                        _dialogueLineText.text = _typewriter.VisibleText;
+                }
+                else if (_typewriter != null && _typewriter.IsComplete)
+                {
+                    // Typewriter is done, advance to next line
+                    AdvanceLine();
+                }
+            }
         }
 
         /// <summary>
-        /// Displays a dialogue sequence one line at a time. Call this when a dialogue step is reached.
+        /// Displays a dialogue sequence one line at a time in turn-based conversation format.
         /// </summary>
         public void ShowDialogue(DialogueData dialogueData)
         {
-            Debug.Log("[DialogueBoxUI] ShowDialogue called");
-            if (dialogueData == null) 
+            if (dialogueData == null)
             {
                 Debug.LogError("[DialogueBoxUI] DialogueData is null!");
                 return;
@@ -70,17 +104,11 @@ namespace Axiom.Platformer.UI
             _activeLines = _currentDialogue.GetParsedLines();
             _currentLineIndex = 0;
             _isDisplaying = true;
+            _typewriter = new TypewriterEffect();
+            _typewriterStarted = false;
 
-            Debug.Log($"[DialogueBoxUI] Panel: {_panel}, activating...");
-            if (_panel != null) 
-            {
+            if (_panel != null)
                 _panel.SetActive(true);
-                Debug.Log("[DialogueBoxUI] Panel activated");
-            }
-            else
-            {
-                Debug.LogError("[DialogueBoxUI] Panel reference is null!");
-            }
 
             DisplayCurrentLine();
         }
@@ -91,22 +119,12 @@ namespace Axiom.Platformer.UI
         public void Hide()
         {
             _isDisplaying = false;
+            _typewriterStarted = false;
             if (_panel != null) _panel.SetActive(false);
             _currentDialogue = null;
             _activeLines = null;
             _currentLineIndex = 0;
-        }
-
-        private void OnAdvanceButtonClicked()
-        {
-            if (!_isDisplaying) return;
-            AdvanceLine();
-        }
-
-        private void OnResponseButtonClicked()
-        {
-            if (!_isDisplaying) return;
-            AdvanceLine();
+            _typewriter = null;
         }
 
         private void AdvanceLine()
@@ -129,34 +147,48 @@ namespace Axiom.Platformer.UI
 
         private void DisplayCurrentLine()
         {
-            if (_currentDialogue == null || _activeLines == null || _currentLineIndex >= _activeLines.Count) return;
+            if (_currentDialogue == null || _activeLines == null || _currentLineIndex >= _activeLines.Count)
+                return;
 
             DialogueData.ParsedLine line = _activeLines[_currentLineIndex];
             string speakerName = line.speakerName;
             string lineText = line.lineText;
-            string responseText = line.responseText;
-            string responseSpeaker = string.IsNullOrWhiteSpace(line.responseSpeakerName)
-                ? "Kaelen"
-                : line.responseSpeakerName;
 
+            // Update speaker name
             if (_speakerNameText != null)
                 _speakerNameText.text = speakerName;
 
+            // Update portrait based on speaker name
             if (_portraitImage != null)
-                _portraitImage.sprite = _currentDialogue.portraitSprite;
+            {
+                Sprite portraitSprite = _currentDialogue.GetPortraitForSpeaker(speakerName);
+                if (portraitSprite != null)
+                {
+                    _portraitImage.sprite = portraitSprite;
+                    _portraitImage.gameObject.SetActive(true);
+                }
+                else
+                {
+                    _portraitImage.gameObject.SetActive(false);
+                }
+            }
 
-            if (_dialogueLineText != null)
-                _dialogueLineText.text = lineText;
+            // Start typewriter effect
+            if (_typewriter != null)
+            {
+                _typewriter.Start(lineText, _charsPerSecond);
+                _typewriterStarted = true;
+            }
+            else
+            {
+                // Fallback if typewriter not initialized
+                if (_dialogueLineText != null)
+                    _dialogueLineText.text = lineText;
+            }
 
-            bool hasResponse = !string.IsNullOrWhiteSpace(responseText);
-            if (_advanceButton != null)
-                _advanceButton.gameObject.SetActive(!hasResponse);
-
-            if (_responseButton != null)
-                _responseButton.gameObject.SetActive(hasResponse);
-
-            if (_responseText != null)
-                _responseText.text = hasResponse ? $"{responseSpeaker}: {responseText}" : "";
+            // Show continue prompt
+            if (_continuePromptText != null)
+                _continuePromptText.text = "[SPACE/CLICK to continue]";
         }
     }
 }

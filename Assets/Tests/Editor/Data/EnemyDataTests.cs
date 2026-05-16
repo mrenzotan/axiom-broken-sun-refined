@@ -40,5 +40,47 @@ namespace Axiom.Data.Tests
                 "battleVisualPrefab must be a GameObject (the prefab root) so the spawner " +
                 "can Instantiate it and resolve EnemyBattleAnimator via GetComponentInChildren.");
         }
+
+        [Test]
+        public void DefaultSpellVfxOffset_IsZero()
+        {
+            var data = ScriptableObject.CreateInstance<EnemyData>();
+            Assert.AreEqual(Vector2.zero, data.spellVfxOffset);
+            Object.DestroyImmediate(data);
+        }
+
+        [Test]
+        public void SpellVfxOffset_RoundTripsAssignedValue()
+        {
+            var data = ScriptableObject.CreateInstance<EnemyData>();
+            data.spellVfxOffset = new Vector2(0.5f, -0.25f);
+            Assert.AreEqual(new Vector2(0.5f, -0.25f), data.spellVfxOffset);
+            Object.DestroyImmediate(data);
+        }
+
+        [Test]
+        public void SpellVfxOffset_Field_HasTooltip()
+        {
+            FieldInfo field = typeof(EnemyData).GetField(
+                "spellVfxOffset",
+                BindingFlags.Public | BindingFlags.Instance);
+            Assert.IsNotNull(field, "EnemyData.spellVfxOffset field is missing.");
+
+            var tooltips = field.GetCustomAttributes(typeof(TooltipAttribute), false);
+            Assert.IsNotEmpty(tooltips,
+                "spellVfxOffset must have a [Tooltip] explaining the per-enemy nudge semantics.");
+        }
+
+        [Test]
+        public void SpellVfxOffset_Field_IsVector2Type()
+        {
+            FieldInfo field = typeof(EnemyData).GetField(
+                "spellVfxOffset",
+                BindingFlags.Public | BindingFlags.Instance);
+            Assert.IsNotNull(field);
+            Assert.AreEqual(typeof(Vector2), field.FieldType,
+                "spellVfxOffset must be a Vector2 so BattleController can cast to Vector3 " +
+                "while preserving the enemy transform's Z.");
+        }
     }
 }

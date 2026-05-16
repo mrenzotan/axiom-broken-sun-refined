@@ -574,8 +574,10 @@ namespace Axiom.Battle
 
             if (_spellVfxController != null)
             {
+                // DEV-86: enemy-side SpellVFX nudge. _enemyData is optional in standalone testing.
+                Vector2 enemyOffset = _enemyData != null ? _enemyData.spellVfxOffset : Vector2.zero;
                 Vector3 vfxPosition = spell.effectType == SpellEffectType.Damage
-                    ? (_enemyAnimator  != null ? _enemyAnimator.transform.position  : Vector3.zero)
+                    ? (_enemyAnimator  != null ? _enemyAnimator.transform.position + (Vector3)enemyOffset : Vector3.zero)
                     : (_playerAnimator != null ? _playerAnimator.transform.position : Vector3.zero);
                 _spellVfxController.Play(spell, vfxPosition);
             }

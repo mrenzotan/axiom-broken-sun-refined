@@ -18,8 +18,6 @@ namespace Axiom.Data
         {
             public string speakerName = "";
             public string lineText = "";
-            public string responseText = "";
-            public string responseSpeakerName = "Kaelen";
         }
 
         [System.Serializable]
@@ -30,20 +28,24 @@ namespace Axiom.Data
 
             [Tooltip("Optional per-line speaker override. Leave empty to use DialogueData.speakerName.")]
             public string speakerNameOverride = "";
+        }
 
-            [Tooltip("Optional player response line. If set, it is shown as a clickable response option.")]
-            public string responseText = "";
+        [System.Serializable]
+        public class SpeakerPortrait
+        {
+            [Tooltip("Speaker name (e.g., 'Lois', 'Kaelen', 'Sentinel').")]
+            public string speakerName = "";
 
-            [Tooltip("Optional response speaker name (defaults to Kaelen if empty).")]
-            public string responseSpeakerName = "Kaelen";
+            [Tooltip("Portrait sprite for this speaker.")]
+            public Sprite portraitSprite;
         }
 
         [HideInInspector]
         [Tooltip("Name of the speaker (e.g., 'Sentinel', 'Phasekeeper').")]
         public string speakerName = "NPC";
 
-        [Tooltip("Optional portrait sprite shown while this dialogue plays.")]
-        public Sprite portraitSprite;
+        [Tooltip("Map of speaker names to their portrait sprites. Used in turn-based dialogue.")]
+        public List<SpeakerPortrait> speakerPortraits = new List<SpeakerPortrait>();
 
         [Header("Raw Dialogue (Option 3)")]
         [Tooltip("Paste dialogue here using format: Speaker: \"Line text\". One line per entry.")]
@@ -87,7 +89,7 @@ namespace Axiom.Data
                 return parsed;
             }
 
-            // Fallback: structured lines with optional response text.
+            // Fallback: structured lines without response text.
             if (lines != null && lines.Count > 0)
             {
                 foreach (DialogueLine line in lines)
@@ -97,11 +99,7 @@ namespace Axiom.Data
                         speakerName = string.IsNullOrWhiteSpace(line.speakerNameOverride)
                             ? speakerName
                             : line.speakerNameOverride,
-                        lineText = line.lineText,
-                        responseText = line.responseText,
-                        responseSpeakerName = string.IsNullOrWhiteSpace(line.responseSpeakerName)
-                            ? "Kaelen"
-                            : line.responseSpeakerName
+                        lineText = line.lineText
                     };
 
                     parsed.Add(entry);
@@ -129,7 +127,6 @@ namespace Axiom.Data
         private void ParseRawDialogue(string rawText, List<ParsedLine> output)
         {
             string[] linesRaw = rawText.Split(new[] { "\r\n", "\n" }, System.StringSplitOptions.None);
-            ParsedLine lastNonKaelen = null;
 
             foreach (string rawLine in linesRaw)
             {
@@ -151,24 +148,29 @@ namespace Axiom.Data
                 if (text.StartsWith("\"") && text.EndsWith("\""))
                     text = text.Substring(1, text.Length - 2);
 
-                bool isKaelen = speaker.Equals("Kaelen", System.StringComparison.OrdinalIgnoreCase);
-                if (isKaelen && lastNonKaelen != null && string.IsNullOrWhiteSpace(lastNonKaelen.responseText))
-                {
-                    lastNonKaelen.responseText = text;
-                    lastNonKaelen.responseSpeakerName = speaker;
-                    continue;
-                }
-
-                ParsedLine entry = new ParsedLine
+                output.Add(new ParsedLine
                 {
                     speakerName = speaker,
                     lineText = text
-                };
-
-                output.Add(entry);
-                if (!isKaelen)
-                    lastNonKaelen = entry;
+                });
             }
+        }
+
+        /// <summary>
+        /// Looks up a speaker's portrait sprite by name. Returns null if not found.
+        /// </summary>
+        public Sprite GetPortraitForSpeaker(string speakerName)
+        {
+            if (speakerPortraits == null || speakerPortraits.Count == 0)
+                return null;
+
+            foreach (SpeakerPortrait sp in speakerPortraits)
+            {
+                if (sp.speakerName.Equals(speakerName, System.StringComparison.OrdinalIgnoreCase))
+                    return sp.portraitSprite;
+            }
+
+            return null;
         }
     }
 }

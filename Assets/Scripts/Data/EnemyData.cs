@@ -34,5 +34,8 @@ namespace Axiom.Data
 
         [Tooltip("Possible item drops. Each entry rolls independently against its dropChance.")]
         public List<LootEntry> loot = new List<LootEntry>();
+
+        [Tooltip("Pixel-aligned world-space offset (in Battle scene units) added to the enemy's transform position when spawning SpellVFX for Damage spells. Default (0, 0) preserves current behavior. Tune per-enemy so the VFX lands on the sprite's visual center.")]
+        public Vector2 spellVfxOffset = Vector2.zero;
     }
 }
