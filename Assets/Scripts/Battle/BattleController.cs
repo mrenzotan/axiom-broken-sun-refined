@@ -114,6 +114,18 @@ namespace Axiom.Battle
         public event Action OnSpellPhaseStarted;
 
         /// <summary>
+        /// Fires when the voice spell phase begins and Attack/Item/Flee should be locked.
+        /// BattleHUD subscribes to disable those buttons while leaving Spell List consultable (DEV-92).
+        /// </summary>
+        public event Action OnSpellPhaseEntered;
+
+        /// <summary>
+        /// Fires when the voice spell phase ends for any reason (cancel, cast, not recognised,
+        /// or state change away from PlayerTurn). BattleHUD subscribes to re-enable buttons (DEV-92).
+        /// </summary>
+        public event Action OnSpellPhaseExited;
+
+        /// <summary>
         /// Fires when the player enters the spell charge state (waiting for voice input).
         /// BattleAnimationService subscribes to route this to PlayerBattleAnimator.TriggerCharge().
         /// </summary>
@@ -242,6 +254,7 @@ namespace Axiom.Battle
 
         private BattleEnvironmentService _environmentService;
         private EnemyVisualSpawner _visualSpawner;
+        private BattleTurnProcessor _turnProcessor;
 
         // EnemyId of the enemy triggering this battle. Propagated from BattleEntry;
         // used on Victory to mark the enemy defeated so the Platformer restore step
@@ -401,6 +414,7 @@ namespace Axiom.Battle
             _enemyActionHandler = new EnemyActionHandler(_enemyStats, _playerStats);
             _resolver           = new SpellEffectResolver();
             _itemResolver       = new ItemEffectResolver();
+            _turnProcessor      = new BattleTurnProcessor();
             _battleManager      = new BattleManager();
             _battleManager.OnStateChanged += HandleStateChanged;
 
@@ -445,6 +459,7 @@ namespace Axiom.Battle
         {
             if (_battleManager.CurrentState != BattleState.PlayerTurn) return;
             if (_isProcessingAction) return;
+            if (_isAwaitingVoiceSpell) return;
             _isProcessingAction = true;
 
             OnPlayerActionStarted?.Invoke();
@@ -532,12 +547,14 @@ namespace Axiom.Battle
             {
                 SetAwaitingVoiceSpell(false);
                 _isProcessingAction   = false;
+                OnSpellPhaseExited?.Invoke();
                 OnSpellCastRejected?.Invoke($"Not enough MP to cast {spell.spellName}.");
                 Debug.Log($"[Battle] Spell rejected — insufficient MP for {spell.spellName}.");
                 return;
             }
 
             SetAwaitingVoiceSpell(false);
+            OnSpellPhaseExited?.Invoke();
             _pendingSpell         = spell;
             _playerDamageVisualsFired = true; // Spell path does not go through FirePlayerDamageVisuals
 
@@ -622,6 +639,7 @@ namespace Axiom.Battle
             if (_battleManager.CurrentState != BattleState.PlayerTurn) return;
             SetAwaitingVoiceSpell(false);
             _isProcessingAction   = false;
+            OnSpellPhaseExited?.Invoke();
             OnSpellNotRecognized?.Invoke();
             OnSpellChargeAborted?.Invoke();
         }
@@ -658,6 +676,7 @@ namespace Axiom.Battle
 
             SetAwaitingVoiceSpell(false);
             _isProcessingAction   = false;
+            OnSpellPhaseExited?.Invoke();
             // UI panel hide fires before animator reset so any OnSpellChargeAborted
             // subscriber sees the post-hide panel state.
             OnSpellPhaseCancelled?.Invoke();
@@ -673,6 +692,7 @@ namespace Axiom.Battle
         {
             if (_battleManager.CurrentState != BattleState.PlayerTurn) return;
             if (_isProcessingAction) return;
+            if (_isAwaitingVoiceSpell) return;
 
             if (_itemCatalog == null || _itemMenuUI == null)
             {
@@ -739,6 +759,7 @@ namespace Axiom.Battle
         {
             if (_battleManager.CurrentState != BattleState.PlayerTurn) return;
             if (_isProcessingAction) return;
+            if (_isAwaitingVoiceSpell) return;
             _battleManager.OnPlayerFled();
         }
 
@@ -757,6 +778,13 @@ namespace Axiom.Battle
         {
             Debug.Log($"[Battle] → {state}");
             OnBattleStateChanged?.Invoke(state);
+
+            if (_isAwaitingVoiceSpell && state != BattleState.PlayerTurn)
+            {
+                SetAwaitingVoiceSpell(false);
+                _isProcessingAction = false;
+                OnSpellPhaseExited?.Invoke();
+            }
 
             if (state == BattleState.PlayerTurn)
                 ProcessPlayerTurnStart();
@@ -824,6 +852,7 @@ namespace Axiom.Battle
         private void StartVoiceSpellPhase()
         {
             SetAwaitingVoiceSpell(true);
+            OnSpellPhaseEntered?.Invoke();
             OnSpellChargeStarted?.Invoke();
             OnSpellPhaseStarted?.Invoke();
         }
@@ -843,9 +872,18 @@ namespace Axiom.Battle
 
         private void ProcessPlayerTurnStart()
         {
-            ConditionTurnResult result = _playerStats.ProcessConditionTurn();
+            ConditionTurnResult result = _turnProcessor.ProcessPlayerTurnStart(_playerStats);
             if (result.TotalDamageDealt > 0)
                 OnConditionDamageTick?.Invoke(_playerStats, result.TotalDamageDealt, Axiom.Data.ChemicalCondition.None);
+
+            if (_playerStats.IsDefeated)
+            {
+                OnCharacterDefeated?.Invoke(_playerStats);
+                _battleManager.OnPlayerDefeatedByCondition();
+                OnConditionsChanged?.Invoke(_playerStats);
+                OnConditionsChanged?.Invoke(_enemyStats);
+                return;
+            }
 
             if (result.ActionSkipped)
             {
@@ -862,9 +900,18 @@ namespace Axiom.Battle
 
         private void ProcessEnemyTurnStart()
         {
-            ConditionTurnResult result = _enemyStats.ProcessConditionTurn();
+            ConditionTurnResult result = _turnProcessor.ProcessEnemyTurnStart(_enemyStats);
             if (result.TotalDamageDealt > 0)
                 OnConditionDamageTick?.Invoke(_enemyStats, result.TotalDamageDealt, Axiom.Data.ChemicalCondition.None);
+
+            if (_enemyStats.IsDefeated)
+            {
+                OnCharacterDefeated?.Invoke(_enemyStats);
+                _battleManager.OnEnemyDefeatedByCondition();
+                OnConditionsChanged?.Invoke(_enemyStats);
+                OnConditionsChanged?.Invoke(_playerStats);
+                return;
+            }
 
             if (result.ActionSkipped)
             {

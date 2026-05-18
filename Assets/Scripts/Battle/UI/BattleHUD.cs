@@ -82,6 +82,8 @@ namespace Axiom.Battle
             _battleController.OnConditionsChanged     += HandleConditionsChanged;
             _battleController.OnActionSkipped         += HandleActionSkipped;
             _battleController.OnItemUsed               += HandleItemUsed;
+            _battleController.OnSpellPhaseEntered     += HandleSpellPhaseEntered;
+            _battleController.OnSpellPhaseExited      += HandleSpellPhaseExited;
 
             // Initialise display
             _enemyNameText.text  = enemyStats.Name;
@@ -221,8 +223,9 @@ namespace Axiom.Battle
             if (damage > 0)
                 _statusMessageUI.Post($"{target.Name} takes {damage} damage from a condition.");
 
-            if (target.IsDefeated)
-                HandleCharacterDefeated(target);
+            // Defeat from condition DoT is handled by BattleController via OnCharacterDefeated
+            // so BattleAnimationService plays the defeat animation. BattleHUD handles the UI
+            // response through its own OnCharacterDefeated subscription (HandleCharacterDefeated).
         }
 
         private void HandleSpellCastRejected(string reason)
@@ -258,6 +261,9 @@ namespace Axiom.Battle
         {
             _statusMessageUI.Post($"{character.Name} is Frozen — it can't move!");
         }
+
+        private void HandleSpellPhaseEntered() => _actionMenuUI.SetNonSpellActionsInteractable(false);
+        private void HandleSpellPhaseExited()  => _actionMenuUI.SetNonSpellActionsInteractable(true);
 
         private void HandleItemUsed(CharacterStats target, int amount, Axiom.Data.ItemEffectType effectType)
         {
@@ -303,6 +309,8 @@ namespace Axiom.Battle
             _battleController.OnConditionsChanged     -= HandleConditionsChanged;
             _battleController.OnActionSkipped         -= HandleActionSkipped;
             _battleController.OnItemUsed               -= HandleItemUsed;
+            _battleController.OnSpellPhaseEntered     -= HandleSpellPhaseEntered;
+            _battleController.OnSpellPhaseExited      -= HandleSpellPhaseExited;
         }
     }
 }

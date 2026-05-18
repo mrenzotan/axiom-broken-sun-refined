@@ -58,6 +58,26 @@ namespace Axiom.Battle
             TransitionTo(playerDefeated ? BattleState.Defeat : BattleState.PlayerTurn);
         }
 
+        /// <summary>
+        /// Call when the player is defeated by a condition DoT at the start of their turn.
+        /// Transitions to Defeat. No-op if called outside PlayerTurn.
+        /// </summary>
+        public void OnPlayerDefeatedByCondition()
+        {
+            if (CurrentState != BattleState.PlayerTurn) return;
+            TransitionTo(BattleState.Defeat);
+        }
+
+        /// <summary>
+        /// Call when the enemy is defeated by a condition DoT at the start of their turn.
+        /// Transitions to Victory. No-op if called outside EnemyTurn.
+        /// </summary>
+        public void OnEnemyDefeatedByCondition()
+        {
+            if (CurrentState != BattleState.EnemyTurn) return;
+            TransitionTo(BattleState.Victory);
+        }
+
         private void TransitionTo(BattleState newState)
         {
             CurrentState = newState;

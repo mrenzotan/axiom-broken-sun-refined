@@ -36,9 +36,12 @@ namespace Axiom.Battle
         [SerializeField] private float _badgeSpacing = 4f;
         [SerializeField] private float _rowSpacing    = 4f;
 
+        private readonly List<GameObject> _badgePool = new List<GameObject>();
+
         /// <summary>
         /// Clears and rebuilds the badge row from the character's current condition state.
         /// Safe to call with a null stats argument (clears the row).
+        /// Reuses pooled badge GameObjects to avoid per-refresh allocation churn.
         /// </summary>
         public void Refresh(CharacterStats stats)
         {
@@ -48,9 +51,12 @@ namespace Axiom.Battle
                 return;
             }
 
-            // Clear existing badges
-            foreach (Transform child in _container)
-                Destroy(child.gameObject);
+            // Deactivate all pooled badges before reuse.
+            for (int i = 0; i < _badgePool.Count; i++)
+            {
+                if (_badgePool[i] != null)
+                    _badgePool[i].SetActive(false);
+            }
 
             if (stats == null) return;
 
@@ -69,7 +75,7 @@ namespace Axiom.Battle
 
             var badges = entries
                 .OrderBy(e => e.order)
-                .Select(e => SpawnBadge(e.condition, e.turns))
+                .Select(e => AcquireBadge(e.condition, e.turns))
                 .ToList();
 
             // Force each badge's ContentSizeFitter to compute its size before layout
@@ -113,10 +119,33 @@ namespace Axiom.Battle
             _container.sizeDelta = new Vector2(_container.sizeDelta.x, Mathf.Abs(y) + rowHeight);
         }
 
-        private RectTransform SpawnBadge(ChemicalCondition condition, int turnsRemaining)
+        /// <summary>
+        /// Acquires an active badge for the given condition, either by reusing a pooled
+        /// inactive badge or instantiating a new one.
+        /// </summary>
+        private RectTransform AcquireBadge(ChemicalCondition condition, int turnsRemaining)
         {
-            GameObject badge = Instantiate(_badgePrefab, _container);
+            // Search for an inactive pooled badge.
+            for (int i = 0; i < _badgePool.Count; i++)
+            {
+                GameObject pooled = _badgePool[i];
+                if (pooled != null && !pooled.activeSelf)
+                {
+                    pooled.SetActive(true);
+                    UpdateBadge(pooled, condition, turnsRemaining);
+                    return pooled.GetComponent<RectTransform>();
+                }
+            }
 
+            // No inactive badge available — instantiate a new one.
+            GameObject badge = Instantiate(_badgePrefab, _container);
+            _badgePool.Add(badge);
+            UpdateBadge(badge, condition, turnsRemaining);
+            return badge.GetComponent<RectTransform>();
+        }
+
+        private static void UpdateBadge(GameObject badge, ChemicalCondition condition, int turnsRemaining)
+        {
             TMP_Text label = badge.GetComponentInChildren<TMP_Text>();
             if (label != null)
             {
@@ -127,8 +156,6 @@ namespace Axiom.Battle
             Image bg = badge.GetComponent<Image>();
             if (bg != null)
                 bg.color = ColorFor(condition);
-
-            return badge.GetComponent<RectTransform>();
         }
 
         private static string LabelFor(ChemicalCondition condition)

@@ -70,6 +70,17 @@ namespace Axiom.Battle
             _fleeButton.interactable = interactable;
         }
 
+        /// <summary>
+        /// Enables or disables Attack, Item, and Flee while leaving Spell and Spell List
+        /// untouched. Called by BattleHUD when the voice spell phase starts/ends (DEV-92).
+        /// </summary>
+        public void SetNonSpellActionsInteractable(bool interactable)
+        {
+            _attackButton.interactable = interactable;
+            _itemButton.interactable   = interactable;
+            _fleeButton.interactable   = interactable;
+        }
+
         private void OnDestroy()
         {
             _attackButton.onClick.RemoveAllListeners();

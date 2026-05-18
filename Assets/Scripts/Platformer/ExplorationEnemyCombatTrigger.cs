@@ -42,6 +42,8 @@ namespace Axiom.Platformer
         // battle in the first physics step after restoration.
         private bool _triggerEnabled;
 
+        private BattleTriggerService _triggerService;
+
         /// <summary>
         /// Called by PlayerController.BeginAttack when the player commits to attacking
         /// this enemy. Blocks the Surprised path for the duration of the attack animation.
@@ -113,7 +115,10 @@ namespace Axiom.Platformer
                 return;
             }
 
-            if (GameManager.Instance.SceneTransition == null)
+            if (_triggerService == null)
+                _triggerService = new BattleTriggerService(GameManager.Instance);
+
+            if (!_triggerService.CanStartBattle())
             {
                 Debug.LogWarning(
                     "[ExplorationEnemyCombatTrigger] SceneTransitionController not found on GameManager " +
@@ -122,28 +127,12 @@ namespace Axiom.Platformer
                 return;
             }
 
-            // Build world snapshot: capture every enemy's current position by stable ID.
-            // Enemies without an _enemyId assigned in the Inspector are silently skipped.
-            var snapshot = new WorldSnapshot();
-            var enemies = UnityEngine.Object.FindObjectsByType<EnemyController>();
-            foreach (EnemyController enemy in enemies)
-                snapshot.CaptureEnemy(enemy.EnemyId, enemy.transform.position.x, enemy.transform.position.y);
-
-            GameManager.Instance.SetWorldSnapshot(snapshot);
-
             string enemyId = GetComponent<EnemyController>()?.EnemyId;
-            int enemyCurrentHp = GameManager.Instance.GetDamagedEnemyHp(enemyId);
-            GameManager.Instance.SetPendingBattle(
-                new BattleEntry(startState, _enemyData, enemyId, enemyCurrentHp,
-                    _battleEnvironment, _tutorialMode));
-
             Vector2 playerWorldPosition = ResolvePlayerWorldPosition(playerCollider);
-            
-            GameManager.Instance.CaptureWorldSnapshot(playerWorldPosition);
-            
-            GameManager.Instance.PersistToDisk();
-            
-            GameManager.Instance.SceneTransition.BeginTransition("Battle", TransitionStyle.WhiteFlash);
+
+            _triggerService.TriggerBattle(
+                startState, _enemyData, enemyId,
+                _battleEnvironment, _tutorialMode, playerWorldPosition);
         }
 
         private Vector2 ResolvePlayerWorldPosition(Collider2D playerCollider)
