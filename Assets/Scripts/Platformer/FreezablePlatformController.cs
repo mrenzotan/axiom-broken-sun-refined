@@ -28,11 +28,25 @@ namespace Axiom.Platformer
             _isPlayerInRange = inRange;
         }
 
-        public bool TryFreeze(string spellId)
+        public bool CanFreezeWith(string spellId)
         {
             if (_isFrozen) return false;
             if (!_isPlayerInRange) return false;
 
+            return FreezablePlatform.CanFreeze(spellId, BuildFreezeSpellIds());
+        }
+
+        public bool TryFreeze(string spellId)
+        {
+            if (!CanFreezeWith(spellId)) return false;
+
+            _isFrozen = true;
+            StartCoroutine(FreezeCoroutine());
+            return true;
+        }
+
+        private List<string> BuildFreezeSpellIds()
+        {
             var freezeSpellIds = new List<string>(_freezeSpells.Count);
             for (int i = 0; i < _freezeSpells.Count; i++)
             {
@@ -40,11 +54,7 @@ namespace Axiom.Platformer
                 if (spell != null) freezeSpellIds.Add(spell.spellName);
             }
 
-            if (!FreezablePlatform.CanFreeze(spellId, freezeSpellIds)) return false;
-
-            _isFrozen = true;
-            StartCoroutine(FreezeCoroutine());
-            return true;
+            return freezeSpellIds;
         }
 
         private IEnumerator FreezeCoroutine()

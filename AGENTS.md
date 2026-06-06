@@ -136,7 +136,7 @@ UI scripts live inside their owning scene's subfolder (`Battle/UI/`, `Platformer
 These are deliberate architectural constraints from a prior spaghetti-code rewrite — do not deviate:
 
 1. **MonoBehaviours handle Unity lifecycle only** (`Start`, `Update`, `OnDestroy`). All logic lives in plain C# classes injected into them.
-2. **No static singletons except `GameManager`** — the only cross-scene state keeper. Everything else is passed explicitly or via events/ScriptableObject channels.
+2. **No static singletons except `GameManager`** — the only gameplay-state singleton and cross-scene state keeper. `StateBasedCursorUI` is the lone accepted presentation-layer exception because it owns only cursor visuals plus optional `DontDestroyOnLoad` behavior. No other class may copy this pattern without another explicit rule change.
 3. **ScriptableObject-driven data** — no hardcoded spell names, enemy stats, or item values in code. All tunable data lives in `.asset` files under `Assets/Data/`.
 4. **No premature abstraction** — don't create base classes, interfaces, or managers for systems with only one implementation yet.
 5. **Dead code policy** — delete deferred/cut features. Never comment them out. UVCS preserves history.

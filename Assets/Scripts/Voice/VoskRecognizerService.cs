@@ -62,32 +62,56 @@ namespace Axiom.Voice
     /// <summary>
         /// Cancels the background task and waits up to <see cref="ShutdownTimeoutMs"/> for it
         /// to exit. Drains any remaining audio and flushes a final result. No-op if not started.
-        /// After this call, the service can be restarted by calling <see cref="Start"/>.
+        /// If shutdown times out, the worker keeps ownership of the recognizer until it exits.
         /// </summary>
         public void Stop()
         {
-            if (_recognitionTask == null) return;
+            StopRecognitionTask();
+        }
 
-            _cts.Cancel();
+        private bool StopRecognitionTask()
+        {
+            if (_recognitionTask == null) return true;
 
-            bool completed = _recognitionTask.Wait(ShutdownTimeoutMs);
+            Task task = _recognitionTask;
+            CancellationTokenSource cts = _cts;
+            cts?.Cancel();
+
+            bool completed;
+            bool faultLogged = false;
+            try
+            {
+                completed = task.Wait(ShutdownTimeoutMs);
+            }
+            catch (AggregateException ex)
+            {
+                completed = true;
+                faultLogged = true;
+                Debug.LogError(
+                    "[VoskRecognizerService] Background recognition task faulted: " +
+                    $"{ex.Flatten().Message}");
+            }
             if (!completed)
             {
                 Debug.LogWarning(
                     "[VoskRecognizerService] Background recognition task did not exit within " +
-                    $"{ShutdownTimeoutMs}ms. Forcibly continuing shutdown.");
+                    $"{ShutdownTimeoutMs}ms. Worker will finish recognizer disposal when it exits.");
+                return false;
             }
 
-            if (_recognitionTask.IsFaulted)
+            if (!faultLogged && task.IsFaulted)
             {
                 Debug.LogError(
                     "[VoskRecognizerService] Background recognition task faulted: " +
-                    $"{_recognitionTask.Exception?.Flatten().Message}");
+                    $"{task.Exception?.Flatten().Message}");
             }
 
-            _recognitionTask = null;
-            _cts?.Dispose();
-            _cts = null;
+            if (ReferenceEquals(_recognitionTask, task))
+                _recognitionTask = null;
+            if (ReferenceEquals(_cts, cts))
+                _cts = null;
+            cts?.Dispose();
+            return true;
         }
 
         /// <inheritdoc/>
@@ -95,8 +119,44 @@ namespace Axiom.Voice
         {
             if (_disposed) return;
             _disposed = true;
-            Stop();
-            _recognizer.Dispose();
+            bool completed = StopRecognitionTask();
+            if (completed)
+            {
+                _recognizer.Dispose();
+                return;
+            }
+
+            ScheduleWorkerOwnedDisposal(_recognitionTask, _cts);
+        }
+
+        private void ScheduleWorkerOwnedDisposal(Task task, CancellationTokenSource cts)
+        {
+            if (task == null)
+            {
+                _recognizer.Dispose();
+                cts?.Dispose();
+                return;
+            }
+
+            // Caller-thread disposal is only allowed after _recognitionTask has actually completed.
+            // If Stop() times out, the background task owns final recognizer disposal.
+            task.ContinueWith(completedTask =>
+            {
+                if (completedTask.IsFaulted)
+                {
+                    Debug.LogError(
+                        "[VoskRecognizerService] Background recognition task faulted: " +
+                        $"{completedTask.Exception?.Flatten().Message}");
+                }
+
+                _recognizer.Dispose();
+                cts?.Dispose();
+
+                if (ReferenceEquals(_recognitionTask, completedTask))
+                    _recognitionTask = null;
+                if (ReferenceEquals(_cts, cts))
+                    _cts = null;
+            }, TaskScheduler.Default);
         }
 
         // ── Background thread ─────────────────────────────────────────────────────

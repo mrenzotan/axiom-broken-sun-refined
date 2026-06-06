@@ -4,7 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Axiom.Battle
+namespace Axiom.Core
 {
     public class SpellListPanelUI : MonoBehaviour
     {

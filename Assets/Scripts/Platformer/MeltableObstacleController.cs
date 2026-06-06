@@ -27,11 +27,25 @@ namespace Axiom.Platformer
             _isPlayerInRange = inRange;
         }
 
-        public bool TryMelt(string spellId)
+        public bool CanMeltWith(string spellId)
         {
             if (_isMelted) return false;
             if (!_isPlayerInRange) return false;
 
+            return MeltableObstacle.CanMelt(spellId, BuildMeltSpellIds());
+        }
+
+        public bool TryMelt(string spellId)
+        {
+            if (!CanMeltWith(spellId)) return false;
+
+            _isMelted = true;
+            StartCoroutine(MeltCoroutine());
+            return true;
+        }
+
+        private List<string> BuildMeltSpellIds()
+        {
             var meltSpellIds = new List<string>(_meltSpells.Count);
             for (int i = 0; i < _meltSpells.Count; i++)
             {
@@ -39,11 +53,7 @@ namespace Axiom.Platformer
                 if (spell != null) meltSpellIds.Add(spell.spellName);
             }
 
-            if (!MeltableObstacle.CanMelt(spellId, meltSpellIds)) return false;
-
-            _isMelted = true;
-            StartCoroutine(MeltCoroutine());
-            return true;
+            return meltSpellIds;
         }
 
         private IEnumerator MeltCoroutine()

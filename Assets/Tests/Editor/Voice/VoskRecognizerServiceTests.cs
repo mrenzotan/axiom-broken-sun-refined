@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 using NUnit.Framework;
 using UnityEngine;
 using Vosk;
@@ -194,6 +195,26 @@ namespace Axiom.Voice.Tests
         {
             _service.Start();
             Assert.DoesNotThrow(() => _service.Dispose());
+        }
+
+        [Test]
+        public void Dispose_WhenRecognitionTaskMissesTimeout_LeavesTaskOwnedByWorker()
+        {
+            var tcs = new TaskCompletionSource<object>();
+            var cts = new CancellationTokenSource();
+            var taskField = typeof(VoskRecognizerService)
+                .GetField("_recognitionTask", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            var ctsField = typeof(VoskRecognizerService)
+                .GetField("_cts", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+
+            taskField.SetValue(_service, tcs.Task);
+            ctsField.SetValue(_service, cts);
+
+            Assert.DoesNotThrow(() => _service.Dispose());
+            Assert.AreSame(tcs.Task, taskField.GetValue(_service),
+                "Timed-out shutdown must leave the in-flight task owned by the worker until it really exits.");
+
+            tcs.SetResult(null);
         }
 
         [Test]

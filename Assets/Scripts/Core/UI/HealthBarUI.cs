@@ -2,7 +2,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
-namespace Axiom.Battle
+namespace Axiom.Core
 {
     /// <summary>
     /// Drives a gradient-fill HP bar and optional MP bar for one character slot

@@ -154,6 +154,30 @@ namespace CoreTests
             Assert.AreEqual(0, state.CurrentMp);
         }
 
+        [Test]
+        public void TrySpendMp_ReducesCurrentMp_WhenSufficientMp()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            state.SetCurrentMp(25);
+
+            bool result = state.TrySpendMp(10);
+
+            Assert.IsTrue(result);
+            Assert.AreEqual(15, state.CurrentMp);
+        }
+
+        [Test]
+        public void TrySpendMp_DoesNotReduceCurrentMp_WhenInsufficientMp()
+        {
+            var state = new PlayerState(maxHp: 100, maxMp: 50, attack: 10, defense: 5, speed: 8);
+            state.SetCurrentMp(5);
+
+            bool result = state.TrySpendMp(10);
+
+            Assert.IsFalse(result);
+            Assert.AreEqual(5, state.CurrentMp);
+        }
+
         // ── ApplyVitals ───────────────────────────────────────────────────────
 
         [Test]

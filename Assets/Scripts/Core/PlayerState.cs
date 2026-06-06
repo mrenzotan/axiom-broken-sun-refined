@@ -132,6 +132,21 @@ namespace Axiom.Core
         public void SetCurrentMp(int value) =>
             CurrentMp = Math.Clamp(value, 0, MaxMp);
 
+        /// <summary>
+        /// Attempts to spend MP. Returns false and leaves MP unchanged when insufficient.
+        /// </summary>
+        public bool TrySpendMp(int amount)
+        {
+            if (amount < 0)
+                throw new ArgumentOutOfRangeException(nameof(amount), "amount cannot be negative.");
+
+            if (CurrentMp < amount)
+                return false;
+
+            CurrentMp -= amount;
+            return true;
+        }
+
         public void ApplyVitals(int maxHp, int maxMp, int currentHp, int currentMp)
         {
             if (maxHp <= 0)

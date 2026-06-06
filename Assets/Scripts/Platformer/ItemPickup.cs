@@ -59,6 +59,7 @@ namespace Axiom.Platformer
 
             _controller.GrantTo(GameManager.Instance.PlayerState.Inventory);
             GameManager.Instance.MarkPickupCollected(_pickupId);
+            GameManager.Instance.PersistToDisk();
 
             if (_animator != null)
                 _animator.SetTrigger("Collect");

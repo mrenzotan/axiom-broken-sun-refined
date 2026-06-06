@@ -5,7 +5,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using Axiom.Data;
 
-namespace Axiom.Battle
+namespace Axiom.Core
 {
     public class ItemMenuUI : MonoBehaviour
     {

@@ -471,7 +471,10 @@ architectural decisions here are made deliberately to prevent those issues from 
   (Start, Update, OnDestroy). All logic lives in plain C# classes/services injected
   into them.
 - **No static singletons for game logic** — use a single `GameManager` for cross-scene
-  state only. Everything else is passed explicitly or via events/ScriptableObject channels.
+  state only. `StateBasedCursorUI` is the lone accepted presentation-layer exception
+  because it owns only cursor visuals plus optional `DontDestroyOnLoad` behavior.
+  No other class may copy this pattern without another explicit rule change.
+  Everything else is passed explicitly or via events/ScriptableObject channels.
 - **ScriptableObject-driven data** — no hardcoded spell names, stats, or enemy values
   anywhere in code. All tunable data lives in `.asset` files.
 - **Threaded speech recognition** — `AcceptWaveform()` must never run on the main thread.

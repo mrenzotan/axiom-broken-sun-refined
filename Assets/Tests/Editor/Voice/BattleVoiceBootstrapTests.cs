@@ -7,6 +7,12 @@ namespace Axiom.Voice.Tests
 {
     public class BattleVoiceBootstrapTests
     {
+        private sealed class FakeDisposable : System.IDisposable
+        {
+            public bool Disposed { get; private set; }
+            public void Dispose() => Disposed = true;
+        }
+
         private GameObject _bootstrapGo;
         private BattleVoiceBootstrap _bootstrap;
         private GameObject _micGo;
@@ -79,6 +85,31 @@ namespace Axiom.Voice.Tests
 
             Assert.IsTrue(result, "Should return true when both required refs are assigned.");
             Assert.IsNull(missingRefName, "No missing ref name when all present.");
+        }
+
+        [Test]
+        public void BootstrapResourceGuard_TakeOrDispose_WhenAlive_ReturnsCandidate()
+        {
+            var guard = new BootstrapResourceGuard();
+            var candidate = new FakeDisposable();
+
+            FakeDisposable adopted = guard.TakeOrDispose(candidate);
+
+            Assert.AreSame(candidate, adopted);
+            Assert.IsFalse(candidate.Disposed);
+        }
+
+        [Test]
+        public void BootstrapResourceGuard_TakeOrDispose_AfterTeardown_DisposesCandidateAndReturnsNull()
+        {
+            var guard = new BootstrapResourceGuard();
+            var candidate = new FakeDisposable();
+            guard.RequestTeardown();
+
+            FakeDisposable adopted = guard.TakeOrDispose(candidate);
+
+            Assert.IsNull(adopted);
+            Assert.IsTrue(candidate.Disposed);
         }
 
         // ── Reflection helper ───────────────────────────────────────────────────────

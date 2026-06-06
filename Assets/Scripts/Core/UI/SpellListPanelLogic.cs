@@ -1,10 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using Axiom.Core;
 using Axiom.Data;
 
-namespace Axiom.Battle
+namespace Axiom.Core
 {
     public class SpellListPanelLogic
     {

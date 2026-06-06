@@ -56,6 +56,7 @@ namespace Axiom.Voice
         private SpellUnlockService _spellUnlockService;
         private List<SpellData> _activeSpells;
         private MicrophoneBufferPool _bufferPool;
+        private BootstrapResourceGuard _resourceGuard = new BootstrapResourceGuard();
 
         // ── Unity lifecycle ───────────────────────────────────────────────────────
 
@@ -101,7 +102,9 @@ namespace Axiom.Voice
                 yield break;
             }
 
-            _voskModel = modelTask.Result;
+            _voskModel = _resourceGuard.TakeOrDispose(modelTask.Result);
+            if (_voskModel == null)
+                yield break;
 
             // Prefer the runtime-owned SpellUnlockService so the recognizer stays in sync
             // with story unlocks + level-up grants. Fall back to the Inspector array
@@ -127,6 +130,7 @@ namespace Axiom.Voice
             if (recognizerTask.IsFaulted)
             {
                 _voskModel.Dispose();
+                _voskModel = null;
                 Debug.LogError(
                     $"[BattleVoiceBootstrap] Failed to build Vosk recognizer: " +
                     $"{recognizerTask.Exception?.InnerException?.Message}", this);
@@ -134,8 +138,12 @@ namespace Axiom.Voice
                 yield break;
             }
 
-            if (recognizerTask.Result == null)
+            VoskRecognizer recognizer = _resourceGuard.TakeOrDispose(recognizerTask.Result);
+            if (recognizer == null)
             {
+                if (_resourceGuard.TeardownRequested)
+                    yield break;
+
                 Debug.LogWarning(
                     "[BattleVoiceBootstrap] Spell list is empty — voice recognition not started.\n" +
                     "Assign at least one SpellData asset to the Unlocked Spells field.", this);
@@ -147,7 +155,7 @@ namespace Axiom.Voice
             var resultQueue = new ConcurrentQueue<string>();
             _bufferPool = new MicrophoneBufferPool();
 
-            _recognizerService = new VoskRecognizerService(recognizerTask.Result, inputQueue, resultQueue, _bufferPool);
+            _recognizerService = new VoskRecognizerService(recognizer, inputQueue, resultQueue, _bufferPool);
             _recognizerService.Start();
 
             // Pre-warm the OS mic device BEFORE wiring MicrophoneInputHandler. On macOS,
@@ -218,8 +226,13 @@ namespace Axiom.Voice
                 yield break;
             }
 
-            VoskRecognizer newRecognizer = rebuildTask.Result;
+            VoskRecognizer newRecognizer = _resourceGuard.TakeOrDispose(rebuildTask.Result);
             if (newRecognizer == null) yield break;  // empty set — should not happen post-init
+            if (_recognizerService == null)
+            {
+                newRecognizer.Dispose();
+                yield break;
+            }
 
             // Atomic-enough swap: stop old service (drains queues), hand the new recognizer
             // to a fresh VoskRecognizerService reusing the existing shared queues.
@@ -278,6 +291,8 @@ namespace Axiom.Voice
 
         private void OnDestroy()
         {
+            _resourceGuard.RequestTeardown();
+
             if (_spellUnlockService != null)
                 _spellUnlockService.OnSpellUnlocked -= HandleSpellUnlocked;
 

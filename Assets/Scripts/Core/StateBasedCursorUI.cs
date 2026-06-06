@@ -12,7 +12,8 @@ namespace Axiom.Core
     /// optional per-state sprite animation, and press-scale while the button is held (and briefly after tap).
     /// Hides the OS cursor while enabled. Assign sprites in the Inspector and place this on a
     /// Canvas that has a <see cref="GraphicRaycaster"/> (same as your menu UI).
-    /// Optional <see cref="_persistAcrossScenes"/> keeps one instance alive across loads (see tooltips).
+    /// Optional <see cref="_persistAcrossScenes"/> is the documented UI-only presentation-layer
+    /// exception to the singleton rule; it is not a second gameplay-state singleton.
     /// </summary>
     [DisallowMultipleComponent]
     public sealed class StateBasedCursorUI : MonoBehaviour
@@ -77,8 +78,7 @@ namespace Axiom.Core
 
         [Header("Scene persistence")]
         [SerializeField]
-        [Tooltip("Keeps this cursor alive when you load another scene. Put the whole cursor UI under " +
-                 "its own root (Canvas + Image), not under a menu that should unload — then enable this.")]
+        [Tooltip("UI-only documented exception: keeps cursor visuals alive across scenes without owning gameplay state.")]
         private bool _persistAcrossScenes;
 
         [SerializeField]
