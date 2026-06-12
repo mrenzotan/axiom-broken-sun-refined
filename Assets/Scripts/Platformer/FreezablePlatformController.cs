@@ -9,8 +9,10 @@ namespace Axiom.Platformer
     {
         [SerializeField] private SpriteRenderer _spriteRenderer;
         [SerializeField] private BoxCollider2D _solidCollider;
-        [SerializeField] private Sprite _waterSprite;
-        [SerializeField] private Sprite _iceSprite;
+        [SerializeField] private Sprite[] _waterLoopFrames;
+        [SerializeField] private Sprite[] _freezeFrames;
+        [SerializeField, Min(0.1f)] private float _waterLoopFps = 6f;
+        [SerializeField, Min(0.1f)] private float _freezeFps = 10f;
         [SerializeField] private List<SpellData> _freezeSpells = new();
         [SerializeField, Min(1f)] private float _freezeDuration = 5f;
         [SerializeField, Min(0.1f)] private float _warningWindow = 1.5f;
@@ -19,9 +21,15 @@ namespace Axiom.Platformer
 
         private bool _isFrozen;
         private bool _isPlayerInRange;
+        private Coroutine _waterLoopCoroutine;
 
         public bool IsFrozen => _isFrozen;
         public bool IsPlayerInRange => _isPlayerInRange;
+
+        private void Start()
+        {
+            StartWaterLoop();
+        }
 
         public void SetPlayerInRange(bool inRange)
         {
@@ -57,9 +65,42 @@ namespace Axiom.Platformer
             return freezeSpellIds;
         }
 
+        private void StartWaterLoop()
+        {
+            StopWaterLoop();
+            _waterLoopCoroutine = StartCoroutine(WaterLoopCoroutine());
+        }
+
+        private void StopWaterLoop()
+        {
+            if (_waterLoopCoroutine != null)
+            {
+                StopCoroutine(_waterLoopCoroutine);
+                _waterLoopCoroutine = null;
+            }
+        }
+
+        private IEnumerator WaterLoopCoroutine()
+        {
+            if (_spriteRenderer == null || _waterLoopFrames == null || _waterLoopFrames.Length == 0)
+                yield break;
+
+            var frameWait = new WaitForSeconds(1f / _waterLoopFps);
+            int frame = 0;
+            while (true)
+            {
+                _spriteRenderer.sprite = _waterLoopFrames[frame];
+                frame = (frame + 1) % _waterLoopFrames.Length;
+                yield return frameWait;
+            }
+        }
+
         private IEnumerator FreezeCoroutine()
         {
-            SetVisualState(frozen: true);
+            StopWaterLoop();
+            if (_solidCollider != null) _solidCollider.enabled = true;
+
+            yield return PlayFreezeFrames(reverse: false);
 
             float solidWindow = Mathf.Max(0f, _freezeDuration - _warningWindow);
             yield return new WaitForSeconds(solidWindow);
@@ -79,16 +120,26 @@ namespace Axiom.Platformer
 
             color.a = 1f;
             if (_spriteRenderer != null) _spriteRenderer.color = color;
-            SetVisualState(frozen: false);
+
+            if (_solidCollider != null) _solidCollider.enabled = false;
+            yield return PlayFreezeFrames(reverse: true);
+
             _isFrozen = false;
+            StartWaterLoop();
         }
 
-        private void SetVisualState(bool frozen)
+        private IEnumerator PlayFreezeFrames(bool reverse)
         {
-            if (_spriteRenderer != null)
-                _spriteRenderer.sprite = frozen ? _iceSprite : _waterSprite;
-            if (_solidCollider != null)
-                _solidCollider.enabled = frozen;
+            if (_spriteRenderer == null || _freezeFrames == null || _freezeFrames.Length == 0)
+                yield break;
+
+            var frameWait = new WaitForSeconds(1f / _freezeFps);
+            for (int i = 0; i < _freezeFrames.Length; i++)
+            {
+                int frame = reverse ? _freezeFrames.Length - 1 - i : i;
+                _spriteRenderer.sprite = _freezeFrames[frame];
+                yield return frameWait;
+            }
         }
     }
 }

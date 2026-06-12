@@ -14,7 +14,7 @@ namespace PlatformerTests
             GameObject iceWall = AssetDatabase.LoadAssetAtPath<GameObject>(
                 "Assets/Prefabs/Platformer/P_IceWall.prefab");
             GameObject waterPlatform = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/Prefabs/Platformer/P_WaterPlatform.prefab");
+                "Assets/Prefabs/Platformer/P_WaterPlatform_Long.prefab");
 
             Assert.IsNotNull(iceWall);
             Assert.IsNotNull(waterPlatform);
