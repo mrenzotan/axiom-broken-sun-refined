@@ -241,6 +241,10 @@ namespace Axiom.Battle
         private SpellData   _pendingSpell;
         private SpellResult _pendingSpellResult;
 
+        // Tracks the enemy's currently displayed visual form. The form follows the enemy's
+        // chemistry state (see SyncEnemyFormToConditions) rather than any independent timer.
+        private int _currentEnemyForm = 0;
+
         [SerializeField]
         [Tooltip("Seconds to wait for AnimEvent_OnSpellFire before forcing spell resolution. " +
                  "Set to a value greater than your longest cast animation clip length.")]
@@ -261,6 +265,9 @@ namespace Axiom.Battle
         // can destroy it, preventing an infinite re-trigger loop.
         private string _battleEnemyId;
         private int _enemyStartHp = -1;
+
+        // Phase system — tracks the enemy's current phase for HP-based transitions.
+        private int _currentEnemyPhase = 1;
 
         private void Start()
         {
@@ -318,6 +325,7 @@ namespace Axiom.Battle
                 OnPlayerActionStarted  -= _animationService.OnPlayerActionStarted;
                 OnEnemyActionStarted   -= _animationService.OnEnemyActionStarted;
                 OnDamageDealt          -= _animationService.OnDamageDealt;
+                OnConditionDamageTick  -= _animationService.OnConditionDamageTick;
                 OnCharacterDefeated    -= _animationService.OnCharacterDefeated;
                 OnSpellChargeStarted   -= _animationService.OnSpellChargeStarted;
                 OnSpellCastStarted     -= _animationService.OnSpellCastStarted;
@@ -404,11 +412,15 @@ namespace Axiom.Battle
 
             int? enemyStartHp = _enemyStartHp >= 0 ? _enemyStartHp : (int?)null;
             _enemyStats.Initialize(
-                _enemyData != null ? _enemyData.innateConditions : null,
+                _enemyData != null ? _enemyData.GetInnateConditionsForForm(_currentEnemyForm) : null,
                 startHp: enemyStartHp);
 
             _isProcessingAction   = false;
             SetAwaitingVoiceSpell(false);
+
+            // The enemy starts in form 0; its visual form thereafter follows its chemistry
+            // state via SyncEnemyFormToConditions.
+            _currentEnemyForm = 0;
 
             _actionHandler      = new PlayerActionHandler(_playerStats, _enemyStats);
             _enemyActionHandler = new EnemyActionHandler(_enemyStats, _playerStats);
@@ -438,6 +450,7 @@ namespace Axiom.Battle
                 OnPlayerActionStarted  += _animationService.OnPlayerActionStarted;
                 OnEnemyActionStarted   += _animationService.OnEnemyActionStarted;
                 OnDamageDealt          += _animationService.OnDamageDealt;
+                OnConditionDamageTick  += _animationService.OnConditionDamageTick;
                 OnCharacterDefeated    += _animationService.OnCharacterDefeated;
                 OnSpellChargeStarted   += _animationService.OnSpellChargeStarted;
                 OnSpellCastStarted     += _animationService.OnSpellCastStarted;
@@ -605,6 +618,7 @@ namespace Axiom.Battle
             {
                 case SpellEffectType.Damage:
                     OnDamageDealt?.Invoke(_enemyStats, result.Amount, false);
+                    CheckEnemyPhaseTransition();
                     if (result.TargetDefeated)
                         OnCharacterDefeated?.Invoke(_enemyStats);
                     break;
@@ -621,6 +635,10 @@ namespace Axiom.Battle
 
             // Zero-damage ping so BattleHUD refreshes MP bar after the spend.
             OnDamageDealt?.Invoke(_playerStats, 0, false);
+
+            // If this spell changed the enemy's material condition (e.g. Liquid → Solid via a
+            // Freeze reaction), update the enemy's sprite to the form that matches its new state.
+            SyncEnemyFormToConditions();
 
             Debug.Log($"[Battle] Spell cast: {spell.spellName} → {result.EffectType} {result.Amount}" +
                       $"{(result.ReactionTriggered ? " [REACTION]" : string.Empty)}");
@@ -904,6 +922,13 @@ namespace Axiom.Battle
             if (result.TotalDamageDealt > 0)
                 OnConditionDamageTick?.Invoke(_enemyStats, result.TotalDamageDealt, Axiom.Data.ChemicalCondition.None);
 
+            // Check if enemy should transition to a new phase based on HP (including condition damage)
+            CheckEnemyPhaseTransition();
+
+            // A material transformation may have expired this turn (e.g. Solid → Liquid as a
+            // Freeze wears off), so re-sync the enemy's visual form to its chemistry state.
+            SyncEnemyFormToConditions();
+
             if (_enemyStats.IsDefeated)
             {
                 OnCharacterDefeated?.Invoke(_enemyStats);
@@ -981,6 +1006,8 @@ namespace Axiom.Battle
             OnDamageDealt?.Invoke(_enemyStats, _pendingPlayerAttack.Damage, _pendingPlayerAttack.IsCrit);
             if (_pendingPlayerAttack.TargetDefeated)
                 OnCharacterDefeated?.Invoke(_enemyStats);
+
+            CheckEnemyPhaseTransition();
         }
 
         private void FireEnemyDamageVisuals()
@@ -997,6 +1024,78 @@ namespace Axiom.Battle
             OnDamageDealt?.Invoke(_playerStats, _pendingEnemyAttack.Damage, _pendingEnemyAttack.IsCrit);
             if (_pendingEnemyAttack.TargetDefeated)
                 OnCharacterDefeated?.Invoke(_playerStats);
+            
+            CheckEnemyPhaseTransition();
+        }
+
+        /// <summary>
+        /// Checks if the enemy's current HP has crossed a phase threshold and updates the phase accordingly.
+        /// Called after the enemy takes damage. The animator transitions to the new phase automatically
+        /// once the Phase parameter is updated.
+        /// </summary>
+        private void CheckEnemyPhaseTransition()
+        {
+            if (_enemyData == null || !_enemyData.isBoss || _enemyData.phaseThresholds.Count == 0) {
+                Debug.Log("[Phase] Early exit - enemyData null, not boss, or no thresholds");
+                return; // Only bosses have phase transitions; or no phases configured
+            }
+
+            float hpPercent = _enemyStats.CurrentHP / (float)_enemyStats.MaxHP * 100f;
+            Debug.Log($"[Phase] HP%: {hpPercent}, currentPhase: {_currentEnemyPhase}, thresholds: {_enemyData.phaseThresholds.Count}");
+
+            // Find the highest phase threshold we've crossed
+            int nextPhase = _currentEnemyPhase;
+            foreach (var threshold in _enemyData.phaseThresholds)
+            {
+                Debug.Log($"[Phase] Checking threshold: {threshold.phaseNumber} at {threshold.hpPercentageThreshold}%");
+                if (hpPercent <= threshold.hpPercentageThreshold && threshold.phaseNumber > nextPhase)
+                {
+                    nextPhase = threshold.phaseNumber;
+                }
+            }
+
+            // If phase changed, update the animator
+            if (nextPhase != _currentEnemyPhase)
+            {
+                Debug.Log($"[Phase] Transitioning from phase {_currentEnemyPhase} to phase {nextPhase}");
+                _currentEnemyPhase = nextPhase;
+                if (_enemyAnimator != null)
+                {
+                    _enemyAnimator.SetPhase(_currentEnemyPhase);
+                    _enemyAnimator.TriggerFormChange();
+                }
+                else
+                {
+                    Debug.Log("[Phase] _enemyAnimator is null");
+                }
+            }
+        }
+
+        /// <summary>
+        /// Drives the enemy's visual form (Animator Phase) from its current chemistry state, so a
+        /// multi-form enemy's sprite reflects its active material condition — Liquid shows the
+        /// liquid form, Solid shows the ice form. Plays the morph transition only when the form
+        /// actually changes. Single-form enemies and bosses (no formDefinitions) are unaffected.
+        ///
+        /// The chemistry condition lists are the single source of truth; this method only reads
+        /// them and never mutates conditions. It replaces the previous form-swap system, which
+        /// ran on a random timer and overwrote chemistry state (the DEV-50/DEV-47 conflict that
+        /// broke the Liquid → Freeze → Solid tutorial flow).
+        /// </summary>
+        private void SyncEnemyFormToConditions()
+        {
+            if (_enemyData == null || _enemyAnimator == null) return;
+            if (_enemyData.formDefinitions == null || _enemyData.formDefinitions.Count == 0) return;
+
+            int targetForm = _enemyData.GetFormIndexForConditions(_enemyStats.ActiveMaterialConditions);
+            if (targetForm == _currentEnemyForm) return;
+
+            _currentEnemyForm = targetForm;
+            _enemyAnimator.SetPhaseChangeTarget(targetForm);
+            _enemyAnimator.SetPhase(targetForm);
+            _enemyAnimator.TriggerFormChange();
+
+            Debug.Log($"[Form] Enemy visual synced to form {_currentEnemyForm} (driven by chemistry conditions)");
         }
 
         private void OnPlayerSequenceComplete() => _playerSequenceComplete = true;
@@ -1021,6 +1120,7 @@ namespace Axiom.Battle
                 OnPlayerActionStarted  -= _animationService.OnPlayerActionStarted;
                 OnEnemyActionStarted   -= _animationService.OnEnemyActionStarted;
                 OnDamageDealt          -= _animationService.OnDamageDealt;
+                OnConditionDamageTick  -= _animationService.OnConditionDamageTick;
                 OnCharacterDefeated    -= _animationService.OnCharacterDefeated;
                 OnSpellChargeStarted   -= _animationService.OnSpellChargeStarted;
                 OnSpellCastStarted     -= _animationService.OnSpellCastStarted;

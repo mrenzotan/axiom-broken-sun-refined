@@ -37,6 +37,7 @@ namespace Axiom.Platformer
 
             DestroyDefeatedEnemies();
             DestroyCollectedPickups();
+            ReapplySolvedPuzzles();
 
             if (GameManager.Instance.CurrentWorldSnapshot != null)
                 RestoreWorldState();
@@ -59,6 +60,20 @@ namespace Axiom.Platformer
             {
                 if (GameManager.Instance.IsPickupCollected(pickup.PickupId))
                     Destroy(pickup.gameObject);
+            }
+        }
+
+        private void ReapplySolvedPuzzles()
+        {
+            MeltableObstacleController[] obstacles =
+                FindObjectsByType<MeltableObstacleController>(FindObjectsInactive.Exclude);
+            foreach (MeltableObstacleController obstacle in obstacles)
+            {
+                if (!string.IsNullOrWhiteSpace(obstacle.PuzzleId)
+                    && GameManager.Instance.IsPuzzleSolved(obstacle.PuzzleId))
+                {
+                    obstacle.ApplySolvedImmediate();
+                }
             }
         }
 

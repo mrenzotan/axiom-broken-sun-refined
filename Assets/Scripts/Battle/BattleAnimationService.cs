@@ -70,6 +70,18 @@ namespace Axiom.Battle
         }
 
         /// <summary>
+        /// Determines which character took condition damage and triggers their hurt animation.
+        /// Signature matches BattleController.OnConditionDamageTick.
+        /// </summary>
+        public void OnConditionDamageTick(CharacterStats target, int damage, Axiom.Data.ChemicalCondition condition)
+        {
+            if (damage <= 0) return;
+            if (target == _playerStats) { _playerHurt?.Invoke();  return; }
+            if (target == _enemyStats)  { _enemyHurt?.Invoke();   return; }
+            // Unknown target — do nothing rather than misfire on the wrong character.
+        }
+
+        /// <summary>
         /// Determines which character was defeated and triggers their defeat animation.
         /// Signature matches BattleController.OnCharacterDefeated.
         /// </summary>

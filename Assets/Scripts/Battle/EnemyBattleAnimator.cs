@@ -27,6 +27,9 @@ namespace Axiom.Battle
         private static readonly int DefeatHash    = Animator.StringToHash("Defeat");
         private static readonly int IsRunningHash = Animator.StringToHash("IsRunning");
         private static readonly int MoveRightHash = Animator.StringToHash("MoveRight");
+        private static readonly int PhaseHash     = Animator.StringToHash("Phase");
+        private static readonly int PhaseChangeHash = Animator.StringToHash("PhaseChange");
+        private static readonly int PhaseChangeTargetHash = Animator.StringToHash("PhaseChangeTarget");
 
         private Vector3 _originalLocalPosition;
 
@@ -47,6 +50,14 @@ namespace Axiom.Battle
         /// The method name must match exactly what is set in the Animation Event inspector.
         /// </summary>
         public void AnimEvent_OnHit() => OnHitFrame?.Invoke();
+
+        /// <summary>
+        /// Sets the Phase animator parameter to trigger a phase transition.
+        /// Called by BattleController when the enemy's HP crosses a phase threshold.
+        /// </summary>
+        public void SetPhase(int phase) => _animator.SetInteger(PhaseHash, phase);
+        public void TriggerFormChange() => _animator.SetTrigger(PhaseChangeHash);
+        public void SetPhaseChangeTarget(int target) => _animator.SetInteger(PhaseChangeTargetHash, target);
 
         private void Awake()
         {

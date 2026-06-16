@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Axiom.Core;
 using Axiom.Data;
 using UnityEngine;
 using UnityEngine.Tilemaps;
@@ -13,6 +14,25 @@ namespace Axiom.Platformer
         [SerializeField] private List<SpellData> _meltSpells = new();
         [SerializeField, Min(0.05f)] private float _fadeDuration = 0.7f;
 
+        [SerializeField]
+        [Tooltip("Stable, scene-unique ID used to persist the solved (melted) state across a Battle round-trip. Leave blank to opt out of persistence.")]
+        private string _puzzleId;
+
+        public string PuzzleId => _puzzleId;
+
+        [Header("Success cue")]
+        [SerializeField]
+        [Tooltip("Optional particle burst played once when this obstacle is successfully melted.")]
+        private ParticleSystem _successVfx;
+
+        [SerializeField]
+        [Tooltip("Optional one-shot played when this obstacle is successfully melted. Routed through the SFX mixer bus.")]
+        private AudioClip _successSfx;
+
+        [SerializeField]
+        [Tooltip("AudioSource on this prefab used to play the success SFX. Auto-routed through the SFX bus on Start.")]
+        private AudioSource _audioSource;
+
         private static readonly Color FlashTint = new(0xBF / 255f, 0xE9 / 255f, 1f, 1f);
         private const float FlashDuration = 0.15f;
         private const float SinkScaleY = 0.6f;
@@ -21,6 +41,15 @@ namespace Axiom.Platformer
         private bool _isPlayerInRange;
 
         public bool IsMelted => _isMelted;
+
+        private void Start()
+        {
+            if (_audioSource != null && GameManager.Instance != null
+                && GameManager.Instance.AudioManager != null)
+            {
+                GameManager.Instance.AudioManager.RouteSourceThroughSfxBus(_audioSource);
+            }
+        }
 
         public void SetPlayerInRange(bool inRange)
         {
@@ -40,8 +69,38 @@ namespace Axiom.Platformer
             if (!CanMeltWith(spellId)) return false;
 
             _isMelted = true;
+
+            if (!string.IsNullOrWhiteSpace(_puzzleId) && GameManager.Instance != null)
+                GameManager.Instance.MarkPuzzleSolved(_puzzleId);
+
+            PlaySuccessCue();
             StartCoroutine(MeltCoroutine());
             return true;
+        }
+
+        private void PlaySuccessCue()
+        {
+            if (_successVfx != null)
+                _successVfx.Play();
+            if (_audioSource != null && _successSfx != null)
+                _audioSource.PlayOneShot(_successSfx);
+        }
+
+        /// <summary>
+        /// Forces the terminal melted state with no animation and no success cue.
+        /// Called on scene load by PlatformerWorldRestoreController when this puzzle
+        /// was already solved earlier in the session.
+        /// </summary>
+        public void ApplySolvedImmediate()
+        {
+            if (_isMelted && _solidCollider == null && (_tilemap == null || !_tilemap.gameObject.activeSelf))
+                return; // already in terminal state
+
+            _isMelted = true;
+            if (_solidCollider != null)
+                _solidCollider.enabled = false;
+            if (_tilemap != null)
+                _tilemap.gameObject.SetActive(false);
         }
 
         private List<string> BuildMeltSpellIds()
