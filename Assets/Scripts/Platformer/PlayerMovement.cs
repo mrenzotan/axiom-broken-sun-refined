@@ -22,6 +22,7 @@ public class PlayerMovement
     private float _jumpBufferCounter;
     private bool _isGrounded;
     private bool _movementLocked;
+    private float _externalMoveSpeedMultiplier = 1f;
 
     // Drop-through state — one-way platforms.
     private LayerMask _oneWayLayer;
@@ -113,7 +114,7 @@ public class PlayerMovement
     /// <summary>Apply horizontal velocity. Called from FixedUpdate.</summary>
     public void Move(float horizontalInput)
     {
-        float velocity = _movementLocked ? 0f : horizontalInput * _moveSpeed;
+        float velocity = _movementLocked ? 0f : horizontalInput * _moveSpeed * _externalMoveSpeedMultiplier;
         _rb.linearVelocity = new Vector2(velocity, _rb.linearVelocity.y);
     }
 
@@ -139,6 +140,26 @@ public class PlayerMovement
     public void SetMovementLocked(bool locked)
     {
         _movementLocked = locked;
+    }
+
+    /// <summary>
+    /// Requests a movement speed multiplier for the next Move() call.
+    /// Multiple requests use the smallest multiplier so heavier constraints win.
+    /// </summary>
+    public void RequestExternalMoveSpeedMultiplier(float multiplier)
+    {
+        _externalMoveSpeedMultiplier = Mathf.Min(
+            _externalMoveSpeedMultiplier,
+            Mathf.Max(0f, multiplier));
+    }
+
+    /// <summary>
+    /// Restores normal movement speed after the current physics step has consumed
+    /// any external movement request.
+    /// </summary>
+    public void ResetExternalMoveSpeedMultiplier()
+    {
+        _externalMoveSpeedMultiplier = 1f;
     }
 
     /// <summary>

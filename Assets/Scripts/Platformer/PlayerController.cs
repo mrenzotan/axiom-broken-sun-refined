@@ -158,6 +158,7 @@ public class PlayerController : MonoBehaviour
     private void FixedUpdate()
     {
         _movement.Move(_moveInput);
+        _movement.ResetExternalMoveSpeedMultiplier();
     }
 
     private void OnJumpPerformed(InputAction.CallbackContext ctx)
@@ -181,6 +182,15 @@ public class PlayerController : MonoBehaviour
     }
 
     public bool IsFacingRight => _playerAnimator.IsFacingRight;
+
+    /// <summary>
+    /// Requests a temporary movement speed multiplier for the next physics move.
+    /// World objects use this to express pushing/slowdown without owning player input.
+    /// </summary>
+    public void RequestExternalMoveSpeedMultiplier(float multiplier)
+    {
+        _movement?.RequestExternalMoveSpeedMultiplier(multiplier);
+    }
 
     /// <summary>
     /// Initiates the attack sequence: reserves the enemy trigger (blocking the Surprised
