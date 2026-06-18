@@ -222,18 +222,6 @@ namespace Axiom.Tests.Editor.Core
         }
 
         [Test]
-        public void StartNewGame_ClearsSolvedPuzzles()
-        {
-            _gameManager.PlayerState.SetActiveScene("Level_1-2");
-            _gameManager.MarkPuzzleSolved("ice_wall_a");
-
-            _gameManager.StartNewGame();
-
-            _gameManager.PlayerState.SetActiveScene("Level_1-2");
-            Assert.IsFalse(_gameManager.IsPuzzleSolved("ice_wall_a"));
-        }
-
-        [Test]
         public void StartNewGame_ClearsWorldSnapshot()
         {
             _gameManager.SetWorldSnapshot(new WorldSnapshot());

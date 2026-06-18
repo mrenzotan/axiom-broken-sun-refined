@@ -1,6 +1,5 @@
 using System.Collections;
 using System.Collections.Generic;
-using Axiom.Core;
 using Axiom.Data;
 using UnityEngine;
 
@@ -20,11 +19,6 @@ namespace Axiom.Platformer
         [SerializeField] private float _warningFlashStartHz = 4f;
         [SerializeField] private float _warningFlashEndHz = 12f;
 
-        [Header("Success cue")]
-        [SerializeField] private ParticleSystem _successVfx;
-        [SerializeField] private AudioClip _successSfx;
-        [SerializeField] private AudioSource _audioSource;
-
         private bool _isFrozen;
         private bool _isPlayerInRange;
         private Coroutine _waterLoopCoroutine;
@@ -35,12 +29,6 @@ namespace Axiom.Platformer
         private void Start()
         {
             StartWaterLoop();
-
-            if (_audioSource != null && GameManager.Instance != null
-                && GameManager.Instance.AudioManager != null)
-            {
-                GameManager.Instance.AudioManager.RouteSourceThroughSfxBus(_audioSource);
-            }
         }
 
         public void SetPlayerInRange(bool inRange)
@@ -61,17 +49,8 @@ namespace Axiom.Platformer
             if (!CanFreezeWith(spellId)) return false;
 
             _isFrozen = true;
-            PlaySuccessCue();
             StartCoroutine(FreezeCoroutine());
             return true;
-        }
-
-        private void PlaySuccessCue()
-        {
-            if (_successVfx != null)
-                _successVfx.Play();
-            if (_audioSource != null && _successSfx != null)
-                _audioSource.PlayOneShot(_successSfx);
         }
 
         private List<string> BuildFreezeSpellIds()

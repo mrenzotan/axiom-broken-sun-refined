@@ -78,6 +78,38 @@ namespace Axiom.Data.Tests
         }
 
         [Test]
+        public void GetFormIndexForConditions_FollowsSolidLifecycle_RevertsToLiquidAfterTwoTurns()
+        {
+            // The reported bug: after the 2-turn Solid wears off, the enemy's form must
+            // return to liquid (0). This ties CharacterStats' condition lifecycle to the
+            // form index BattleController reads each turn.
+            var data = MakeTwoFormEnemy();
+            var stats = new Axiom.Battle.CharacterStats { MaxHP = 25, MaxMP = 0, ATK = 3, DEF = 5, SPD = 5 };
+            stats.Initialize(new List<ChemicalCondition> { ChemicalCondition.Liquid });
+
+            Assert.AreEqual(0, data.GetFormIndexForConditions(stats.ActiveMaterialConditions),
+                "A liquid enemy starts in its liquid form (0).");
+
+            // Freeze reaction: Liquid -> Solid for 2 turns -> ice form (1).
+            stats.ConsumeCondition(ChemicalCondition.Liquid);
+            stats.ApplyMaterialTransformation(ChemicalCondition.Solid, ChemicalCondition.Liquid, 2);
+            Assert.AreEqual(1, data.GetFormIndexForConditions(stats.ActiveMaterialConditions),
+                "Freeze transforms the enemy to Solid — it must show the ice form (1).");
+
+            // Enemy turn 1: still Solid -> ice form (1).
+            stats.ProcessConditionTurn();
+            Assert.AreEqual(1, data.GetFormIndexForConditions(stats.ActiveMaterialConditions),
+                "Mid-freeze (turn 1 of 2) the enemy must remain in ice form (1).");
+
+            // Enemy turn 2: Solid expires, Liquid restored -> liquid form (0). The fix's target.
+            stats.ProcessConditionTurn();
+            Assert.AreEqual(0, data.GetFormIndexForConditions(stats.ActiveMaterialConditions),
+                "Once Solid expires the enemy MUST revert to its liquid form (0).");
+
+            Object.DestroyImmediate(data);
+        }
+
+        [Test]
         public void BattleVisualPrefab_Default_IsNull()
         {
             var data = ScriptableObject.CreateInstance<EnemyData>();

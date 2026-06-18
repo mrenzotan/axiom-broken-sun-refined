@@ -246,6 +246,14 @@ namespace Axiom.Battle
         private int _currentEnemyForm = 0;
 
         [SerializeField]
+        [Tooltip("Fallback seconds to wait for the enemy's form-change (morph) animation to finish before " +
+                 "it acts, used only if the morph clip's Animation Event never fires. Set at or above the " +
+                 "morph clip length.")]
+        private float _morphDelay = 2f;
+
+        private bool _enemyMorphComplete;
+
+        [SerializeField]
         [Tooltip("Seconds to wait for AnimEvent_OnSpellFire before forcing spell resolution. " +
                  "Set to a value greater than your longest cast animation clip length.")]
         private float _spellFireTimeout = 3f;
@@ -333,6 +341,7 @@ namespace Axiom.Battle
                 _enemyAnimator.OnHitFrame  -= FireEnemyDamageVisuals;
                 _playerAnimator.OnAttackSequenceComplete -= OnPlayerSequenceComplete;
                 _enemyAnimator.OnAttackSequenceComplete  -= OnEnemySequenceComplete;
+                _enemyAnimator.OnPhaseChangeComplete -= OnEnemyPhaseChangeComplete;
                 _playerAnimator.OnSpellFireFrame -= FireSpellVisuals;
                 _animationService = null;
             }
@@ -458,6 +467,7 @@ namespace Axiom.Battle
                 _enemyAnimator.OnHitFrame  += FireEnemyDamageVisuals;
                 _playerAnimator.OnAttackSequenceComplete += OnPlayerSequenceComplete;
                 _enemyAnimator.OnAttackSequenceComplete  += OnEnemySequenceComplete;
+                _enemyAnimator.OnPhaseChangeComplete += OnEnemyPhaseChangeComplete;
                 _playerAnimator.OnSpellFireFrame += FireSpellVisuals;
                 OnSpellChargeAborted += _playerAnimator.TriggerResetCharge;
             }
@@ -927,7 +937,7 @@ namespace Axiom.Battle
 
             // A material transformation may have expired this turn (e.g. Solid → Liquid as a
             // Freeze wears off), so re-sync the enemy's visual form to its chemistry state.
-            SyncEnemyFormToConditions();
+            bool morphStarted = SyncEnemyFormToConditions();
 
             if (_enemyStats.IsDefeated)
             {
@@ -950,7 +960,8 @@ namespace Axiom.Battle
 
             OnConditionsChanged?.Invoke(_enemyStats);
             OnConditionsChanged?.Invoke(_playerStats);
-            ExecuteEnemyTurn();
+            if (morphStarted) StartCoroutine(PlayMorphThenExecuteEnemyTurn());
+            else              ExecuteEnemyTurn();
         }
 
         private void ExecuteEnemyTurn()
@@ -966,6 +977,24 @@ namespace Axiom.Battle
                 FireEnemyDamageVisuals();
 
             StartCoroutine(CompleteEnemyAction(_pendingEnemyAttack.TargetDefeated));
+        }
+
+        private void OnEnemyPhaseChangeComplete() => _enemyMorphComplete = true;
+
+        // When the enemy's form changes at the start of its turn (e.g. Solid wearing off →
+        // Liquid), let the morph clip play to completion before it moves/attacks, so it never
+        // attacks mid-morph. Falls back to _morphDelay if the morph clip's Animation Event is absent.
+        private System.Collections.IEnumerator PlayMorphThenExecuteEnemyTurn()
+        {
+            _enemyMorphComplete = false;
+            float elapsed = 0f;
+            while (!_enemyMorphComplete && elapsed < _morphDelay)
+            {
+                elapsed += Time.deltaTime;
+                yield return null;
+            }
+            _enemyMorphComplete = false;
+            ExecuteEnemyTurn();
         }
 
         private System.Collections.IEnumerator CompleteEnemyAction(bool targetDefeated)
@@ -1082,20 +1111,20 @@ namespace Axiom.Battle
         /// ran on a random timer and overwrote chemistry state (the DEV-50/DEV-47 conflict that
         /// broke the Liquid → Freeze → Solid tutorial flow).
         /// </summary>
-        private void SyncEnemyFormToConditions()
+        private bool SyncEnemyFormToConditions()
         {
-            if (_enemyData == null || _enemyAnimator == null) return;
-            if (_enemyData.formDefinitions == null || _enemyData.formDefinitions.Count == 0) return;
+            if (_enemyData == null || _enemyAnimator == null) return false;
+            if (_enemyData.formDefinitions == null || _enemyData.formDefinitions.Count == 0) return false;
 
             int targetForm = _enemyData.GetFormIndexForConditions(_enemyStats.ActiveMaterialConditions);
-            if (targetForm == _currentEnemyForm) return;
+            if (targetForm == _currentEnemyForm) return false;
 
             _currentEnemyForm = targetForm;
-            _enemyAnimator.SetPhaseChangeTarget(targetForm);
             _enemyAnimator.SetPhase(targetForm);
             _enemyAnimator.TriggerFormChange();
 
             Debug.Log($"[Form] Enemy visual synced to form {_currentEnemyForm} (driven by chemistry conditions)");
+            return true;
         }
 
         private void OnPlayerSequenceComplete() => _playerSequenceComplete = true;
@@ -1130,6 +1159,7 @@ namespace Axiom.Battle
             if (_enemyAnimator  != null) _enemyAnimator.OnHitFrame  -= FireEnemyDamageVisuals;
             if (_playerAnimator != null) _playerAnimator.OnAttackSequenceComplete -= OnPlayerSequenceComplete;
             if (_enemyAnimator  != null) _enemyAnimator.OnAttackSequenceComplete  -= OnEnemySequenceComplete;
+            if (_enemyAnimator  != null) _enemyAnimator.OnPhaseChangeComplete -= OnEnemyPhaseChangeComplete;
             if (_playerAnimator != null) _playerAnimator.OnSpellFireFrame -= FireSpellVisuals;
             if (_playerAnimator != null) OnSpellChargeAborted -= _playerAnimator.TriggerResetCharge;
 

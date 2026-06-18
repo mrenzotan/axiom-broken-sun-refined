@@ -517,6 +517,34 @@ public class CharacterStatsTests
     }
 
     [Test]
+    public void ProcessConditionTurn_TwoTurnTransformation_RemainsSolidThroughTurnOneThenRestoresLiquid()
+    {
+        var stats = MakeStats();
+        stats.Initialize(new System.Collections.Generic.List<Axiom.Data.ChemicalCondition>
+            { Axiom.Data.ChemicalCondition.Liquid });
+
+        // Freeze reaction: consume Liquid, apply Solid for 2 turns.
+        stats.ConsumeCondition(Axiom.Data.ChemicalCondition.Liquid);
+        stats.ApplyMaterialTransformation(
+            Axiom.Data.ChemicalCondition.Solid,
+            Axiom.Data.ChemicalCondition.Liquid,
+            duration: 2);
+
+        // Enemy turn 1: Solid 2 -> 1. Still Solid — the enemy must stay iced this turn.
+        stats.ProcessConditionTurn();
+        Assert.IsTrue (stats.HasCondition(Axiom.Data.ChemicalCondition.Solid),
+            "Solid must persist through turn 1 of a 2-turn freeze.");
+        Assert.IsFalse(stats.HasCondition(Axiom.Data.ChemicalCondition.Liquid));
+
+        // Enemy turn 2: Solid 1 -> 0. Expires; innate Liquid restored — enemy must revert.
+        stats.ProcessConditionTurn();
+        Assert.IsFalse(stats.HasCondition(Axiom.Data.ChemicalCondition.Solid),
+            "After 2 turns the Solid condition must be gone.");
+        Assert.IsTrue (stats.HasCondition(Axiom.Data.ChemicalCondition.Liquid),
+            "When Solid expires the innate Liquid condition must be restored.");
+    }
+
+    [Test]
     public void ProcessConditionTurn_NoConditions_ReturnsZeroDamageAndActionNotSkipped()
     {
         var stats = MakeStats();

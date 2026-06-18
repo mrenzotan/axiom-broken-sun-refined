@@ -229,14 +229,6 @@ namespace Axiom.Core
         private readonly HashSet<string> _collectedPickupIds =
             new HashSet<string>(StringComparer.Ordinal);
 
-        // Puzzles solved this playthrough, bucketed by the originating level scene
-        // (PlayerState.ActiveSceneName), mirroring _defeatedEnemiesByScene. Persists for
-        // the whole session via DontDestroyOnLoad so a one-way puzzle (e.g. a melted Ice
-        // Wall) stays solved across a Battle round-trip. Save-file persistence is out of
-        // DEV-82 scope — this set is intentionally NOT written to SaveData yet.
-        private readonly Dictionary<string, HashSet<string>> _solvedPuzzlesByScene =
-            new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
-
         // ── Defeated enemies ────────────────────────────────────────────────
 
         /// <summary>
@@ -348,53 +340,6 @@ namespace Axiom.Core
             EnsurePlayerState();
             return PlayerState.ActiveSceneName ?? string.Empty;
         }
-
-        // ── Solved puzzles (per-scene, session only) ────────────────────────
-
-        /// <summary>
-        /// True when the given puzzle ID has been solved in the player's current
-        /// originating scene (<see cref="PlayerState.ActiveSceneName"/>).
-        /// </summary>
-        public bool IsPuzzleSolved(string puzzleId) =>
-            IsPuzzleSolvedInScene(GetActiveSceneBucket(), puzzleId);
-
-        public bool IsPuzzleSolvedInScene(string sceneName, string puzzleId)
-        {
-            if (string.IsNullOrEmpty(puzzleId)) return false;
-            string key = sceneName ?? string.Empty;
-            return _solvedPuzzlesByScene.TryGetValue(key, out HashSet<string> set)
-                && set.Contains(puzzleId);
-        }
-
-        /// <summary>
-        /// Records the puzzle as solved under the player's current originating scene.
-        /// Null/empty IDs are silently ignored.
-        /// </summary>
-        public void MarkPuzzleSolved(string puzzleId) =>
-            MarkPuzzleSolvedInScene(GetActiveSceneBucket(), puzzleId);
-
-        public void MarkPuzzleSolvedInScene(string sceneName, string puzzleId)
-        {
-            if (string.IsNullOrEmpty(puzzleId)) return;
-            string key = sceneName ?? string.Empty;
-            if (!_solvedPuzzlesByScene.TryGetValue(key, out HashSet<string> set))
-            {
-                set = new HashSet<string>(StringComparer.Ordinal);
-                _solvedPuzzlesByScene[key] = set;
-            }
-            set.Add(puzzleId);
-        }
-
-        /// <summary>Clears every scene's solved-puzzle set. Used by StartNewGame.</summary>
-        public void ClearSolvedPuzzles() => _solvedPuzzlesByScene.Clear();
-
-        /// <summary>
-        /// Clears only the named scene's solved-puzzle set. Used by RespawnAtLastCheckpoint
-        /// so dying re-forms that scene's one-way obstacles (e.g. a melted Ice Wall) while
-        /// puzzles solved in other already-cleared scenes stay solved.
-        /// </summary>
-        public void ClearSolvedPuzzlesInScene(string sceneName) =>
-            _solvedPuzzlesByScene.Remove(sceneName ?? string.Empty);
 
         public bool IsPickupCollected(string pickupId) =>
             !string.IsNullOrEmpty(pickupId) && _collectedPickupIds.Contains(pickupId);
@@ -622,7 +567,6 @@ namespace Axiom.Core
             // other scenes the player has already cleared stay defeated.
             ClearDefeatedEnemiesInScene(sceneToLoad);
             ClearAllDamagedEnemyHpInScene(sceneToLoad);
-            ClearSolvedPuzzlesInScene(sceneToLoad);
 
             PersistToDisk();
             LoadScene(sceneToLoad, style);
@@ -680,7 +624,6 @@ namespace Axiom.Core
             ClearDefeatedEnemies();
             ClearAllDamagedEnemyHp();
             ClearCollectedPickups();
-            ClearSolvedPuzzles();
 
             EnsureSaveService();
             _saveService.DeleteSave();
