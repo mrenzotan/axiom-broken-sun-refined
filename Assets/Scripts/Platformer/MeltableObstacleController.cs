@@ -3,16 +3,16 @@ using System.Collections.Generic;
 using Axiom.Core;
 using Axiom.Data;
 using UnityEngine;
-using UnityEngine.Tilemaps;
 
 namespace Axiom.Platformer
 {
     public class MeltableObstacleController : MonoBehaviour
     {
-        [SerializeField] private Tilemap _tilemap;
-        [SerializeField] private TilemapCollider2D _solidCollider;
+        [SerializeField] private SpriteRenderer _spriteRenderer;
+        [SerializeField] private BoxCollider2D _solidCollider;
+        [SerializeField] private Sprite[] _meltFrames;
+        [SerializeField, Min(0.1f)] private float _meltFps = 10f;
         [SerializeField] private List<SpellData> _meltSpells = new();
-        [SerializeField, Min(0.05f)] private float _fadeDuration = 0.7f;
 
         [SerializeField]
         [Tooltip("Stable, scene-unique ID used to persist the solved (melted) state across a Battle round-trip. Leave blank to opt out of persistence.")]
@@ -35,7 +35,6 @@ namespace Axiom.Platformer
 
         private static readonly Color FlashTint = new(0xBF / 255f, 0xE9 / 255f, 1f, 1f);
         private const float FlashDuration = 0.15f;
-        private const float SinkScaleY = 0.6f;
 
         private bool _isMelted;
         private bool _isPlayerInRange;
@@ -93,14 +92,16 @@ namespace Axiom.Platformer
         /// </summary>
         public void ApplySolvedImmediate()
         {
-            if (_isMelted && _solidCollider == null && (_tilemap == null || !_tilemap.gameObject.activeSelf))
+            if (_isMelted
+                && (_solidCollider == null || !_solidCollider.enabled)
+                && (_spriteRenderer == null || !_spriteRenderer.enabled))
                 return; // already in terminal state
 
             _isMelted = true;
             if (_solidCollider != null)
                 _solidCollider.enabled = false;
-            if (_tilemap != null)
-                _tilemap.gameObject.SetActive(false);
+            if (_spriteRenderer != null)
+                _spriteRenderer.enabled = false;
         }
 
         private List<string> BuildMeltSpellIds()
@@ -119,70 +120,55 @@ namespace Axiom.Platformer
         {
             yield return FlashCoroutine();
 
-            if (_solidCollider != null)
-                _solidCollider.enabled = false;
+            yield return PlayMeltFrames();
 
-            yield return FadeAndSinkCoroutine();
-
-            if (_tilemap != null)
-                _tilemap.gameObject.SetActive(false);
+            if (_spriteRenderer != null)
+                _spriteRenderer.enabled = false;
         }
 
         private IEnumerator FlashCoroutine()
         {
-            if (_tilemap == null) yield break;
+            if (_spriteRenderer == null) yield break;
 
             float halfFlash = FlashDuration * 0.5f;
             float elapsed = 0f;
             while (elapsed < halfFlash)
             {
                 elapsed += Time.deltaTime;
-                _tilemap.color = Color.Lerp(Color.white, FlashTint, Mathf.Clamp01(elapsed / halfFlash));
+                _spriteRenderer.color = Color.Lerp(Color.white, FlashTint, Mathf.Clamp01(elapsed / halfFlash));
                 yield return null;
             }
             elapsed = 0f;
             while (elapsed < halfFlash)
             {
                 elapsed += Time.deltaTime;
-                _tilemap.color = Color.Lerp(FlashTint, Color.white, Mathf.Clamp01(elapsed / halfFlash));
+                _spriteRenderer.color = Color.Lerp(FlashTint, Color.white, Mathf.Clamp01(elapsed / halfFlash));
                 yield return null;
             }
-            _tilemap.color = Color.white;
+            _spriteRenderer.color = Color.white;
         }
 
-        private IEnumerator FadeAndSinkCoroutine()
+        private IEnumerator PlayMeltFrames()
         {
-            if (_tilemap == null) yield break;
-
-            float fadeWindow = Mathf.Max(0.01f, _fadeDuration - FlashDuration);
-            Transform tilemapTransform = _tilemap.transform;
-            Vector3 startScale = tilemapTransform.localScale;
-            Vector3 endScale = new(startScale.x, startScale.y * SinkScaleY, startScale.z);
-
-            float elapsed = 0f;
-            while (elapsed < fadeWindow)
+            if (_spriteRenderer == null || _meltFrames == null || _meltFrames.Length == 0)
             {
-                elapsed += Time.deltaTime;
-                float progress = Mathf.Clamp01(elapsed / fadeWindow);
-                float eased = EaseOutQuad(progress);
-
-                Color color = _tilemap.color;
-                color.a = 1f - eased;
-                _tilemap.color = color;
-
-                tilemapTransform.localScale = Vector3.Lerp(startScale, endScale, progress);
-                yield return null;
+                if (_solidCollider != null) _solidCollider.enabled = false;
+                yield break;
             }
 
-            Color finalColor = _tilemap.color;
-            finalColor.a = 0f;
-            _tilemap.color = finalColor;
-            tilemapTransform.localScale = endScale;
-        }
+            int colliderDisableFrame = _meltFrames.Length / 2;
+            var frameWait = new WaitForSeconds(1f / _meltFps);
+            for (int i = 0; i < _meltFrames.Length; i++)
+            {
+                _spriteRenderer.sprite = _meltFrames[i];
 
-        private static float EaseOutQuad(float t)
-        {
-            return 1f - (1f - t) * (1f - t);
+                if (i == colliderDisableFrame && _solidCollider != null)
+                    _solidCollider.enabled = false;
+
+                yield return frameWait;
+            }
+
+            if (_solidCollider != null) _solidCollider.enabled = false;
         }
     }
 }
