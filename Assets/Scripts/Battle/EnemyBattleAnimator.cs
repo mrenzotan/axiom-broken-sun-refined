@@ -30,6 +30,8 @@ namespace Axiom.Battle
         private static readonly int PhaseHash     = Animator.StringToHash("Phase");
         private static readonly int PhaseChangeHash = Animator.StringToHash("PhaseChange");
 
+        private static readonly int AttackIndexHash = Animator.StringToHash("AttackIndex");
+
         private Vector3 _originalLocalPosition;
 
         /// <summary>
@@ -69,6 +71,7 @@ namespace Axiom.Battle
         /// </summary>
         public void SetPhase(int phase) => _animator.SetInteger(PhaseHash, phase);
         public void TriggerFormChange() => _animator.SetTrigger(PhaseChangeHash);
+        public void SetAttackIndex(int index) => _animator.SetInteger(AttackIndexHash, index);
 
         private void Awake()
         {
@@ -86,6 +89,8 @@ namespace Axiom.Battle
             // which visually runs LEFT (toward the player). Position lerps left via _attackPositionX.
             _animator.SetBool(MoveRightHash, true);
             _animator.SetBool(IsRunningHash, true);
+            // Pick a random attack animation for this attack
+            _animator.SetInteger(AttackIndexHash, UnityEngine.Random.Range(0, 2));
 
             float elapsed = 0f;
             float startX  = _originalLocalPosition.x;
