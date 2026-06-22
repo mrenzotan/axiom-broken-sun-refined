@@ -33,6 +33,8 @@ namespace Axiom.Platformer
         private InputAction _attackAction;
         private PlayerController _controller;
 
+        public bool IsInputLocked { get; private set; }
+
         private void Awake()
         {
             _actions = new InputSystem_Actions();
@@ -46,6 +48,7 @@ namespace Axiom.Platformer
 
         private void Update()
         {
+            if (IsInputLocked) return;
             if (!_attackAction.WasPerformedThisFrame()) return;
 
             Vector2 attackCenter = AttackCenter();
@@ -54,6 +57,11 @@ namespace Axiom.Platformer
                 ? hit.GetComponent<ExplorationEnemyCombatTrigger>()
                 : null;
             _controller.BeginAttack(trigger);
+        }
+
+        public void SetInputLocked(bool locked)
+        {
+            IsInputLocked = locked;
         }
 
         private Vector2 AttackCenter()

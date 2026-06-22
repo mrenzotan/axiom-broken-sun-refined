@@ -182,6 +182,7 @@ public class PlayerController : MonoBehaviour
     }
 
     public bool IsFacingRight => _playerAnimator.IsFacingRight;
+    public bool IsMovementLocked => _movement?.IsMovementLocked == true;
 
     /// <summary>
     /// Requests a temporary movement speed multiplier for the next physics move.

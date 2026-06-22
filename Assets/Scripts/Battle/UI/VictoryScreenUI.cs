@@ -2,6 +2,7 @@ using System;
 using System.Text;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using Axiom.Core;
 using Axiom.Data;
@@ -74,6 +75,7 @@ namespace Axiom.Battle.UI
             }
 
             ShowPanel();
+            EventSystem.current?.SetSelectedGameObject(_confirmButton.gameObject);
 
             if (_xpBar != null)
             {

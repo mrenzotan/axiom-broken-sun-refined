@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.Events;
 using UnityEngine.Serialization;
 using UnityEngine.UI;
@@ -97,6 +98,8 @@ namespace Axiom.Core
 
             if (_settingsViewRoot != null)
                 _settingsViewRoot.SetActive(false);
+
+            FocusFirst(_continueButton, _newGameButton, _settingsButton, _quitButton);
         }
 
         private void OnEnable()
@@ -177,6 +180,7 @@ namespace Axiom.Core
             SetPrimaryMenuButtonsVisible(false);
             _settingsViewRoot.SetActive(true);
             RefreshSliderValuesWithoutNotify();
+            FocusFirst(_masterVolumeSlider, _musicVolumeSlider, _sfxVolumeSlider, _backFromSettingsButton);
         }
 
         private void HideSettingsPanel()
@@ -185,6 +189,19 @@ namespace Axiom.Core
                 _settingsViewRoot.SetActive(false);
 
             SetPrimaryMenuButtonsVisible(true);
+            FocusFirst(_continueButton, _newGameButton, _settingsButton, _quitButton);
+        }
+
+        private static void FocusFirst(params Selectable[] candidates)
+        {
+            if (EventSystem.current == null) return;
+
+            foreach (Selectable candidate in candidates)
+            {
+                if (candidate == null || !candidate.IsActive() || !candidate.IsInteractable()) continue;
+                EventSystem.current.SetSelectedGameObject(candidate.gameObject);
+                return;
+            }
         }
 
         private void SetPrimaryMenuButtonsVisible(bool visible)

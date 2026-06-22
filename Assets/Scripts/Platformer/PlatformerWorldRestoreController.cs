@@ -75,6 +75,32 @@ namespace Axiom.Platformer
                     obstacle.ApplySolvedImmediate();
                 }
             }
+
+            BurnableObstacleController[] burnables =
+                FindObjectsByType<BurnableObstacleController>(FindObjectsInactive.Exclude);
+            foreach (BurnableObstacleController burnable in burnables)
+            {
+                if (!string.IsNullOrWhiteSpace(burnable.PuzzleId)
+                    && GameManager.Instance.IsPuzzleSolved(burnable.PuzzleId))
+                {
+                    burnable.ApplySolvedImmediate();
+                }
+            }
+
+            ExplodableBarrierController[] barriers =
+                FindObjectsByType<ExplodableBarrierController>(FindObjectsInactive.Exclude);
+            foreach (ExplodableBarrierController barrier in barriers)
+            {
+                if (!string.IsNullOrWhiteSpace(barrier.PuzzleId)
+                    && GameManager.Instance.IsPuzzleSolved(barrier.PuzzleId))
+                {
+                    barrier.ApplySolvedImmediate();
+                }
+            }
+
+            // Steam vents intentionally have no persisted state — they are re-ignitable
+            // permanent fixtures. The obstacles a vent clears restore themselves above
+            // via their own puzzleIds.
         }
 
         private void RestoreWorldState()

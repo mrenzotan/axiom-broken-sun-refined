@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using Axiom.Data;
 
@@ -52,6 +53,11 @@ namespace Axiom.Core
             }
 
             _panel.SetActive(true);
+
+            Button focusTarget = _activeSlots.Count > 0 ? _activeSlots[0].Button : _backButton;
+            if (EventSystem.current != null && focusTarget != null &&
+                focusTarget.IsActive() && focusTarget.IsInteractable())
+                EventSystem.current.SetSelectedGameObject(focusTarget.gameObject);
         }
 
         public void Hide()

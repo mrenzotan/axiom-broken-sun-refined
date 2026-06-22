@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Axiom.Battle
@@ -25,6 +26,9 @@ namespace Axiom.Battle
         public Action OnFlee;
         public Action OnSpellList;
 
+        private readonly bool[] _messageBlockSnapshot = new bool[5];
+        private bool _isMessageBlocked;
+
         private void Start()
         {
             _attackButton.onClick.AddListener(() => OnAttack?.Invoke());
@@ -45,6 +49,49 @@ namespace Axiom.Battle
             _itemButton.interactable   = interactable;
             _fleeButton.interactable   = interactable;
             _spellListButton.interactable = interactable;
+
+            if (interactable)
+                FocusFirstInteractable();
+            else if (EventSystem.current != null && EventSystem.current.currentSelectedGameObject != null &&
+                     EventSystem.current.currentSelectedGameObject.transform.IsChildOf(transform))
+                EventSystem.current.SetSelectedGameObject(null);
+        }
+
+        public void FocusFirstInteractable()
+        {
+            if (EventSystem.current == null) return;
+
+            Button[] candidates = { _attackButton, _spellButton, _itemButton, _fleeButton, _spellListButton };
+            foreach (Button candidate in candidates)
+            {
+                if (candidate == null || !candidate.IsActive() || !candidate.IsInteractable()) continue;
+                EventSystem.current.SetSelectedGameObject(candidate.gameObject);
+                return;
+            }
+        }
+
+        public void SetMessageBlocked(bool blocked)
+        {
+            if (_isMessageBlocked == blocked)
+                return;
+
+            _isMessageBlocked = blocked;
+            Button[] buttons = { _attackButton, _spellButton, _itemButton, _fleeButton, _spellListButton };
+
+            if (blocked)
+            {
+                for (int i = 0; i < buttons.Length; i++)
+                {
+                    _messageBlockSnapshot[i] = buttons[i].interactable;
+                    buttons[i].interactable = false;
+                }
+                return;
+            }
+
+            for (int i = 0; i < buttons.Length; i++)
+                buttons[i].interactable = _messageBlockSnapshot[i];
+
+            FocusFirstInteractable();
         }
 
         public void SetSpellInteractable(bool interactable)

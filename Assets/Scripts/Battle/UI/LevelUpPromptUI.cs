@@ -2,6 +2,7 @@ using System;
 using System.Text;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using Axiom.Core;
 
@@ -81,6 +82,7 @@ namespace Axiom.Battle.UI
             }
             RenderCurrent();
             ShowPanel();
+            EventSystem.current?.SetSelectedGameObject(_confirmButton.gameObject);
         }
 
         private void HandleLevelUp(LevelUpResult result)

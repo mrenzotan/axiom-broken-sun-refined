@@ -1,35 +1,71 @@
+using System;
+using System.Collections.Generic;
+using Axiom.Core;
+
 namespace Axiom.Battle
 {
     /// <summary>
-    /// Plain C# rolling 2-line message buffer for battle narration.
-    /// Extracted from StatusMessageUI so queue logic is testable without Unity.
+    /// Plain C# state machine for queued, acknowledgment-gated battle narration.
     /// </summary>
-    public class StatusMessageQueue
+    public sealed class StatusMessageQueue
     {
-        private string _line1 = string.Empty;
-        private string _line2 = string.Empty;
+        private readonly Queue<string> _messages = new Queue<string>();
+        private readonly TypewriterEffect _typewriter = new TypewriterEffect();
+        private readonly float _charsPerSecond;
 
-        /// <summary>
-        /// Adds a message. Pushes the current bottom line to the top,
-        /// discarding the oldest top line.
-        /// </summary>
-        public void Post(string message)
+        public event Action<bool> BusyStateChanged;
+
+        public string CurrentMessage => _messages.Count == 0 ? string.Empty : _messages.Peek();
+        public string VisibleText => _typewriter.VisibleText;
+        public bool IsBusy => _messages.Count > 0;
+        public bool IsCurrentMessageComplete => !IsBusy || _typewriter.IsComplete;
+        public int PendingCount => _messages.Count;
+
+        public StatusMessageQueue(float charsPerSecond = 30f)
         {
-            _line1 = _line2;
-            _line2 = message;
+            _charsPerSecond = Math.Max(0.01f, charsPerSecond);
         }
 
-        /// <summary>
-        /// Returns the display string: one or two lines separated by a newline.
-        /// Returns empty string if no messages have been posted.
-        /// </summary>
-        public string GetDisplay()
+        public void Post(string message)
         {
-            if (string.IsNullOrEmpty(_line1) && string.IsNullOrEmpty(_line2))
-                return string.Empty;
-            if (string.IsNullOrEmpty(_line1))
-                return _line2;
-            return $"{_line1}\n{_line2}";
+            if (string.IsNullOrWhiteSpace(message))
+                throw new ArgumentException("Battle messages cannot be empty.", nameof(message));
+
+            bool wasBusy = IsBusy;
+            _messages.Enqueue(message);
+
+            if (wasBusy)
+                return;
+
+            _typewriter.Start(message, _charsPerSecond);
+            BusyStateChanged?.Invoke(true);
+        }
+
+        public void Update(float deltaTime)
+        {
+            if (IsBusy)
+                _typewriter.Update(deltaTime);
+        }
+
+        public void Continue()
+        {
+            if (!IsBusy)
+                return;
+
+            if (!_typewriter.IsComplete)
+            {
+                _typewriter.SkipToEnd();
+                return;
+            }
+
+            _messages.Dequeue();
+            if (IsBusy)
+            {
+                _typewriter.Start(_messages.Peek(), _charsPerSecond);
+                return;
+            }
+
+            BusyStateChanged?.Invoke(false);
         }
     }
 }

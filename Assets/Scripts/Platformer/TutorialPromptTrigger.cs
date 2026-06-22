@@ -30,8 +30,16 @@ namespace Axiom.Platformer
                  "Attack stays enabled so the player can engage a nearby battle trigger.")]
         private bool _lockMovementWhileInside = false;
         [SerializeField]
+        [Tooltip("When true, also blocks exploration attacks while this tutorial lock is active.")]
+        private bool _lockAttackWhileInside;
+        [SerializeField]
         [Tooltip("Required when _lockMovementWhileInside is true. Reference to the player's PlayerController.")]
         private PlayerController _playerController;
+        [SerializeField]
+        [Tooltip("Required when _lockAttackWhileInside is true.")]
+        private PlayerExplorationAttack _playerAttack;
+
+        private bool _playerLockActive;
 
         private void Reset()
         {
@@ -52,16 +60,36 @@ namespace Axiom.Platformer
         {
             if (!other.CompareTag("Player")) return;
             if (_panel != null) _panel.Show(_message);
-            if (_lockMovementWhileInside && _playerController != null)
-                _playerController.SetTutorialMovementLocked(true);
+            SetPlayerLock(true);
         }
 
         private void OnTriggerExit2D(Collider2D other)
         {
             if (!other.CompareTag("Player")) return;
             if (_panel != null) _panel.Hide();
+            SetPlayerLock(false);
+        }
+
+        private void OnDisable()
+        {
+            SetPlayerLock(false);
+        }
+
+        public void ReleasePlayerLock()
+        {
+            if (_panel != null) _panel.Hide();
+            SetPlayerLock(false);
+        }
+
+        private void SetPlayerLock(bool locked)
+        {
+            if (_playerLockActive == locked) return;
+            _playerLockActive = locked;
+
             if (_lockMovementWhileInside && _playerController != null)
-                _playerController.SetTutorialMovementLocked(false);
+                _playerController.SetTutorialMovementLocked(locked);
+            if (_lockAttackWhileInside && _playerAttack != null)
+                _playerAttack.SetInputLocked(locked);
         }
     }
 }

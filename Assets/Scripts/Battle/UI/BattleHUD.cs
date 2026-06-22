@@ -78,6 +78,7 @@ namespace Axiom.Battle
             _battleController.OnSpellHealed            += HandleSpellHealed;
             _battleController.OnShieldApplied          += HandleShieldApplied;
             _battleController.OnConditionDamageTick    += HandleConditionDamageTick;
+            _battleController.OnConditionApplied       += HandleConditionApplied;
             _battleController.OnSpellCastRejected      += HandleSpellCastRejected;
             _battleController.OnPhysicalAttackImmune  += HandlePhysicalAttackImmune;
             _battleController.OnConditionsChanged     += HandleConditionsChanged;
@@ -85,6 +86,7 @@ namespace Axiom.Battle
             _battleController.OnItemUsed               += HandleItemUsed;
             _battleController.OnSpellPhaseEntered     += HandleSpellPhaseEntered;
             _battleController.OnSpellPhaseExited      += HandleSpellPhaseExited;
+            _statusMessageUI.BusyStateChanged         += HandleMessageBusyStateChanged;
 
             // Initialise display
             _enemyNameText.text  = enemyStats.Name;
@@ -100,6 +102,8 @@ namespace Axiom.Battle
 
         private void OnDestroy() => Unsubscribe();
 
+        public void FocusFirstInteractableAction() => _actionMenuUI?.FocusFirstInteractable();
+
         // ── Event handlers ────────────────────────────────────────────────────
 
         private void HandleStateChanged(BattleState state)
@@ -111,12 +115,10 @@ namespace Axiom.Battle
             if (state == BattleState.PlayerTurn)
             {
                 _turnIndicatorUI.SetActiveTarget(_playerSpriteTransform);
-                _statusMessageUI.Post("Your turn.");
             }
             else if (state == BattleState.EnemyTurn)
             {
                 _turnIndicatorUI.SetActiveTarget(_enemySpriteTransform);
-                _statusMessageUI.Post($"{_enemyStats.Name}'s turn.");
             }
             else if (state == BattleState.Victory)
             {
@@ -131,6 +133,12 @@ namespace Axiom.Battle
             {
                 _turnIndicatorUI.SetActiveTarget(null);
             }
+        }
+
+        private void HandleMessageBusyStateChanged(bool isBusy)
+        {
+            _actionMenuUI.SetMessageBlocked(isBusy);
+            _battleController.SetBattleMessagesBlocked(isBusy);
         }
 
         private void HandleDamageDealt(CharacterStats target, int amount, bool isCrit)
@@ -222,11 +230,16 @@ namespace Axiom.Battle
                 _floatingNumberSpawner.Spawn(rect, damage, FloatingNumberSpawner.NumberType.Damage);
 
             if (damage > 0)
-                _statusMessageUI.Post($"{target.Name} takes {damage} damage from a condition.");
+                _statusMessageUI.Post(BattleMessageFormatter.ConditionDamage(target.Name, condition, damage));
 
             // Defeat from condition DoT is handled by BattleController via OnCharacterDefeated
             // so BattleAnimationService plays the defeat animation. BattleHUD handles the UI
             // response through its own OnCharacterDefeated subscription (HandleCharacterDefeated).
+        }
+
+        private void HandleConditionApplied(CharacterStats target, Axiom.Data.ChemicalCondition condition)
+        {
+            _statusMessageUI.Post(BattleMessageFormatter.ConditionApplied(target.Name, condition));
         }
 
         private void HandleSpellCastRejected(string reason)
@@ -305,6 +318,7 @@ namespace Axiom.Battle
             _battleController.OnSpellHealed            -= HandleSpellHealed;
             _battleController.OnShieldApplied          -= HandleShieldApplied;
             _battleController.OnConditionDamageTick    -= HandleConditionDamageTick;
+            _battleController.OnConditionApplied       -= HandleConditionApplied;
             _battleController.OnSpellCastRejected      -= HandleSpellCastRejected;
             _battleController.OnPhysicalAttackImmune  -= HandlePhysicalAttackImmune;
             _battleController.OnConditionsChanged     -= HandleConditionsChanged;
@@ -312,6 +326,7 @@ namespace Axiom.Battle
             _battleController.OnItemUsed               -= HandleItemUsed;
             _battleController.OnSpellPhaseEntered     -= HandleSpellPhaseEntered;
             _battleController.OnSpellPhaseExited      -= HandleSpellPhaseExited;
+            _statusMessageUI.BusyStateChanged         -= HandleMessageBusyStateChanged;
         }
     }
 }

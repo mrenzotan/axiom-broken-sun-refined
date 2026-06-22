@@ -3,7 +3,9 @@
     "references": [
         "Axiom.Battle",
         "Axiom.Core",
-        "Axiom.Data"
+        "Axiom.Data",
+        "UnityEngine.UI",
+        "Unity.InputSystem"
     ],
     "testReferences": [
         "UnityEngine.TestRunner",

@@ -1,5 +1,6 @@
 using NUnit.Framework;
 using Axiom.Battle;
+using System.Linq;
 
 public class CharacterStatsTests
 {
@@ -454,6 +455,9 @@ public class CharacterStatsTests
 
         Assert.AreEqual(5,  result.TotalDamageDealt);
         Assert.AreEqual(95, stats.CurrentHP);
+        Assert.AreEqual(1, result.DamageTicks.Count);
+        Assert.AreEqual(Axiom.Data.ChemicalCondition.Burning, result.DamageTicks[0].Condition);
+        Assert.AreEqual(5, result.DamageTicks[0].Damage);
     }
 
     [Test]
@@ -466,6 +470,7 @@ public class CharacterStatsTests
         ConditionTurnResult result = stats.ProcessConditionTurn();
 
         Assert.IsTrue(result.ActionSkipped);
+        Assert.IsEmpty(result.DamageTicks);
     }
 
     [Test]
@@ -480,8 +485,11 @@ public class CharacterStatsTests
         Assert.AreEqual(96, stats.CurrentHP);
 
         // Tick 2: ×1.5 = 6 damage
-        stats.ProcessConditionTurn();
+        ConditionTurnResult secondTick = stats.ProcessConditionTurn();
         Assert.AreEqual(90, stats.CurrentHP);
+        Assert.AreEqual(1, secondTick.DamageTicks.Count);
+        Assert.AreEqual(Axiom.Data.ChemicalCondition.Corroded, secondTick.DamageTicks[0].Condition);
+        Assert.AreEqual(6, secondTick.DamageTicks[0].Damage);
     }
 
     [Test]
@@ -554,6 +562,26 @@ public class CharacterStatsTests
 
         Assert.AreEqual(0,     result.TotalDamageDealt);
         Assert.IsFalse(result.ActionSkipped);
+        Assert.IsEmpty(result.DamageTicks);
+    }
+
+    [Test]
+    public void ProcessConditionTurn_MultipleDamageConditions_PreserveIdentityAndTotal()
+    {
+        var stats = MakeStats(maxHp: 100);
+        stats.Initialize();
+        stats.ApplyStatusCondition(Axiom.Data.ChemicalCondition.Burning, baseDamage: 5);
+        stats.ApplyStatusCondition(Axiom.Data.ChemicalCondition.Corroded, baseDamage: 4);
+
+        ConditionTurnResult result = stats.ProcessConditionTurn();
+
+        Assert.AreEqual(9, result.TotalDamageDealt);
+        Assert.AreEqual(2, result.DamageTicks.Count);
+        CollectionAssert.AreEquivalent(
+            new[] { Axiom.Data.ChemicalCondition.Burning, Axiom.Data.ChemicalCondition.Corroded },
+            result.DamageTicks.Select(tick => tick.Condition));
+        Assert.AreEqual(5, result.DamageTicks.Single(tick => tick.Condition == Axiom.Data.ChemicalCondition.Burning).Damage);
+        Assert.AreEqual(4, result.DamageTicks.Single(tick => tick.Condition == Axiom.Data.ChemicalCondition.Corroded).Damage);
     }
 
     // ---- GetMaterialTransformTurns ----

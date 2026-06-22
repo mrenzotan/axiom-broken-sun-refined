@@ -98,6 +98,50 @@ namespace Axiom.Voice.Tests
             Object.DestroyImmediate(characterData);
         }
 
+        [Test]
+        public void Update_RecognizedCombustSpell_IgnitesInRangeBurnableObstacleAndSpendsMp()
+        {
+            SpellData combust = ScriptableObject.CreateInstance<SpellData>();
+            combust.spellName = "combust";
+            combust.mpCost = 8;
+
+            GameObject obstacleGo = new GameObject("BurnableObstacle");
+            var obstacle = obstacleGo.AddComponent<BurnableObstacleController>();
+            obstacle.SetPlayerInRange(true);
+            SetPrivateField(obstacle, "_igniteSpells", new System.Collections.Generic.List<SpellData> { combust });
+
+            GameObject gameManagerGo = null;
+            GameManager gameManager = GameManager.Instance;
+            if (gameManager == null)
+            {
+                gameManagerGo = new GameObject("GameManager");
+                gameManager = gameManagerGo.AddComponent<GameManager>();
+            }
+            CharacterData characterData = CreateCharacterData();
+            gameManager.SetPlayerCharacterDataForTests(characterData);
+            gameManager.PlayerState.SetCurrentMp(20);
+
+            GameObject controllerGo = new GameObject("PlatformerVoiceSpellController");
+            var controller = controllerGo.AddComponent<PlatformerVoiceSpellController>();
+            SetPrivateField(controller, "_burnableObstacles", new[] { obstacle });
+
+            var resultQueue = new ConcurrentQueue<string>();
+            resultQueue.Enqueue("{\"text\": \"combust\"}");
+            controller.Inject(resultQueue, new[] { combust }, gameManager.PlayerState);
+
+            InvokePrivateMethod(controller, "Update");
+
+            Assert.IsTrue(obstacle.IsBurned);
+            Assert.AreEqual(12, gameManager.PlayerState.CurrentMp);
+
+            Object.DestroyImmediate(controllerGo);
+            if (gameManagerGo != null)
+                Object.DestroyImmediate(gameManagerGo);
+            Object.DestroyImmediate(obstacleGo);
+            Object.DestroyImmediate(combust);
+            Object.DestroyImmediate(characterData);
+        }
+
         private static CharacterData CreateCharacterData()
         {
             CharacterData data = ScriptableObject.CreateInstance<CharacterData>();

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Axiom.Core;
 using Axiom.Data;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
@@ -140,9 +141,7 @@ namespace Axiom.Platformer.UI
 
         private void HandleItemUsed(ItemData item)
         {
-            _itemMenuPanel.OnItemSelected -= HandleItemUsed;
-            _itemMenuPanel.OnCancelled -= HandleItemsCancelled;
-            _itemMenuPanel.Hide();
+            HideItems();
 
             var gm = GameManager.Instance;
             if (gm == null || item == null) return;
@@ -175,9 +174,7 @@ namespace Axiom.Platformer.UI
 
         private void HandleItemsCancelled()
         {
-            _itemMenuPanel.OnItemSelected -= HandleItemUsed;
-            _itemMenuPanel.OnCancelled -= HandleItemsCancelled;
-            _itemMenuPanel.Hide();
+            HideItems();
         }
 
         private void HandleSpellbookClosed()
@@ -190,6 +187,7 @@ namespace Axiom.Platformer.UI
             if (_spellListPanel == null) return;
             _spellListPanel.OnCloseClicked -= HandleSpellbookClosed;
             _spellListPanel.Hide();
+            EventSystem.current?.SetSelectedGameObject(null);
         }
 
         private void HideItems()
@@ -198,6 +196,7 @@ namespace Axiom.Platformer.UI
             _itemMenuPanel.OnItemSelected -= HandleItemUsed;
             _itemMenuPanel.OnCancelled -= HandleItemsCancelled;
             _itemMenuPanel.Hide();
+            EventSystem.current?.SetSelectedGameObject(null);
         }
 
         private void OnDestroy()

@@ -200,6 +200,9 @@ namespace Axiom.Battle
         /// </summary>
         public event Action<CharacterStats, int, Axiom.Data.ChemicalCondition> OnConditionDamageTick;
 
+        /// <summary>Fires when a spell inflicts a new condition on its effect target.</summary>
+        public event Action<CharacterStats, Axiom.Data.ChemicalCondition> OnConditionApplied;
+
         /// <summary>
         /// Fires when a physical attack is fully blocked by the target's material state
         /// (Liquid or Vapor — IsPhysicallyImmune). No damage is dealt.
@@ -267,6 +270,7 @@ namespace Axiom.Battle
         private BattleEnvironmentService _environmentService;
         private EnemyVisualSpawner _visualSpawner;
         private BattleTurnProcessor _turnProcessor;
+        private BattleMessageFlowGate _messageFlowGate;
 
         // EnemyId of the enemy triggering this battle. Propagated from BattleEntry;
         // used on Victory to mark the enemy defeated so the Platformer restore step
@@ -437,6 +441,7 @@ namespace Axiom.Battle
             _itemResolver       = new ItemEffectResolver();
             _turnProcessor      = new BattleTurnProcessor();
             _battleManager      = new BattleManager();
+            _messageFlowGate    = new BattleMessageFlowGate();
             _battleManager.OnStateChanged += HandleStateChanged;
 
             _battleHUD?.Setup(this, _playerStats, _enemyStats);
@@ -506,13 +511,18 @@ namespace Axiom.Battle
                 elapsed += Time.deltaTime;
                 yield return null;
             }
-            _playerSequenceComplete = false;
             // Safety net: fires if the animation event was never triggered.
             FirePlayerDamageVisuals();
-            _playerDamageVisualsFired = false;
-            _isProcessingAction = false;
-            _battleManager.OnPlayerActionComplete(targetDefeated);
+            _messageFlowGate.ContinueWhenReady(() =>
+            {
+                _playerSequenceComplete = false;
+                _playerDamageVisualsFired = false;
+                _isProcessingAction = false;
+                _battleManager.OnPlayerActionComplete(targetDefeated);
+            });
         }
+
+        public void SetBattleMessagesBlocked(bool blocked) => _messageFlowGate.SetBlocked(blocked);
 
         /// <summary>
         /// Called by ActionMenuUI when the player selects the Spell action.
@@ -623,6 +633,14 @@ namespace Axiom.Battle
             }
 
             SpellResult result = _resolver.Resolve(spell, _playerStats, _enemyStats);
+
+            if (result.ConditionApplied != ChemicalCondition.None)
+            {
+                CharacterStats conditionTarget = result.EffectType == SpellEffectType.Damage
+                    ? _enemyStats
+                    : _playerStats;
+                OnConditionApplied?.Invoke(conditionTarget, result.ConditionApplied);
+            }
 
             switch (result.EffectType)
             {
@@ -756,6 +774,7 @@ namespace Axiom.Battle
             if (gm == null || item == null)
             {
                 _isProcessingAction = false;
+                _battleHUD?.FocusFirstInteractableAction();
                 return;
             }
 
@@ -780,6 +799,7 @@ namespace Axiom.Battle
         {
             _itemMenuUI.Hide();
             _isProcessingAction = false;
+            _battleHUD?.FocusFirstInteractableAction();
         }
 
         /// <summary>Executes Flee. No-op outside PlayerTurn.</summary>
@@ -798,6 +818,7 @@ namespace Axiom.Battle
                 _spellListPanelUI.Hide();
                 _spellListPanelUI.OnCloseClicked -= HandleSpellPanelClose;
             }
+            _battleHUD?.FocusFirstInteractableAction();
         }
 
         // ── Private ──────────────────────────────────────────────────────────
@@ -831,38 +852,44 @@ namespace Axiom.Battle
             }
             else if (state == BattleState.Victory)
             {
-                SyncBattleHpToPlayerState();
-
-                if (_postBattleFlow != null)
-                {
-                    _postBattleFlow.BeginVictoryFlow(_enemyData, _battleEnemyId);
-                }
-                else
-                {
-                    // Standalone Battle scene fallback — no orchestrator in the scene.
-                    // Preserves the pre-DEV-36 direct-transition behaviour so isolated
-                    // scene testing still completes.
-                    if (GameManager.Instance != null && !string.IsNullOrEmpty(_battleEnemyId))
-                    {
-                        GameManager.Instance.MarkEnemyDefeated(_battleEnemyId);
-                        GameManager.Instance.ClearDamagedEnemyHp(_battleEnemyId);
-                    }
-                    GameManager.Instance?.PersistToDisk();
-                    if (GameManager.Instance != null)
-                        GameManager.Instance.ReturnToWorldScene();
-                    else
-                        SceneManager.LoadScene("Platformer");
-                }
+                _messageFlowGate.ContinueWhenReady(CompleteVictoryFlow);
             }
             else if (state == BattleState.Defeat)
             {
-                SyncBattleHpToPlayerState();
-                if (GameManager.Instance != null && !string.IsNullOrEmpty(_battleEnemyId))
-                    GameManager.Instance.SetDamagedEnemyHp(_battleEnemyId, _enemyStats.CurrentHP);
-
-                if (_postBattleFlow != null)
-                    _postBattleFlow.BeginDefeatFlow();
+                _messageFlowGate.ContinueWhenReady(CompleteDefeatFlow);
             }
+        }
+
+        private void CompleteVictoryFlow()
+        {
+            SyncBattleHpToPlayerState();
+
+            if (_postBattleFlow != null)
+            {
+                _postBattleFlow.BeginVictoryFlow(_enemyData, _battleEnemyId);
+                return;
+            }
+
+            if (GameManager.Instance != null && !string.IsNullOrEmpty(_battleEnemyId))
+            {
+                GameManager.Instance.MarkEnemyDefeated(_battleEnemyId);
+                GameManager.Instance.ClearDamagedEnemyHp(_battleEnemyId);
+            }
+            GameManager.Instance?.PersistToDisk();
+            if (GameManager.Instance != null)
+                GameManager.Instance.ReturnToWorldScene();
+            else
+                SceneManager.LoadScene("Platformer");
+        }
+
+        private void CompleteDefeatFlow()
+        {
+            SyncBattleHpToPlayerState();
+            if (GameManager.Instance != null && !string.IsNullOrEmpty(_battleEnemyId))
+                GameManager.Instance.SetDamagedEnemyHp(_battleEnemyId, _enemyStats.CurrentHP);
+
+            if (_postBattleFlow != null)
+                _postBattleFlow.BeginDefeatFlow();
         }
 
         /// <summary>
@@ -901,15 +928,15 @@ namespace Axiom.Battle
         private void ProcessPlayerTurnStart()
         {
             ConditionTurnResult result = _turnProcessor.ProcessPlayerTurnStart(_playerStats);
-            if (result.TotalDamageDealt > 0)
-                OnConditionDamageTick?.Invoke(_playerStats, result.TotalDamageDealt, Axiom.Data.ChemicalCondition.None);
+            foreach (ConditionDamageTick tick in result.DamageTicks)
+                OnConditionDamageTick?.Invoke(_playerStats, tick.Damage, tick.Condition);
 
             if (_playerStats.IsDefeated)
             {
                 OnCharacterDefeated?.Invoke(_playerStats);
-                _battleManager.OnPlayerDefeatedByCondition();
                 OnConditionsChanged?.Invoke(_playerStats);
                 OnConditionsChanged?.Invoke(_enemyStats);
+                _messageFlowGate.ContinueWhenReady(_battleManager.OnPlayerDefeatedByCondition);
                 return;
             }
 
@@ -929,8 +956,8 @@ namespace Axiom.Battle
         private void ProcessEnemyTurnStart()
         {
             ConditionTurnResult result = _turnProcessor.ProcessEnemyTurnStart(_enemyStats);
-            if (result.TotalDamageDealt > 0)
-                OnConditionDamageTick?.Invoke(_enemyStats, result.TotalDamageDealt, Axiom.Data.ChemicalCondition.None);
+            foreach (ConditionDamageTick tick in result.DamageTicks)
+                OnConditionDamageTick?.Invoke(_enemyStats, tick.Damage, tick.Condition);
 
             // Check if enemy should transition to a new phase based on HP (including condition damage)
             CheckEnemyPhaseTransition();
@@ -942,9 +969,9 @@ namespace Axiom.Battle
             if (_enemyStats.IsDefeated)
             {
                 OnCharacterDefeated?.Invoke(_enemyStats);
-                _battleManager.OnEnemyDefeatedByCondition();
                 OnConditionsChanged?.Invoke(_enemyStats);
                 OnConditionsChanged?.Invoke(_playerStats);
+                _messageFlowGate.ContinueWhenReady(_battleManager.OnEnemyDefeatedByCondition);
                 return;
             }
 
@@ -952,16 +979,19 @@ namespace Axiom.Battle
             {
                 Debug.Log("[Battle] Enemy is Frozen — turn skipped.");
                 OnActionSkipped?.Invoke(_enemyStats);
-                _battleManager.OnEnemyActionComplete(false);
                 OnConditionsChanged?.Invoke(_enemyStats);
                 OnConditionsChanged?.Invoke(_playerStats);
+                _messageFlowGate.ContinueWhenReady(() => _battleManager.OnEnemyActionComplete(false));
                 return;
             }
 
             OnConditionsChanged?.Invoke(_enemyStats);
             OnConditionsChanged?.Invoke(_playerStats);
-            if (morphStarted) StartCoroutine(PlayMorphThenExecuteEnemyTurn());
-            else              ExecuteEnemyTurn();
+            _messageFlowGate.ContinueWhenReady(() =>
+            {
+                if (morphStarted) StartCoroutine(PlayMorphThenExecuteEnemyTurn());
+                else              ExecuteEnemyTurn();
+            });
         }
 
         private void ExecuteEnemyTurn()
@@ -1005,10 +1035,13 @@ namespace Axiom.Battle
                 elapsed += Time.deltaTime;
                 yield return null;
             }
-            _enemySequenceComplete = false;
             FireEnemyDamageVisuals();
-            _enemyDamageVisualsFired = false;
-            _battleManager.OnEnemyActionComplete(targetDefeated);
+            _messageFlowGate.ContinueWhenReady(() =>
+            {
+                _enemySequenceComplete = false;
+                _enemyDamageVisualsFired = false;
+                _battleManager.OnEnemyActionComplete(targetDefeated);
+            });
         }
 
         private System.Collections.IEnumerator SpellFireTimeoutCoroutine()

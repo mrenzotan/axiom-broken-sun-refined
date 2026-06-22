@@ -1,6 +1,7 @@
 using System;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Axiom.Battle.UI
@@ -47,6 +48,7 @@ namespace Axiom.Battle.UI
             if (_titleText != null)
                 _titleText.text = "DEFEATED";
             ShowPanel();
+            EventSystem.current?.SetSelectedGameObject(_continueButton.gameObject);
         }
 
         private void OnContinueClickedInternal()

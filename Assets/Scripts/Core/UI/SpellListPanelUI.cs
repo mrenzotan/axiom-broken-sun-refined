@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Axiom.Core
@@ -60,6 +61,10 @@ namespace Axiom.Core
 
             if (_panel != null)
                 _panel.SetActive(true);
+
+            if (EventSystem.current != null && _closeButton != null &&
+                _closeButton.IsActive() && _closeButton.IsInteractable())
+                EventSystem.current.SetSelectedGameObject(_closeButton.gameObject);
         }
 
         public void Hide()

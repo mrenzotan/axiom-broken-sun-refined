@@ -30,6 +30,10 @@ namespace Axiom.Platformer
                  "Leave None for all other enemies.")]
         private BattleTutorialMode _tutorialMode = BattleTutorialMode.None;
 
+        [SerializeField]
+        [Tooltip("Optional tutorial trigger whose player lock is released after this battle transition begins.")]
+        private TutorialPromptTrigger _encounterIntroTrigger;
+
         // Set once a battle path is committed — blocks any further trigger on this enemy.
         private bool _triggered;
         // Set by PlayerController.BeginAttack — blocks the Surprised path while the
@@ -133,6 +137,8 @@ namespace Axiom.Platformer
             _triggerService.TriggerBattle(
                 startState, _enemyData, enemyId,
                 _battleEnvironment, _tutorialMode, playerWorldPosition);
+
+            _encounterIntroTrigger?.ReleasePlayerLock();
         }
 
         private Vector2 ResolvePlayerWorldPosition(Collider2D playerCollider)

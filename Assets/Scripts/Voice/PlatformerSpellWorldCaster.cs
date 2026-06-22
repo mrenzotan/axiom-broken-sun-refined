@@ -11,11 +11,11 @@ namespace Axiom.Voice
             SpellData spell,
             IReadOnlyList<MeltableObstacleController> meltableObstacles,
             IReadOnlyList<FreezablePlatformController> freezablePlatforms,
+            IReadOnlyList<BurnableObstacleController> burnableObstacles,
+            IReadOnlyList<SteamVentController> steamVents,
             PlayerState playerState)
         {
             if (spell == null || string.IsNullOrWhiteSpace(spell.spellName)) return false;
-            if ((meltableObstacles == null || meltableObstacles.Count == 0)
-                && (freezablePlatforms == null || freezablePlatforms.Count == 0)) return false;
             if (playerState == null) return false;
 
             bool hasWorldTarget = false;
@@ -45,6 +45,32 @@ namespace Axiom.Voice
                 }
             }
 
+            if (!hasWorldTarget && burnableObstacles != null)
+            {
+                for (int i = 0; i < burnableObstacles.Count; i++)
+                {
+                    BurnableObstacleController obstacle = burnableObstacles[i];
+                    if (obstacle != null && obstacle.CanIgniteWith(spell.spellName))
+                    {
+                        hasWorldTarget = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!hasWorldTarget && steamVents != null)
+            {
+                for (int i = 0; i < steamVents.Count; i++)
+                {
+                    SteamVentController vent = steamVents[i];
+                    if (vent != null && vent.CanIgniteWith(spell.spellName))
+                    {
+                        hasWorldTarget = true;
+                        break;
+                    }
+                }
+            }
+
             if (!hasWorldTarget) return false;
             if (!playerState.TrySpendMp(spell.mpCost)) return false;
 
@@ -65,6 +91,26 @@ namespace Axiom.Voice
                 {
                     FreezablePlatformController platform = freezablePlatforms[i];
                     if (platform != null && platform.TryFreeze(spell.spellName))
+                        handled = true;
+                }
+            }
+
+            if (burnableObstacles != null)
+            {
+                for (int i = 0; i < burnableObstacles.Count; i++)
+                {
+                    BurnableObstacleController obstacle = burnableObstacles[i];
+                    if (obstacle != null && obstacle.TryIgnite(spell.spellName))
+                        handled = true;
+                }
+            }
+
+            if (steamVents != null)
+            {
+                for (int i = 0; i < steamVents.Count; i++)
+                {
+                    SteamVentController vent = steamVents[i];
+                    if (vent != null && vent.TryIgnite(spell.spellName))
                         handled = true;
                 }
             }

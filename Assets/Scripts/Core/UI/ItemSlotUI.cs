@@ -15,6 +15,8 @@ namespace Axiom.Core
         private ItemData _item;
         private Action<ItemData> _onSelect;
 
+        public Button Button => _button;
+
         public void Setup(ItemData item, int quantity, Action<ItemData> onSelect)
         {
             _item = item;

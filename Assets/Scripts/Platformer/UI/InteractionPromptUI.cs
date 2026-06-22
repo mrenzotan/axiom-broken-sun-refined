@@ -24,8 +24,6 @@ namespace Axiom.Platformer.UI
         [Tooltip("Optional offset above the player/trigger (in world units).")]
         private Vector3 _offset = new Vector3(0, 2, 0);
 
-        private bool _isShowing;
-
         private void Start()
         {
             if (_promptImage != null && _eKeySprite != null)
@@ -43,7 +41,6 @@ namespace Axiom.Platformer.UI
         {
             Debug.Log($"[InteractionPromptUI] Show() called. Image: {_promptImage}, Sprite: {_eKeySprite}, Active: {gameObject.activeSelf}");
             
-            _isShowing = true;
             if (_promptImage != null)
             {
                 _promptImage.enabled = true;
@@ -63,7 +60,6 @@ namespace Axiom.Platformer.UI
         /// </summary>
         public void Hide()
         {
-            _isShowing = false;
             if (_promptImage != null)
             {
                 _promptImage.enabled = false;

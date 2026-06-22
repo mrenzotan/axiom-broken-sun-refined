@@ -22,6 +22,7 @@ namespace Axiom.Platformer
         private Animator _playerAnimator;
         private Coroutine _cutsceneCoroutine;
         private bool _inCutscene;
+        private PlayerExplorationAttack _playerAttack;
 
         public bool IsInCutscene => _inCutscene;
 
@@ -193,6 +194,13 @@ namespace Axiom.Platformer
                     _playerAnimator.enabled = false;
                     Debug.Log("[CutsceneController] Player animator disabled (animation frozen)");
                 }
+
+                _playerAttack = _playerController.GetComponent<PlayerExplorationAttack>();
+                if (_playerAttack != null)
+                {
+                    _playerAttack.enabled = false;
+                    Debug.Log("[CutsceneController] Player attack disabled");
+                }
             }
         }
 
@@ -208,6 +216,12 @@ namespace Axiom.Platformer
             {
                 _playerAnimator.enabled = true;
                 Debug.Log("[CutsceneController] Player animator re-enabled");
+            }
+
+            if (_playerAttack != null)
+            {
+                _playerAttack.enabled = true;
+                Debug.Log("[CutsceneController] Player attack re-enabled");
             }
         }
     }

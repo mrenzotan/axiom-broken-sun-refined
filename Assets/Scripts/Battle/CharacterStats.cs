@@ -240,6 +240,7 @@ namespace Axiom.Battle
         {
             int  totalDamage  = 0;
             bool actionSkipped = false;
+            var damageTicks = new List<ConditionDamageTick>();
 
             // ── Process status conditions ────────────────────────────────────
             for (int i = ActiveStatusConditions.Count - 1; i >= 0; i--)
@@ -253,6 +254,7 @@ namespace Axiom.Battle
                     {
                         TakeDamage(entry.BaseDamage);
                         totalDamage += entry.BaseDamage;
+                        damageTicks.Add(new ConditionDamageTick(entry.Condition, entry.BaseDamage));
                         break;
                     }
                     case ChemicalCondition.Corroded:
@@ -261,6 +263,7 @@ namespace Axiom.Battle
                         int damage = (int)(entry.BaseDamage * multiplier);
                         TakeDamage(damage);
                         totalDamage += damage;
+                        damageTicks.Add(new ConditionDamageTick(entry.Condition, damage));
                         break;
                     }
                     case ChemicalCondition.Frozen:
@@ -302,6 +305,7 @@ namespace Axiom.Battle
             return new ConditionTurnResult
             {
                 TotalDamageDealt = totalDamage,
+                DamageTicks      = damageTicks,
                 ActionSkipped    = actionSkipped
             };
         }
