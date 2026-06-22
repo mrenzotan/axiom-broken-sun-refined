@@ -56,6 +56,7 @@ namespace Axiom.Core
         private TypewriterEffect _typewriter;
         private CutsceneInputHandler _inputHandler;
         private float _autoAdvanceTimer;
+        private bool _returnToWorldOnComplete;
 
         public bool IsPlaying => _player != null && !_player.IsComplete;
 
@@ -86,7 +87,10 @@ namespace Axiom.Core
             {
                 CutsceneData pending = GameManager.Instance.ConsumePendingCutsceneData();
                 if (pending != null)
+                {
                     _cutsceneData = pending;
+                    _returnToWorldOnComplete = GameManager.Instance.ConsumePendingCutsceneReturnToWorld();
+                }
             }
 
             if (_cutsceneData == null)
@@ -311,6 +315,20 @@ namespace Axiom.Core
         private void HandleCompletion()
         {
             if (_player == null || !_player.IsComplete) return;
+
+            if (_returnToWorldOnComplete)
+            {
+                GameManager gm = GameManager.Instance;
+                if (gm != null)
+                {
+                    gm.ReturnToWorldScene(_exitTransitionStyle);
+                    _player = null;
+                    _returnToWorldOnComplete = false;
+                    return;
+                }
+
+                Debug.LogWarning("[CutsceneUI] Cannot return to world scene because GameManager is missing.", this);
+            }
 
             string nextScene = _player.NextSceneName;
             if (string.IsNullOrEmpty(nextScene))

@@ -57,6 +57,10 @@ namespace Axiom.Battle
         [Tooltip("Scene to fall back to on Defeat if no save file exists. Usually MainMenu.")]
         private string _noSaveFallbackScene = "MainMenu";
 
+        [SerializeField]
+        [Tooltip("Transition used when a defeated boss starts its post-battle cutscene.")]
+        private TransitionStyle _bossCutsceneTransitionStyle = TransitionStyle.BlackFade;
+
         private readonly PostBattleOutcomeService _service = new PostBattleOutcomeService();
         private readonly System.Random _random = new System.Random();
 
@@ -64,12 +68,20 @@ namespace Axiom.Battle
         // the exact enemy defeated after the UI resolves.
         private EnemyData _pendingEnemy;
         private string _pendingEnemyId;
+        private bool _victoryCompletionHandled;
+
+        public static CutsceneData ResolvePostVictoryCutscene(EnemyData enemy)
+        {
+            if (enemy == null) return null;
+            return enemy.isBoss ? enemy.postDefeatCutscene : null;
+        }
 
         /// <summary>
         /// Called by <see cref="BattleController"/> when <see cref="BattleState.Victory"/> is entered.
         /// </summary>
         public void BeginVictoryFlow(EnemyData enemy, string battleEnemyId)
         {
+            _victoryCompletionHandled = false;
             _pendingEnemy   = enemy;
             _pendingEnemyId = battleEnemyId;
 
@@ -205,6 +217,10 @@ namespace Axiom.Battle
 
         private void HandleLevelUpPromptDismissed()
         {
+            if (_victoryCompletionHandled)
+                return;
+            _victoryCompletionHandled = true;
+
             if (_levelUpPromptUI != null)
                 _levelUpPromptUI.OnDismissed -= HandleLevelUpPromptDismissed;
 
@@ -216,10 +232,17 @@ namespace Axiom.Battle
             }
             gm?.PersistToDisk();
 
+            CutsceneData postVictoryCutscene = ResolvePostVictoryCutscene(_pendingEnemy);
+
             _pendingEnemy   = null;
             _pendingEnemyId = null;
 
-            if (gm != null)
+            if (gm != null && postVictoryCutscene != null)
+                gm.BeginCutscene(
+                    postVictoryCutscene,
+                    _bossCutsceneTransitionStyle,
+                    returnToWorldOnComplete: true);
+            else if (gm != null)
                 gm.ReturnToWorldScene();
             else
                 SceneManager.LoadScene("Platformer");

@@ -120,6 +120,39 @@ namespace Axiom.Data.Tests
         }
 
         [Test]
+        public void PostDefeatCutscene_Default_IsNull()
+        {
+            var data = ScriptableObject.CreateInstance<EnemyData>();
+            Assert.IsNull(data.postDefeatCutscene,
+                "postDefeatCutscene should default to null so ordinary enemies return to the world normally.");
+            Object.DestroyImmediate(data);
+        }
+
+        [Test]
+        public void PostDefeatCutscene_Field_HasTooltip()
+        {
+            FieldInfo field = typeof(EnemyData).GetField(
+                "postDefeatCutscene",
+                BindingFlags.Public | BindingFlags.Instance);
+            Assert.IsNotNull(field, "EnemyData.postDefeatCutscene field is missing.");
+
+            var tooltips = field.GetCustomAttributes(typeof(TooltipAttribute), false);
+            Assert.IsNotEmpty(tooltips,
+                "postDefeatCutscene must have a [Tooltip] explaining its boss-only semantics.");
+        }
+
+        [Test]
+        public void PostDefeatCutscene_Field_IsCutsceneDataType()
+        {
+            FieldInfo field = typeof(EnemyData).GetField(
+                "postDefeatCutscene",
+                BindingFlags.Public | BindingFlags.Instance);
+            Assert.IsNotNull(field);
+            Assert.AreEqual(typeof(CutsceneData), field.FieldType,
+                "postDefeatCutscene must reference CutsceneData so the existing Cutscene scene can play it.");
+        }
+
+        [Test]
         public void BattleVisualPrefab_Field_HasTooltip()
         {
             FieldInfo field = typeof(EnemyData).GetField(

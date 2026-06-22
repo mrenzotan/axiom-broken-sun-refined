@@ -69,9 +69,9 @@ namespace Axiom.Battle
         /// Sets the Phase animator parameter to trigger a phase transition.
         /// Called by BattleController when the enemy's HP crosses a phase threshold.
         /// </summary>
-        public void SetPhase(int phase) => _animator.SetInteger(PhaseHash, phase);
-        public void TriggerFormChange() => _animator.SetTrigger(PhaseChangeHash);
-        public void SetAttackIndex(int index) => _animator.SetInteger(AttackIndexHash, index);
+        public void SetPhase(int phase) => SetIntegerIfExists(PhaseHash, phase);
+        public void TriggerFormChange() => SetTriggerIfExists(PhaseChangeHash);
+        public void SetAttackIndex(int index) => SetIntegerIfExists(AttackIndexHash, index);
 
         private void Awake()
         {
@@ -79,18 +79,18 @@ namespace Axiom.Battle
         }
 
         public void TriggerAttack()  => StartCoroutine(MoveAndAttackSequence());
-        public void TriggerHurt()    => _animator.SetTrigger(HurtHash);
-        public void TriggerDefeat()  => _animator.SetTrigger(DefeatHash);
+        public void TriggerHurt()    => SetTriggerIfExists(HurtHash);
+        public void TriggerDefeat()  => SetTriggerIfExists(DefeatHash);
 
         private System.Collections.IEnumerator MoveAndAttackSequence()
         {
             // ── Leg 1: Run toward player ─────────────────────────────────────
             // MoveRight = true on a localScale.x = -1 sprite plays the RunRight clip
             // which visually runs LEFT (toward the player). Position lerps left via _attackPositionX.
-            _animator.SetBool(MoveRightHash, true);
-            _animator.SetBool(IsRunningHash, true);
+            SetBoolIfExists(MoveRightHash, true);
+            SetBoolIfExists(IsRunningHash, true);
             // Pick a random attack animation for this attack
-            _animator.SetInteger(AttackIndexHash, UnityEngine.Random.Range(0, 2));
+            SetIntegerIfExists(AttackIndexHash, UnityEngine.Random.Range(0, 2));
 
             float elapsed = 0f;
             float startX  = _originalLocalPosition.x;
@@ -104,15 +104,15 @@ namespace Axiom.Battle
             transform.localPosition = new Vector3(_attackPositionX, _originalLocalPosition.y, _originalLocalPosition.z);
 
             // ── Attack: direct run → attack transition (no idle gap) ─────────
-            _animator.SetTrigger(AttackHash);
-            _animator.SetBool(IsRunningHash, false);
+            SetTriggerIfExists(AttackHash);
+            SetBoolIfExists(IsRunningHash, false);
 
             yield return new WaitForSeconds(_attackDuration);
 
             // ── Leg 2: Run back to origin ────────────────────────────────────
             // MoveRight = false plays RunLeft clip which on a flipped sprite visually runs RIGHT.
-            _animator.SetBool(MoveRightHash, false);
-            _animator.SetBool(IsRunningHash, true);
+            SetBoolIfExists(MoveRightHash, false);
+            SetBoolIfExists(IsRunningHash, true);
 
             elapsed = 0f;
             while (elapsed < _moveDuration)
@@ -123,9 +123,42 @@ namespace Axiom.Battle
                 yield return null;
             }
             transform.localPosition = _originalLocalPosition;
-            _animator.SetBool(IsRunningHash, false);
+            SetBoolIfExists(IsRunningHash, false);
 
             OnAttackSequenceComplete?.Invoke();
+        }
+
+        private void SetBoolIfExists(int parameterHash, bool value)
+        {
+            if (HasParameter(parameterHash, AnimatorControllerParameterType.Bool))
+                _animator.SetBool(parameterHash, value);
+        }
+
+        private void SetIntegerIfExists(int parameterHash, int value)
+        {
+            if (HasParameter(parameterHash, AnimatorControllerParameterType.Int))
+                _animator.SetInteger(parameterHash, value);
+        }
+
+        private void SetTriggerIfExists(int parameterHash)
+        {
+            if (HasParameter(parameterHash, AnimatorControllerParameterType.Trigger))
+                _animator.SetTrigger(parameterHash);
+        }
+
+        private bool HasParameter(int parameterHash, AnimatorControllerParameterType expectedType)
+        {
+            if (_animator == null) return false;
+
+            AnimatorControllerParameter[] parameters = _animator.parameters;
+            for (int i = 0; i < parameters.Length; i++)
+            {
+                AnimatorControllerParameter parameter = parameters[i];
+                if (parameter.nameHash == parameterHash && parameter.type == expectedType)
+                    return true;
+            }
+
+            return false;
         }
     }
 }

@@ -66,6 +66,38 @@ namespace Axiom.Tests.Editor.Core
         }
 
         [Test]
+        public void ConsumePendingCutsceneReturnToWorld_DefaultsFalse()
+        {
+            Assert.IsFalse(_gm.ConsumePendingCutsceneReturnToWorld());
+        }
+
+        [Test]
+        public void BeginCutscene_WithReturnToWorld_StoresFlagUntilConsumed()
+        {
+            var cutscene = ScriptableObject.CreateInstance<CutsceneData>();
+
+            _gm.BeginCutscene(cutscene, returnToWorldOnComplete: true);
+
+            Assert.IsTrue(_gm.ConsumePendingCutsceneReturnToWorld(),
+                "Boss victory cutscenes must return to the originating level after completion.");
+            Assert.IsFalse(_gm.ConsumePendingCutsceneReturnToWorld(),
+                "The return-to-world flag is one-shot so later cutscenes can follow nextSceneName.");
+            Object.DestroyImmediate(cutscene);
+        }
+
+        [Test]
+        public void BeginCutscene_WithoutReturnToWorld_DoesNotSetFlag()
+        {
+            var cutscene = ScriptableObject.CreateInstance<CutsceneData>();
+
+            _gm.BeginCutscene(cutscene);
+
+            Assert.IsFalse(_gm.ConsumePendingCutsceneReturnToWorld(),
+                "Opening and normal story cutscenes should continue to use CutsceneData.nextSceneName.");
+            Object.DestroyImmediate(cutscene);
+        }
+
+        [Test]
         public void SceneTransition_IsAssigned_WhenChildControllerExists()
         {
             // Destroy and recreate so Awake runs with the child present.

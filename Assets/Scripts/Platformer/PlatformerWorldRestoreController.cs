@@ -98,6 +98,17 @@ namespace Axiom.Platformer
                 }
             }
 
+            AcidPuddleController[] acidPuddles =
+                FindObjectsByType<AcidPuddleController>(FindObjectsInactive.Exclude);
+            foreach (AcidPuddleController puddle in acidPuddles)
+            {
+                if (!string.IsNullOrWhiteSpace(puddle.PuzzleId)
+                    && GameManager.Instance.IsPuzzleSolved(puddle.PuzzleId))
+                {
+                    puddle.ApplySolvedImmediate();
+                }
+            }
+
             // Steam vents intentionally have no persisted state — they are re-ignitable
             // permanent fixtures. The obstacles a vent clears restore themselves above
             // via their own puzzleIds.

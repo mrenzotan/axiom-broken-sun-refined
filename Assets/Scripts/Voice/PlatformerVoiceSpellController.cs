@@ -26,6 +26,10 @@ namespace Axiom.Voice
         [Tooltip("Optional explicit steam vents. Leave empty to find all active SteamVentController instances in the scene.")]
         private SteamVentController[] _steamVents;
 
+        [SerializeField]
+        [Tooltip("Optional explicit acid puddles. Leave empty to find all active AcidPuddleController instances in the scene.")]
+        private AcidPuddleController[] _acidPuddles;
+
         private ConcurrentQueue<string> _resultQueue;
         private IReadOnlyList<SpellData> _unlockedSpells;
         private PlayerState _playerState;
@@ -33,6 +37,7 @@ namespace Axiom.Voice
         private readonly List<FreezablePlatformController> _sceneFreezablePlatforms = new();
         private readonly List<BurnableObstacleController> _sceneBurnableObstacles = new();
         private readonly List<SteamVentController> _sceneSteamVents = new();
+        private readonly List<AcidPuddleController> _sceneAcidPuddles = new();
 
         public void Inject(ConcurrentQueue<string> resultQueue, IReadOnlyList<SpellData> unlockedSpells, PlayerState playerState = null)
         {
@@ -61,6 +66,7 @@ namespace Axiom.Voice
                     ResolveFreezablePlatforms(),
                     ResolveBurnableObstacles(),
                     ResolveSteamVents(),
+                    ResolveAcidPuddles(),
                     _playerState ?? GameManager.Instance?.PlayerState);
             }
         }
@@ -103,6 +109,16 @@ namespace Axiom.Voice
             _sceneSteamVents.Clear();
             _sceneSteamVents.AddRange(FindObjectsByType<SteamVentController>());
             return _sceneSteamVents;
+        }
+
+        private IReadOnlyList<AcidPuddleController> ResolveAcidPuddles()
+        {
+            if (_acidPuddles != null && _acidPuddles.Length > 0)
+                return _acidPuddles;
+
+            _sceneAcidPuddles.Clear();
+            _sceneAcidPuddles.AddRange(FindObjectsByType<AcidPuddleController>());
+            return _sceneAcidPuddles;
         }
     }
 }

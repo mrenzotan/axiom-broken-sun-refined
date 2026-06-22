@@ -13,6 +13,7 @@ namespace Axiom.Voice
             IReadOnlyList<FreezablePlatformController> freezablePlatforms,
             IReadOnlyList<BurnableObstacleController> burnableObstacles,
             IReadOnlyList<SteamVentController> steamVents,
+            IReadOnlyList<AcidPuddleController> acidPuddles,
             PlayerState playerState)
         {
             if (spell == null || string.IsNullOrWhiteSpace(spell.spellName)) return false;
@@ -71,6 +72,19 @@ namespace Axiom.Voice
                 }
             }
 
+            if (!hasWorldTarget && acidPuddles != null)
+            {
+                for (int i = 0; i < acidPuddles.Count; i++)
+                {
+                    AcidPuddleController puddle = acidPuddles[i];
+                    if (puddle != null && puddle.CanNeutralizeWith(spell.spellName))
+                    {
+                        hasWorldTarget = true;
+                        break;
+                    }
+                }
+            }
+
             if (!hasWorldTarget) return false;
             if (!playerState.TrySpendMp(spell.mpCost)) return false;
 
@@ -111,6 +125,16 @@ namespace Axiom.Voice
                 {
                     SteamVentController vent = steamVents[i];
                     if (vent != null && vent.TryIgnite(spell.spellName))
+                        handled = true;
+                }
+            }
+
+            if (acidPuddles != null)
+            {
+                for (int i = 0; i < acidPuddles.Count; i++)
+                {
+                    AcidPuddleController puddle = acidPuddles[i];
+                    if (puddle != null && puddle.TryNeutralize(spell.spellName))
                         handled = true;
                 }
             }

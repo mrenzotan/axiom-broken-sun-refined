@@ -168,5 +168,43 @@ namespace BattleTests
 
             Assert.AreEqual(0, result.Items.Count);
         }
+
+        [Test]
+        public void ResolvePostVictoryCutscene_BossWithCutscene_ReturnsCutscene()
+        {
+            var enemy = NewEnemy(xp: 10);
+            enemy.isBoss = true;
+            enemy.postDefeatCutscene = ScriptableObject.CreateInstance<CutsceneData>();
+
+            CutsceneData result = PostBattleFlowController.ResolvePostVictoryCutscene(enemy);
+
+            Assert.AreSame(enemy.postDefeatCutscene, result,
+                "A configured boss cutscene must be selected only after victory rewards/progression are resolved.");
+        }
+
+        [Test]
+        public void ResolvePostVictoryCutscene_RegularEnemyWithCutscene_ReturnsNull()
+        {
+            var enemy = NewEnemy(xp: 10);
+            enemy.isBoss = false;
+            enemy.postDefeatCutscene = ScriptableObject.CreateInstance<CutsceneData>();
+
+            CutsceneData result = PostBattleFlowController.ResolvePostVictoryCutscene(enemy);
+
+            Assert.IsNull(result,
+                "Non-boss victories must return to the normal post-battle flow even if data is accidentally assigned.");
+        }
+
+        [Test]
+        public void ResolvePostVictoryCutscene_BossWithoutCutscene_ReturnsNull()
+        {
+            var enemy = NewEnemy(xp: 10);
+            enemy.isBoss = true;
+
+            CutsceneData result = PostBattleFlowController.ResolvePostVictoryCutscene(enemy);
+
+            Assert.IsNull(result,
+                "Bosses without authored cutscene data should keep the existing world-return behavior.");
+        }
     }
 }

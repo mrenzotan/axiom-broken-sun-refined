@@ -55,6 +55,9 @@ namespace Axiom.Data
         [Tooltip("If true, this enemy supports phase transitions based on HP thresholds. Regular enemies should leave this unchecked.")]
         public bool isBoss;
 
+        [Tooltip("Optional story cutscene to play after this boss is defeated. Ignored for non-boss enemies.")]
+        public CutsceneData postDefeatCutscene;
+
         [Tooltip("1–2 material conditions the enemy starts every combat with. Defines what the enemy is made of — determines physical immunity, reaction targets, and other combat interactions.")]
         public List<ChemicalCondition> innateConditions = new List<ChemicalCondition>();
 

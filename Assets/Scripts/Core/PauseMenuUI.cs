@@ -23,17 +23,25 @@ namespace Axiom.Core
         [Header("Main Menu Buttons")]
         [SerializeField] private Button _resumeButton;
         [SerializeField] private Button _settingsButton;
+        [SerializeField] private Button _controlsGuideButton;
         [SerializeField] private Button _quitButton;
 
         [Header("Settings Sub-panel")]
         [SerializeField] private GameObject _settingsPanel;
         [SerializeField] private Button _settingsBackButton;
 
+        [Header("Controls Guide Sub-panel")]
+        [SerializeField] private GameObject _controlsGuidePanel;
+        [SerializeField] private Button _controlsGuideBackButton;
+
         [Header("First selected button on pause open")]
         [SerializeField] private GameObject _firstSelectedOnPause;
 
         [Header("First selected button on settings open")]
         [SerializeField] private GameObject _firstSelectedOnSettings;
+
+        [Header("First selected button on controls guide open")]
+        [SerializeField] private GameObject _firstSelectedOnControlsGuide;
 
         private PauseMenuLogic _logic;
 
@@ -93,8 +101,10 @@ namespace Axiom.Core
         {
             if (_resumeButton != null) _resumeButton.onClick.AddListener(OnResumeClicked);
             if (_settingsButton != null) _settingsButton.onClick.AddListener(OnSettingsClicked);
+            if (_controlsGuideButton != null) _controlsGuideButton.onClick.AddListener(OnControlsGuideClicked);
             if (_quitButton != null) _quitButton.onClick.AddListener(OnQuitClicked);
             if (_settingsBackButton != null) _settingsBackButton.onClick.AddListener(OnSettingsBackClicked);
+            if (_controlsGuideBackButton != null) _controlsGuideBackButton.onClick.AddListener(OnControlsGuideBackClicked);
             if (_pauseButton != null) _pauseButton.onClick.AddListener(OnPauseButtonClicked);
         }
 
@@ -102,8 +112,10 @@ namespace Axiom.Core
         {
             if (_resumeButton != null) _resumeButton.onClick.RemoveListener(OnResumeClicked);
             if (_settingsButton != null) _settingsButton.onClick.RemoveListener(OnSettingsClicked);
+            if (_controlsGuideButton != null) _controlsGuideButton.onClick.RemoveListener(OnControlsGuideClicked);
             if (_quitButton != null) _quitButton.onClick.RemoveListener(OnQuitClicked);
             if (_settingsBackButton != null) _settingsBackButton.onClick.RemoveListener(OnSettingsBackClicked);
+            if (_controlsGuideBackButton != null) _controlsGuideBackButton.onClick.RemoveListener(OnControlsGuideBackClicked);
             if (_pauseButton != null) _pauseButton.onClick.RemoveListener(OnPauseButtonClicked);
 
             if (_logic != null && _logic.IsPaused)
@@ -145,6 +157,10 @@ namespace Axiom.Core
                 {
                     _logic.CloseSettings();
                 }
+                else if (_logic.ActivePanel == PauseMenuPanel.ControlsGuide)
+                {
+                    _logic.CloseControlsGuide();
+                }
                 else
                 {
                     _logic.TogglePause();
@@ -178,6 +194,18 @@ namespace Axiom.Core
             ApplyPanelState();
         }
 
+        private void OnControlsGuideClicked()
+        {
+            _logic.OpenControlsGuide();
+            ApplyPanelState();
+        }
+
+        private void OnControlsGuideBackClicked()
+        {
+            _logic.CloseControlsGuide();
+            ApplyPanelState();
+        }
+
         private void OnQuitClicked()
         {
             GameManager.Instance?.PersistToDisk();
@@ -204,22 +232,28 @@ namespace Axiom.Core
                 _pauseButton.gameObject.SetActive(!paused && CanPause);
 
             bool showSettings = _logic.ActivePanel == PauseMenuPanel.Settings;
+            bool showControlsGuide = _logic.ActivePanel == PauseMenuPanel.ControlsGuide;
 
             if (_settingsPanel != null)
                 _settingsPanel.SetActive(showSettings);
+
+            if (_controlsGuidePanel != null)
+                _controlsGuidePanel.SetActive(showControlsGuide);
 
             if (_pausePanel != null && _pausePanel.activeSelf)
             {
                 GameObject mainButtons = _resumeButton?.transform.parent?.gameObject;
                 if (mainButtons != null)
-                    mainButtons.SetActive(!showSettings);
+                    mainButtons.SetActive(!showSettings && !showControlsGuide);
             }
 
             if (paused)
             {
                 GameObject select = showSettings
                     ? _firstSelectedOnSettings
-                    : _firstSelectedOnPause;
+                    : showControlsGuide
+                        ? _firstSelectedOnControlsGuide
+                        : _firstSelectedOnPause;
 
                 if (select != null)
                     EventSystem.current?.SetSelectedGameObject(select);

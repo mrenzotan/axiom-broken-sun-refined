@@ -101,6 +101,57 @@ namespace CoreTests
         }
 
         [Test]
+        public void OpenControlsGuide_FromMain_SwitchesPanelWithoutResuming()
+        {
+            _logic.Pause();
+            _logic.OpenControlsGuide();
+
+            Assert.IsTrue(_logic.IsPaused);
+            Assert.AreEqual(PauseMenuPanel.ControlsGuide, _logic.ActivePanel);
+        }
+
+        [Test]
+        public void OpenControlsGuide_WhenNotPaused_IsNoOp()
+        {
+            _logic.OpenControlsGuide();
+
+            Assert.IsFalse(_logic.IsPaused);
+            Assert.AreEqual(PauseMenuPanel.Closed, _logic.ActivePanel);
+        }
+
+        [Test]
+        public void CloseControlsGuide_ReturnsToMainWithoutResuming()
+        {
+            _logic.Pause();
+            _logic.OpenControlsGuide();
+            _logic.CloseControlsGuide();
+
+            Assert.IsTrue(_logic.IsPaused);
+            Assert.AreEqual(PauseMenuPanel.Main, _logic.ActivePanel);
+        }
+
+        [Test]
+        public void CloseControlsGuide_WhenOnMain_IsNoOp()
+        {
+            _logic.Pause();
+            _logic.CloseControlsGuide();
+
+            Assert.IsTrue(_logic.IsPaused);
+            Assert.AreEqual(PauseMenuPanel.Main, _logic.ActivePanel);
+        }
+
+        [Test]
+        public void Resume_FromControlsGuide_ResumesDirectly()
+        {
+            _logic.Pause();
+            _logic.OpenControlsGuide();
+            _logic.Resume();
+
+            Assert.IsFalse(_logic.IsPaused);
+            Assert.AreEqual(PauseMenuPanel.Closed, _logic.ActivePanel);
+        }
+
+        [Test]
         public void Pause_WhenAlreadyPaused_IsNoOp()
         {
             _logic.Pause();

@@ -4,7 +4,8 @@ namespace Axiom.Core
     {
         Closed,
         Main,
-        Settings
+        Settings,
+        ControlsGuide
     }
 
     public sealed class PauseMenuLogic
@@ -41,6 +42,18 @@ namespace Axiom.Core
         public void CloseSettings()
         {
             if (ActivePanel != PauseMenuPanel.Settings) return;
+            ActivePanel = PauseMenuPanel.Main;
+        }
+
+        public void OpenControlsGuide()
+        {
+            if (!IsPaused) return;
+            ActivePanel = PauseMenuPanel.ControlsGuide;
+        }
+
+        public void CloseControlsGuide()
+        {
+            if (ActivePanel != PauseMenuPanel.ControlsGuide) return;
             ActivePanel = PauseMenuPanel.Main;
         }
     }

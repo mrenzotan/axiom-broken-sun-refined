@@ -142,6 +142,100 @@ namespace Axiom.Voice.Tests
             Object.DestroyImmediate(characterData);
         }
 
+        [Test]
+        public void Update_RecognizedNeutralizeSpell_DissolvesInRangeAcidPuddleAndSpendsMp()
+        {
+            SpellData neutralize = ScriptableObject.CreateInstance<SpellData>();
+            neutralize.spellName = "neutralize";
+            neutralize.mpCost = 6;
+
+            GameObject puddleGo = new GameObject("AcidPuddle");
+            puddleGo.AddComponent<BoxCollider2D>();
+            var puddle = puddleGo.AddComponent<AcidPuddleController>();
+            puddle.SetPlayerInRange(true);
+            SetPrivateField(puddle, "_neutralizeSpells",
+                new System.Collections.Generic.List<SpellData> { neutralize });
+
+            GameObject gameManagerGo = null;
+            GameManager gameManager = GameManager.Instance;
+            if (gameManager == null)
+            {
+                gameManagerGo = new GameObject("GameManager");
+                gameManager = gameManagerGo.AddComponent<GameManager>();
+            }
+            CharacterData characterData = CreateCharacterData();
+            gameManager.SetPlayerCharacterDataForTests(characterData);
+            gameManager.PlayerState.SetCurrentMp(20);
+
+            GameObject controllerGo = new GameObject("PlatformerVoiceSpellController");
+            var controller = controllerGo.AddComponent<PlatformerVoiceSpellController>();
+            SetPrivateField(controller, "_acidPuddles", new[] { puddle });
+
+            var resultQueue = new ConcurrentQueue<string>();
+            resultQueue.Enqueue("{\"text\": \"neutralize\"}");
+            controller.Inject(resultQueue, new[] { neutralize }, gameManager.PlayerState);
+
+            InvokePrivateMethod(controller, "Update");
+
+            Assert.IsTrue(puddle.IsNeutralized);
+            Assert.AreEqual(14, gameManager.PlayerState.CurrentMp);
+
+            Object.DestroyImmediate(controllerGo);
+            if (gameManagerGo != null)
+                Object.DestroyImmediate(gameManagerGo);
+            Object.DestroyImmediate(puddleGo);
+            Object.DestroyImmediate(neutralize);
+            Object.DestroyImmediate(characterData);
+        }
+
+        [Test]
+        public void Update_NeutralizeSpell_PuddleOutOfRange_DoesNotDissolveOrSpendMp()
+        {
+            // WHY: the edge-zone gate — casting near a puddle you're not in range of must
+            // neither dissolve it nor waste MP.
+            SpellData neutralize = ScriptableObject.CreateInstance<SpellData>();
+            neutralize.spellName = "neutralize";
+            neutralize.mpCost = 6;
+
+            GameObject puddleGo = new GameObject("AcidPuddle");
+            puddleGo.AddComponent<BoxCollider2D>();
+            var puddle = puddleGo.AddComponent<AcidPuddleController>();
+            // SetPlayerInRange NOT called -> out of range.
+            SetPrivateField(puddle, "_neutralizeSpells",
+                new System.Collections.Generic.List<SpellData> { neutralize });
+
+            GameObject gameManagerGo = null;
+            GameManager gameManager = GameManager.Instance;
+            if (gameManager == null)
+            {
+                gameManagerGo = new GameObject("GameManager");
+                gameManager = gameManagerGo.AddComponent<GameManager>();
+            }
+            CharacterData characterData = CreateCharacterData();
+            gameManager.SetPlayerCharacterDataForTests(characterData);
+            gameManager.PlayerState.SetCurrentMp(20);
+
+            GameObject controllerGo = new GameObject("PlatformerVoiceSpellController");
+            var controller = controllerGo.AddComponent<PlatformerVoiceSpellController>();
+            SetPrivateField(controller, "_acidPuddles", new[] { puddle });
+
+            var resultQueue = new ConcurrentQueue<string>();
+            resultQueue.Enqueue("{\"text\": \"neutralize\"}");
+            controller.Inject(resultQueue, new[] { neutralize }, gameManager.PlayerState);
+
+            InvokePrivateMethod(controller, "Update");
+
+            Assert.IsFalse(puddle.IsNeutralized);
+            Assert.AreEqual(20, gameManager.PlayerState.CurrentMp);
+
+            Object.DestroyImmediate(controllerGo);
+            if (gameManagerGo != null)
+                Object.DestroyImmediate(gameManagerGo);
+            Object.DestroyImmediate(puddleGo);
+            Object.DestroyImmediate(neutralize);
+            Object.DestroyImmediate(characterData);
+        }
+
         private static CharacterData CreateCharacterData()
         {
             CharacterData data = ScriptableObject.CreateInstance<CharacterData>();

@@ -39,6 +39,7 @@ namespace Axiom.Core
         private string _cutsceneSceneName = "Cutscene";
 
         private CutsceneData _pendingCutsceneData;
+        private bool _pendingCutsceneReturnsToWorld;
 
         private SpellUnlockService _spellUnlockService;
 
@@ -116,10 +117,14 @@ namespace Axiom.Core
         /// <summary>
         /// Stores a cutscene to play on the Cutscene scene load.
         /// </summary>
-        public void BeginCutscene(CutsceneData data, TransitionStyle style = TransitionStyle.BlackFade)
+        public void BeginCutscene(
+            CutsceneData data,
+            TransitionStyle style = TransitionStyle.BlackFade,
+            bool returnToWorldOnComplete = false)
         {
             if (data == null) return;
             _pendingCutsceneData = data;
+            _pendingCutsceneReturnsToWorld = returnToWorldOnComplete;
             LoadScene(_cutsceneSceneName, style);
         }
 
@@ -131,6 +136,17 @@ namespace Axiom.Core
             CutsceneData data = _pendingCutsceneData;
             _pendingCutsceneData = null;
             return data;
+        }
+
+        /// <summary>
+        /// Consumes whether the pending cutscene should return to the stored world scene
+        /// instead of following CutsceneData.nextSceneName.
+        /// </summary>
+        public bool ConsumePendingCutsceneReturnToWorld()
+        {
+            bool value = _pendingCutsceneReturnsToWorld;
+            _pendingCutsceneReturnsToWorld = false;
+            return value;
         }
 
         /// <summary>
@@ -569,14 +585,14 @@ namespace Axiom.Core
         /// originated in. Falls back to <see cref="DefaultContinueScene"/> when no scene
         /// has been recorded (e.g. standalone Battle scene play).
         /// </summary>
-        public void ReturnToWorldScene()
+        public void ReturnToWorldScene(TransitionStyle style = TransitionStyle.BlackFade)
         {
             EnsurePlayerState();
             string sceneToLoad = string.IsNullOrWhiteSpace(PlayerState.ActiveSceneName)
                 ? DefaultContinueScene
                 : PlayerState.ActiveSceneName;
 
-            LoadScene(sceneToLoad);
+            LoadScene(sceneToLoad, style);
         }
 
         /// <summary>
