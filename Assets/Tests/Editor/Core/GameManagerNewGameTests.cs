@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Reflection;
 using Axiom.Core;
 using Axiom.Data;
 using NUnit.Framework;
+using UnityEditor;
 using UnityEngine;
 using UnityEngine.TestTools;
 
@@ -256,6 +258,32 @@ namespace Axiom.Tests.Editor.Core
             _gameManager.StartNewGame();
 
             Assert.IsFalse(tempSaveService.HasSave());
+        }
+
+        [Test]
+        public void DefaultContinueScene_IsEnabledInBuildSettings()
+        {
+            var field = typeof(GameManager).GetField(
+                "DefaultContinueScene",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            string defaultScene = (string)field.GetRawConstantValue();
+
+            bool isEnabled = false;
+            foreach (EditorBuildSettingsScene scene in EditorBuildSettings.scenes)
+            {
+                if (!scene.enabled)
+                    continue;
+
+                if (Path.GetFileNameWithoutExtension(scene.path) == defaultScene)
+                {
+                    isEnabled = true;
+                    break;
+                }
+            }
+
+            Assert.IsTrue(
+                isEnabled,
+                "The fallback continue/return scene must be enabled in Build Profiles so SceneTransitionController can load it.");
         }
     }
 }

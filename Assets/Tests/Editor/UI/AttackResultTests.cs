@@ -78,7 +78,7 @@ namespace Axiom.Tests.UI
             enemy.Initialize();
             player.Initialize();
 
-            var handler = new EnemyActionHandler(enemy, player, () => 0.9f);
+            var handler = new EnemyActionHandler(enemy, player, randomSource: () => 0.9f);
             AttackResult result = handler.ExecuteAttack();
 
             Assert.AreEqual(2, result.Damage);            // max(1, 8 - 6) = 2

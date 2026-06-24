@@ -7,6 +7,8 @@ namespace Axiom.Platformer
     {
         [SerializeField] private MeltableObstacleController _controller;
 
+        private PlayerAuraCue _auraCue;
+
         private void Reset()
         {
             Collider2D triggerCollider = GetComponent<Collider2D>();
@@ -21,6 +23,9 @@ namespace Axiom.Platformer
             if (!other.CompareTag("Player")) return;
             if (_controller == null) return;
             _controller.SetPlayerInRange(true);
+
+            _auraCue = other.GetComponentInParent<PlayerAuraCue>();
+            if (_auraCue != null) _auraCue.EnterPuzzleRange(_controller);
         }
 
         private void OnTriggerExit2D(Collider2D other)
@@ -28,6 +33,21 @@ namespace Axiom.Platformer
             if (!other.CompareTag("Player")) return;
             if (_controller == null) return;
             _controller.SetPlayerInRange(false);
+
+            if (_auraCue != null)
+            {
+                _auraCue.ExitPuzzleRange(_controller);
+                _auraCue = null;
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (_auraCue != null)
+            {
+                if (_controller != null) _auraCue.ExitPuzzleRange(_controller);
+                _auraCue = null;
+            }
         }
     }
 }

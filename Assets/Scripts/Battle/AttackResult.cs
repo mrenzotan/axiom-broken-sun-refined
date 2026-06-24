@@ -1,17 +1,27 @@
+using Axiom.Data;
+
 namespace Axiom.Battle
 {
     /// <summary>
-    /// Return value of ExecuteAttack() on action handlers.
-    /// Carries damage amount, crit flag, defeat flag, and immunity flag so BattleController
-    /// can fire the correct UI events without querying stats again.
-    /// IsImmune is true when the target's active material conditions (Liquid or Vapor) make
-    /// them immune to physical attacks. In that case Damage is 0.
+    /// Returned by PlayerActionHandler.ExecuteAttack() and EnemyActionHandler.ExecuteAttack().
+    ///
+    /// IsCrit and IsImmune are player-attack-only fields — enemy attacks always deal
+    /// damage and never crit. They default to false on enemy results.
+    ///
+    /// ConditionApplied is enemy-attack-only — set when an on-hit condition proc fires.
+    /// Defaults to None on player attack results.
     /// </summary>
     public struct AttackResult
     {
-        public int Damage;
+        public int  Damage;
         public bool IsCrit;
         public bool TargetDefeated;
         public bool IsImmune;
+
+        /// <summary>
+        /// The condition applied to the player by an enemy on-hit proc, or None if no proc fired.
+        /// Always None for player attack results.
+        /// </summary>
+        public ChemicalCondition ConditionApplied;
     }
 }

@@ -71,6 +71,10 @@ namespace Axiom.Platformer
             {
                 controller.enabled = false;
 
+                PlayerExplorationAttack attack = controller.GetComponent<PlayerExplorationAttack>();
+                if (attack != null)
+                    attack.enabled = false;
+
                 Animator animator = controller.GetComponentInChildren<Animator>();
                 if (animator != null)
                     animator.SetTrigger("Defeat");

@@ -15,6 +15,7 @@ namespace Axiom.Platformer
 
         private TextMeshPro _tmp;
         private float _elapsed;
+        private float _activeDuration;
         private bool _playing;
         private Color _startColor;
         private Action<PlatformerFloatingNumberInstance> _onComplete;
@@ -24,12 +25,14 @@ namespace Axiom.Platformer
             _tmp = GetComponent<TextMeshPro>();
         }
 
-        public void Play(string text, Color color, Action<PlatformerFloatingNumberInstance> onComplete)
+        // durationOverride <= 0 falls back to the serialized _duration (default for HP/MP numbers).
+        public void Play(string text, Color color, Action<PlatformerFloatingNumberInstance> onComplete, float durationOverride = -1f)
         {
             _tmp.text = text;
             _tmp.color = color;
             _startColor = color;
             _elapsed = 0f;
+            _activeDuration = durationOverride > 0f ? durationOverride : _duration;
             _playing = true;
             _onComplete = onComplete;
         }
@@ -40,7 +43,7 @@ namespace Axiom.Platformer
                 return;
 
             _elapsed += Time.deltaTime;
-            float t = Mathf.Clamp01(_elapsed / _duration);
+            float t = Mathf.Clamp01(_elapsed / _activeDuration);
 
             transform.position += Vector3.up * (_riseSpeed * Time.deltaTime);
 
@@ -48,7 +51,7 @@ namespace Axiom.Platformer
             c.a = 1f - t;
             _tmp.color = c;
 
-            if (_elapsed >= _duration)
+            if (_elapsed >= _activeDuration)
             {
                 _playing = false;
                 _onComplete?.Invoke(this);

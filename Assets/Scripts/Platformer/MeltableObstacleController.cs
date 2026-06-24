@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Axiom.Platformer
 {
-    public class MeltableObstacleController : MonoBehaviour
+    public class MeltableObstacleController : MonoBehaviour, ISpellPuzzle
     {
         [SerializeField] private SpriteRenderer _spriteRenderer;
         [SerializeField] private BoxCollider2D _solidCollider;
@@ -40,6 +40,8 @@ namespace Axiom.Platformer
         private bool _isPlayerInRange;
 
         public bool IsMelted => _isMelted;
+
+        public bool IsInteractable => !IsMelted;
 
         private void Start()
         {

@@ -22,7 +22,7 @@ namespace Axiom.Core
     /// </summary>
     public class GameManager : MonoBehaviour
     {
-        private const string DefaultContinueScene = "Platformer";
+        private const string DefaultContinueScene = "Level_1-1";
 
         public static GameManager Instance { get; private set; }
 

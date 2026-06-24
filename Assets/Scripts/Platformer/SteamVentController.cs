@@ -15,7 +15,7 @@ namespace Axiom.Platformer
     /// MP; clearing obstacles is a no-op once they're already gone (each obstacle is
     /// one-shot and persists across a Battle round-trip via its OWN puzzleId).
     /// </summary>
-    public class SteamVentController : MonoBehaviour
+    public class SteamVentController : MonoBehaviour, ISpellPuzzle
     {
         [SerializeField] private SpriteRenderer _spriteRenderer;
 
@@ -69,6 +69,9 @@ namespace Axiom.Platformer
         {
             _isPlayerInRange = inRange;
         }
+
+        // A steam vent is re-ignitable/stateless, so it is always interactable.
+        public bool IsInteractable => true;
 
         public bool CanIgniteWith(string spellId)
         {

@@ -9,10 +9,8 @@ namespace Axiom.Battle
     /// <summary>
     /// MonoBehaviour that drives the spell input UI panels during the voice spell phase.
     ///
-    /// Panel visibility is controlled by three child GameObjects assigned in the Inspector:
-    ///   - PromptPanel    — visible in PromptVisible state ("Hold [Space] and speak a spell name")
-    ///   - ListeningPanel — visible in Listening state ("Listening...")
-    ///   - FeedbackPanel  — visible in SpellRecognized / NotRecognized states (dynamic TMP text)
+    /// Voice spell text is shown through the shared battle message box so the player has one
+    /// narration surface. Continue remains owned by queued battle messages only.
     ///
     /// The PTT InputAction is read independently for visual-only purposes.
     /// Call <see cref="Setup"/> from BattleController.Initialize() before any events fire.
@@ -26,6 +24,9 @@ namespace Axiom.Battle
         [Header("Root — the SpellInputPanel itself (self-reference)")]
         [SerializeField] private GameObject _panel;
 
+        [Header("Shared battle message box")]
+        [SerializeField] private StatusMessageUI _statusMessageUI;
+
         [Header("Panels — assign child GameObjects from the Battle Canvas")]
         [SerializeField] private GameObject _promptPanel;
         [SerializeField] private GameObject _listeningPanel;
@@ -37,6 +38,10 @@ namespace Axiom.Battle
         [SerializeField]
         [Tooltip("Seconds before the feedback panel auto-hides after a recognition result.")]
         private float _feedbackAutoHideDelay = 2f;
+
+        [SerializeField] private string _promptMessage = "Hold [Left Shift] to speak a spell\n\n[Esc] to cancel";
+        [SerializeField] private string _listeningMessage = "\"Listening...\"";
+        [SerializeField] private string _notRecognizedMessage = "Not recognized. Try again.";
 
         [Header("Cancel input — DEV-91")]
 
@@ -188,23 +193,44 @@ namespace Axiom.Battle
         private void Refresh()
         {
             SpellInputUILogic.State state = _logic.CurrentState;
+            bool useSharedMessageBox = _statusMessageUI != null;
 
-            SetActive(_promptPanel,    state == SpellInputUILogic.State.PromptVisible);
-            SetActive(_listeningPanel, state == SpellInputUILogic.State.Listening);
-            SetActive(_feedbackPanel,  state == SpellInputUILogic.State.SpellRecognized
-                                    || state == SpellInputUILogic.State.NotRecognized
-                                    || state == SpellInputUILogic.State.Rejected);
+            SetActive(_promptPanel,    !useSharedMessageBox && state == SpellInputUILogic.State.PromptVisible);
+            SetActive(_listeningPanel, !useSharedMessageBox && state == SpellInputUILogic.State.Listening);
+            SetActive(_feedbackPanel,  !useSharedMessageBox
+                                    && (state == SpellInputUILogic.State.SpellRecognized
+                                     || state == SpellInputUILogic.State.NotRecognized
+                                     || state == SpellInputUILogic.State.Rejected));
+
+            string message = GetSharedMessage(state);
+            if (useSharedMessageBox && !string.IsNullOrWhiteSpace(message))
+                _statusMessageUI.ShowSpellPrompt(message);
+            else if (useSharedMessageBox)
+                _statusMessageUI.ClearSpellPrompt();
 
             if (_feedbackText != null)
             {
                 _feedbackText.text = state switch
                 {
                     SpellInputUILogic.State.SpellRecognized => char.ToUpper(_logic.RecognizedSpellName[0]) + _logic.RecognizedSpellName[1..],
-                    SpellInputUILogic.State.NotRecognized   => "Not recognized. Try again.",
+                    SpellInputUILogic.State.NotRecognized   => _notRecognizedMessage,
                     SpellInputUILogic.State.Rejected        => _logic.RejectionMessage,
                     _                                       => string.Empty
                 };
             }
+        }
+
+        private string GetSharedMessage(SpellInputUILogic.State state)
+        {
+            return state switch
+            {
+                SpellInputUILogic.State.PromptVisible   => _promptMessage,
+                SpellInputUILogic.State.Listening       => _listeningMessage,
+                SpellInputUILogic.State.SpellRecognized => char.ToUpper(_logic.RecognizedSpellName[0]) + _logic.RecognizedSpellName[1..],
+                SpellInputUILogic.State.NotRecognized   => _notRecognizedMessage,
+                SpellInputUILogic.State.Rejected        => _logic.RejectionMessage,
+                _                                       => string.Empty
+            };
         }
 
         private static void SetActive(GameObject go, bool active)

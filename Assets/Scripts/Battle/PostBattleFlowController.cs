@@ -245,7 +245,7 @@ namespace Axiom.Battle
             else if (gm != null)
                 gm.ReturnToWorldScene();
             else
-                SceneManager.LoadScene("Platformer");
+                SceneManager.LoadScene("Level_1-1");
         }
 
         /// <summary>

@@ -11,6 +11,7 @@ public class PlayerAnimator
     private static readonly int ParamIsGrounded = Animator.StringToHash("IsGrounded");
     private static readonly int ParamIsFacingRight = Animator.StringToHash("IsFacingRight");
     private static readonly int ParamAttack = Animator.StringToHash("Attack");
+    private static readonly int ParamCast = Animator.StringToHash("Cast");
 
     private readonly Animator _animator;
     private readonly PlayerMovement _movement;
@@ -53,5 +54,14 @@ public class PlayerAnimator
     public void TriggerAttack()
     {
         _animator.SetTrigger(ParamAttack);
+    }
+
+    /// <summary>
+    /// Sets the Cast trigger on the Animator. Called by PlayerController.BeginCast().
+    /// The Animator Controller routes to playerCastRight or playerCastLeft based on IsFacingRight.
+    /// </summary>
+    public void TriggerCast()
+    {
+        _animator.SetTrigger(ParamCast);
     }
 }

@@ -28,4 +28,14 @@ public class PlayerExplorationAnimator : MonoBehaviour
     {
         _controller?.OnAttackAnimationEnd();
     }
+
+    /// <summary>
+    /// Called by an Animation Event on the fire-frame of playerCastRight.anim / playerCastLeft.anim.
+    /// Name mirrors PlayerBattleAnimator.AnimEvent_OnSpellFire — the shared cast clips invoke this
+    /// method on whichever component sits on the active scene's Animator GameObject.
+    /// </summary>
+    public void AnimEvent_OnSpellFire()
+    {
+        _controller?.OnSpellCastFireFrame();
+    }
 }

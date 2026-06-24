@@ -38,6 +38,12 @@ public class PlayerController : MonoBehaviour
     private float _moveInput;
     private Axiom.Platformer.ExplorationEnemyCombatTrigger _pendingAttackTrigger;
 
+    /// <summary>
+    /// Raised on the cast clip's fire-frame (or the voice controller's timeout fallback).
+    /// PlatformerVoiceSpellController subscribes to resolve the puzzle effect at this moment.
+    /// </summary>
+    public event System.Action SpellCastFired;
+
     private void Awake()
     {
         _rb = GetComponent<Rigidbody2D>();
@@ -216,6 +222,26 @@ public class PlayerController : MonoBehaviour
         _movement.SetMovementLocked(false);
         if (_pendingAttackTrigger != null) _pendingAttackTrigger.TriggerAdvantagedBattle();
         _pendingAttackTrigger = null;
+    }
+
+    /// <summary>
+    /// Starts a platformer spell cast: locks movement and plays the facing-aware cast animation.
+    /// Resolution is deferred to <see cref="OnSpellCastFireFrame"/>. Called by PlatformerVoiceSpellController.
+    /// </summary>
+    public void BeginCast()
+    {
+        _movement.SetMovementLocked(true);
+        _playerAnimator.TriggerCast();
+    }
+
+    /// <summary>
+    /// Called by PlayerExplorationAnimator on the cast clip's fire-frame.
+    /// Unlocks movement and raises SpellCastFired so the cast resolves at the right moment.
+    /// </summary>
+    public void OnSpellCastFireFrame()
+    {
+        _movement.SetMovementLocked(false);
+        SpellCastFired?.Invoke();
     }
 
     /// <summary>

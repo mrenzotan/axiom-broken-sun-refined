@@ -216,6 +216,40 @@ namespace Axiom.Battle.Tests
                 "Cancel returns to the action menu without consuming the turn or any MP (DEV-91 AC).");
         }
 
+        [Test]
+        public void OnSpellCast_InsufficientMP_FiresOnSpellChargeAborted()
+        {
+            var bm = new BattleManager();
+            bm.StartBattle(CombatStartState.Advantaged);
+
+            var playerStats = new CharacterStats { Name = "Test", MaxHP = 30, MaxMP = 3, ATK = 1, DEF = 1, SPD = 1 };
+            playerStats.Initialize();
+
+            var spell = ScriptableObject.CreateInstance<SpellData>();
+            spell.spellName = "flare";
+            spell.mpCost = 5;
+
+            try
+            {
+                SetField(_controller, "_battleManager", bm);
+                SetField(_controller, "_playerStats", playerStats);
+                SetField(_controller, "_isAwaitingVoiceSpell", true);
+                SetField(_controller, "_isProcessingAction", true);
+
+                int abortFired = 0;
+                _controller.OnSpellChargeAborted += () => abortFired++;
+
+                _controller.OnSpellCast(spell);
+
+                Assert.AreEqual(1, abortFired,
+                    "Insufficient MP exits the voice spell phase without casting, so the charging animation must reset.");
+            }
+            finally
+            {
+                Object.DestroyImmediate(spell);
+            }
+        }
+
         // ── Reflection helpers ─────────────────────────────────────────────────────
 
         private static void SetField(object target, string name, object value)

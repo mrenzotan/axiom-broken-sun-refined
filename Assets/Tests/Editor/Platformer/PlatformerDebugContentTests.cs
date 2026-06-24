@@ -23,6 +23,17 @@ namespace PlatformerTests
         }
 
         [Test]
+        public void SavePointPrefab_IsNotTaggedPlayer()
+        {
+            GameObject savePoint = AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/Prefabs/Platformer/SavePoint.prefab");
+
+            Assert.IsNotNull(savePoint);
+            Assert.AreNotEqual("Player", savePoint.tag,
+                "Only the real Player prefab should use the Player tag; enemy combat triggers treat Player-tagged colliders as battle starts.");
+        }
+
+        [Test]
         public void InputActionsAsset_DoesNotContainDebugSpellBindings()
         {
             string json = File.ReadAllText("Assets/InputSystem_Actions.inputactions");

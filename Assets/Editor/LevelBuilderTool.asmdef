@@ -2,7 +2,8 @@
     "name": "LevelBuilderTool",
     "references": [
         "Unity.2D.Tilemap.Extras",
-        "Unity.2D.Tilemap.Extras.Editor"
+        "Unity.2D.Tilemap.Extras.Editor",
+        "Unity.TextMeshPro"
     ],
     "includePlatforms": ["Editor"],
     "excludePlatforms": [],

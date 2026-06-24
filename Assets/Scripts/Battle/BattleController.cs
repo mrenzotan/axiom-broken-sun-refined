@@ -436,7 +436,7 @@ namespace Axiom.Battle
             _currentEnemyForm = 0;
 
             _actionHandler      = new PlayerActionHandler(_playerStats, _enemyStats);
-            _enemyActionHandler = new EnemyActionHandler(_enemyStats, _playerStats);
+            _enemyActionHandler = new EnemyActionHandler(_enemyStats, _playerStats, _enemyData);
             _resolver           = new SpellEffectResolver();
             _itemResolver       = new ItemEffectResolver();
             _turnProcessor      = new BattleTurnProcessor();
@@ -582,6 +582,7 @@ namespace Axiom.Battle
                 _isProcessingAction   = false;
                 OnSpellPhaseExited?.Invoke();
                 OnSpellCastRejected?.Invoke($"Not enough MP to cast {spell.spellName}.");
+                OnSpellChargeAborted?.Invoke();
                 Debug.Log($"[Battle] Spell rejected — insufficient MP for {spell.spellName}.");
                 return;
             }
@@ -848,7 +849,7 @@ namespace Axiom.Battle
                 if (GameManager.Instance != null)
                     GameManager.Instance.ReturnToWorldScene();
                 else
-                    SceneManager.LoadScene("Platformer"); // Standalone Battle scene testing fallback
+                    SceneManager.LoadScene("Level_1-1"); // Standalone Battle scene testing fallback
             }
             else if (state == BattleState.Victory)
             {
@@ -879,7 +880,7 @@ namespace Axiom.Battle
             if (GameManager.Instance != null)
                 GameManager.Instance.ReturnToWorldScene();
             else
-                SceneManager.LoadScene("Platformer");
+                SceneManager.LoadScene("Level_1-1");
         }
 
         private void CompleteDefeatFlow()
@@ -1084,9 +1085,18 @@ namespace Axiom.Battle
             }
 
             OnDamageDealt?.Invoke(_playerStats, _pendingEnemyAttack.Damage, _pendingEnemyAttack.IsCrit);
+
+            // On-hit condition proc — fire after damage so the message log reads naturally:
+            // "Enemy attacks! You take 8 damage." → "You are Burning!"
+            if (_pendingEnemyAttack.ConditionApplied != ChemicalCondition.None)
+            {
+                OnConditionApplied?.Invoke(_playerStats, _pendingEnemyAttack.ConditionApplied);
+                OnConditionsChanged?.Invoke(_playerStats);
+            }
+
             if (_pendingEnemyAttack.TargetDefeated)
                 OnCharacterDefeated?.Invoke(_playerStats);
-            
+
             CheckEnemyPhaseTransition();
         }
 

@@ -110,7 +110,7 @@ namespace Axiom.Battle
             };
         }
 
-        private static int DoTDamageFor(ChemicalCondition condition)
+        public static int DoTDamageFor(ChemicalCondition condition)
         {
             switch (condition)
             {

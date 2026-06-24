@@ -79,6 +79,13 @@ namespace Axiom.Data
         [Tooltip("Per-form innate condition definitions for multi-form enemies. " + "Leave empty for single-form enemies innate conditions is used as fallback.")]
         public List<EnemyFormData> formDefinitions = new List<EnemyFormData>();
 
+        [Header("On-Hit Condition")]
+        [Tooltip("Status condition this enemy may inflict on the player with each basic attack. None = no proc.")]
+        public ChemicalCondition onHitCondition = ChemicalCondition.None;
+
+        [Tooltip("Probability (0–1) that a basic attack inflicts onHitCondition. e.g. 0.3 = 30%. Has no effect when onHitCondition is None.")]
+        [Range(0f, 1f)] public float onHitConditionChance = 0f;
+
         public List<ChemicalCondition> GetInnateConditionsForForm(int formIndex)
         {
             if (formDefinitions != null)

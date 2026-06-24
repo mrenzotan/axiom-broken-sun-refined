@@ -26,7 +26,7 @@ namespace Axiom.Platformer
     /// Spec: docs/superpowers/specs/2026-06-22-dev-94-level-3-acid-puddle-design.md
     /// </summary>
     [RequireComponent(typeof(Collider2D))]
-    public class AcidPuddleController : MonoBehaviour
+    public class AcidPuddleController : MonoBehaviour, ISpellPuzzle
     {
         [Header("Animation")]
         [SerializeField] private SpriteRenderer _spriteRenderer;
@@ -65,6 +65,8 @@ namespace Axiom.Platformer
         private Coroutine _animateCoroutine;
 
         public bool IsNeutralized => _isNeutralized;
+
+        public bool IsInteractable => !IsNeutralized;
 
         private void Reset()
         {

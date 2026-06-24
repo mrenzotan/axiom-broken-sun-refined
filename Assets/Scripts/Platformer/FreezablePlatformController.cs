@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace Axiom.Platformer
 {
-    public class FreezablePlatformController : MonoBehaviour
+    public class FreezablePlatformController : MonoBehaviour, ISpellPuzzle
     {
         [SerializeField] private SpriteRenderer _spriteRenderer;
         [SerializeField] private BoxCollider2D _solidCollider;
@@ -31,6 +31,8 @@ namespace Axiom.Platformer
 
         public bool IsFrozen => _isFrozen;
         public bool IsPlayerInRange => _isPlayerInRange;
+
+        public bool IsInteractable => !IsFrozen;
 
         private void Start()
         {

@@ -78,9 +78,12 @@ namespace Axiom.Platformer
             }
 
             _feedback = other.GetComponentInParent<PlayerHurtFeedback>();
-            ApplyPercentDamage(_firstHitDamagePercent, HazardMode.PercentMaxHpDamage);
+            HazardDamageResult result = ApplyPercentDamage(_firstHitDamagePercent, HazardMode.PercentMaxHpDamage);
             OnPlayerFirstHitFrame?.Invoke();
             _feedback?.PlayHurtAnimation();
+            if (result.IsFatal)
+                return;
+
             _feedback?.BeginPainOverlap();
 
             if (_tickCoroutine != null)
@@ -117,7 +120,15 @@ namespace Axiom.Platformer
                 yield return wait;
                 if (GameManager.Instance == null)
                     continue;
-                ApplyPercentDamage(_damagePerTickPercent, HazardMode.PercentMaxHpDamage);
+                HazardDamageResult result = ApplyPercentDamage(_damagePerTickPercent, HazardMode.PercentMaxHpDamage);
+                if (result.IsFatal)
+                {
+                    StopTicking();
+                    _feedback?.EndPainOverlap();
+                    _feedback = null;
+                    yield break;
+                }
+
                 _feedback?.FlashOnTick();
             }
         }
@@ -131,7 +142,7 @@ namespace Axiom.Platformer
             }
         }
 
-        private void ApplyPercentDamage(int percent, HazardMode mode)
+        private HazardDamageResult ApplyPercentDamage(int percent, HazardMode mode)
         {
             PlayerState state = GameManager.Instance.PlayerState;
             HazardDamageResult result = HazardDamageResolver.Resolve(
@@ -140,6 +151,7 @@ namespace Axiom.Platformer
                 mode: mode,
                 percentMaxHpDamage: percent);
             state.SetCurrentHp(result.NewHp);
+            return result;
         }
     }
 }
