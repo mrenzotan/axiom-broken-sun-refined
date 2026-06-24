@@ -277,7 +277,15 @@ namespace Axiom.Battle
         }
 
         private void HandleSpellPhaseEntered() => _actionMenuUI.SetNonSpellActionsInteractable(false);
-        private void HandleSpellPhaseExited()  => _actionMenuUI.SetNonSpellActionsInteractable(true);
+
+        private void HandleSpellPhaseExited()
+        {
+            // During a tutorial funnel (spells restricted to one), keep Attack/Item/Flee locked.
+            // Re-enabling them here — on a wrong-spell reject or a spell-prompt cancel — would let
+            // the player escape the funnel. The tutorial step re-enables them when it ends.
+            if (_battleController.IsTutorialSpellRestricted) return;
+            _actionMenuUI.SetNonSpellActionsInteractable(true);
+        }
 
         private void HandleItemUsed(CharacterStats target, int amount, Axiom.Data.ItemEffectType effectType)
         {

@@ -22,6 +22,12 @@ namespace Axiom.Platformer
         // "Not enough MP" is longer text than a number, so it lingers longer than the default ~1s.
         private const float InsufficientManaDuration = 2f;
 
+        // Bright warning yellow for the aggro "!" — pops against most platformer backgrounds.
+        private static readonly Color AggroAlertColor = new Color(1f, 0.85f, 0.2f);
+
+        // A single "!" reads as a quick alert, so it lingers less than the default ~1s number.
+        private const float AggroAlertDuration = 0.8f;
+
         private void Awake()
         {
             for (int i = 0; i < _poolSize; i++)
@@ -77,6 +83,21 @@ namespace Axiom.Platformer
             }
 
             Spawn(new Vector2(worldPosition.x, worldPosition.y + MpVerticalOffset), "Not enough MP", InsufficientManaColor, InsufficientManaDuration);
+        }
+
+        /// <summary>
+        /// Spawns a brief yellow "!" at worldPosition when an enemy newly detects the player.
+        /// Reuses the shared pooled-instance path; pass a position already offset above the enemy.
+        /// </summary>
+        public void SpawnAggroAlert(Vector2 worldPosition)
+        {
+            if (_prefab == null)
+            {
+                Debug.LogWarning("[PlatformerFloatingNumberSpawner] Prefab not assigned.", this);
+                return;
+            }
+
+            Spawn(worldPosition, "!", AggroAlertColor, AggroAlertDuration);
         }
 
         private void Spawn(Vector2 position, string text, Color color, float durationOverride = -1f)

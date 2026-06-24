@@ -239,6 +239,7 @@ namespace Axiom.Battle
         private bool _playerSequenceComplete;
         private bool _enemySequenceComplete;
         private bool _isAwaitingVoiceSpell;
+        private TutorialSpellGate _tutorialSpellGate = TutorialSpellGate.Unrestricted;
         private SpellEffectResolver _resolver;
         private ItemEffectResolver _itemResolver;
         private SpellData   _pendingSpell;
@@ -571,10 +572,41 @@ namespace Axiom.Battle
         /// Deducts MP first — if insufficient, fires OnSpellCastRejected and lets
         /// the player choose again without advancing the turn.
         /// </summary>
+        /// <summary>
+        /// Sets the active tutorial spell restriction. BattleTutorialController calls this when a
+        /// tutorial step restricts (or clears) which spells the player may cast. Null clears it.
+        /// Outside a tutorial the gate stays Unrestricted, so OnSpellCast behaves normally.
+        /// </summary>
+        public void SetTutorialSpellGate(TutorialSpellGate gate)
+        {
+            _tutorialSpellGate = gate ?? TutorialSpellGate.Unrestricted;
+        }
+
+        /// <summary>
+        /// True while a tutorial step funnels the player to a single spell. BattleHUD reads this
+        /// so that leaving the spell phase (reject/cancel) does NOT re-enable the non-spell action
+        /// buttons — keeping the player on the only valid action.
+        /// </summary>
+        public bool IsTutorialSpellRestricted => _tutorialSpellGate.IsRestricting;
+
         public void OnSpellCast(SpellData spell)
         {
             if (_battleManager.CurrentState != BattleState.PlayerTurn) return;
             if (!_isAwaitingVoiceSpell) return;
+
+            if (!_tutorialSpellGate.IsAllowed(spell.spellName))
+            {
+                // Mirrors the insufficient-MP path: exit the spell phase, do NOT spend MP,
+                // do NOT advance the turn. The player drops back to the action menu (where
+                // only Spell is enabled during the tutorial) and can retry.
+                SetAwaitingVoiceSpell(false);
+                _isProcessingAction = false;
+                OnSpellPhaseExited?.Invoke();
+                OnSpellCastRejected?.Invoke(_tutorialSpellGate.RejectionMessage);
+                OnSpellChargeAborted?.Invoke();
+                Debug.Log($"[Battle] Spell rejected by tutorial — {spell.spellName} not allowed this step.");
+                return;
+            }
 
             if (!_playerStats.SpendMP(spell.mpCost))
             {

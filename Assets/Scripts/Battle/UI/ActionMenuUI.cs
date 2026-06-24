@@ -29,6 +29,13 @@ namespace Axiom.Battle
         private readonly bool[] _messageBlockSnapshot = new bool[5];
         private bool _isMessageBlocked;
 
+        /// <summary>
+        /// True while a battle message is displaying — the menu buttons are temporarily disabled
+        /// and the MessageLog's Continue button owns focus. Callers that move action-menu focus
+        /// should check this so they don't steal focus from Continue.
+        /// </summary>
+        public bool IsMessageBlocked => _isMessageBlocked;
+
         private void Start()
         {
             _attackButton.onClick.AddListener(() => OnAttack?.Invoke());

@@ -163,11 +163,27 @@ namespace Axiom.Battle
 
             if (_actionMenu != null)
             {
+                bool buttonsChanged =
+                    action.AttackInteractable.HasValue || action.SpellInteractable.HasValue ||
+                    action.ItemInteractable.HasValue   || action.FleeInteractable.HasValue;
+
                 if (action.AttackInteractable.HasValue) _actionMenu.SetAttackInteractable(action.AttackInteractable.Value);
                 if (action.SpellInteractable.HasValue)  _actionMenu.SetSpellInteractable(action.SpellInteractable.Value);
                 if (action.ItemInteractable.HasValue)   _actionMenu.SetItemInteractable(action.ItemInteractable.Value);
                 if (action.FleeInteractable.HasValue)   _actionMenu.SetFleeInteractable(action.FleeInteractable.Value);
+
+                // After locking a button, the EventSystem may still be on a now-disabled
+                // button (e.g. Attack), leaving the player no highlighted/keyboard target.
+                // Move focus to the first still-interactable button (Spell on the Freeze turn).
+                // Skip while a message is displaying — the MessageLog's Continue button owns
+                // focus then, and SetMessageBlocked re-focuses the menu once the message clears.
+                if (buttonsChanged && _currentBattleState == BattleState.PlayerTurn &&
+                    !_actionMenu.IsMessageBlocked)
+                    _actionMenu.FocusFirstInteractable();
             }
+
+            if (action.SpellGate != null && _battleController != null)
+                _battleController.SetTutorialSpellGate(action.SpellGate);
 
             if (action.MarkComplete && GameManager.Instance != null && _flow != null)
             {

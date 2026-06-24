@@ -26,6 +26,7 @@ namespace Axiom.Battle
         private const string SpellTutorial_FrozenSolid      = "Frozen — enemy skips a turn. Solid — physical attacks now hit.";
         private const string SpellTutorial_StrikeWhileSolid = "Strike while it's Solid!";
         private const string SpellTutorial_ClosingLine      = "Each spell turns the tide differently. Use the right one.";
+        private const string SpellTutorial_FreezeOnlyReject = "The tutorial needs Freeze — say 'Freeze' aloud.";
 
         private readonly BattleTutorialMode _mode;
         private readonly CombatStartState _startState;
@@ -104,22 +105,27 @@ namespace Axiom.Battle
                     }
                     if (_spell_playerTurnsObserved == 2)
                     {
-                        // Turn 2: unlock Spell, prompt to cast Freeze.
+                        // Turn 2: unlock Spell, lock every other action, and restrict casting
+                        // to Freeze only. Disabling Attack/Item/Flee is what stops the player
+                        // deviating into the nonsensical turn-3 "Strike while Solid" state.
                         return new BattleTutorialAction(
                             promptText: SpellTutorial_PressSpellFreeze,
-                            attackInteractable: true,
+                            attackInteractable: false,
                             spellInteractable: true,
                             itemInteractable: false,
-                            fleeInteractable: false);
+                            fleeInteractable: false,
+                            spellGate: new TutorialSpellGate(new[] { "freeze" }, SpellTutorial_FreezeOnlyReject));
                     }
-                    // Turn 3+: post-Freeze world. Strike while Solid.
+                    // Turn 3+: post-Freeze world. Strike while Solid. Restore Attack and clear
+                    // the spell restriction so normal access resumes.
                     _spell_postFreezeTurnReached = true;
                     return new BattleTutorialAction(
                         promptText: SpellTutorial_StrikeWhileSolid,
                         attackInteractable: true,
                         spellInteractable: true,
                         itemInteractable: false,
-                        fleeInteractable: false);
+                        fleeInteractable: false,
+                        spellGate: TutorialSpellGate.Unrestricted);
 
                 default:
                     return BattleTutorialAction.NoChange;

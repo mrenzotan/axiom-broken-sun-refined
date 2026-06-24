@@ -250,6 +250,55 @@ namespace Axiom.Battle.Tests
             }
         }
 
+        [Test]
+        public void OnSpellCast_TutorialRestrictsToFreeze_RejectsOtherSpellWithoutSpendingTurn()
+        {
+            var bm = new BattleManager();
+            bm.StartBattle(CombatStartState.Advantaged); // → PlayerTurn
+
+            SetField(_controller, "_battleManager", bm);
+            SetField(_controller, "_isAwaitingVoiceSpell", true);
+            SetField(_controller, "_isProcessingAction", true);
+
+            _controller.SetTutorialSpellGate(
+                new TutorialSpellGate(new[] { "freeze" }, "The tutorial needs Freeze — say 'Freeze' aloud."));
+
+            string rejected = null;
+            _controller.OnSpellCastRejected += msg => rejected = msg;
+
+            var combust = ScriptableObject.CreateInstance<SpellData>();
+            combust.spellName = "combust";
+            combust.mpCost = 6;
+
+            _controller.OnSpellCast(combust);
+
+            Assert.AreEqual("The tutorial needs Freeze — say 'Freeze' aloud.", rejected,
+                "Casting a non-Freeze spell during the restricted tutorial turn must be rejected with the coaching message.");
+            Assert.IsFalse((bool)GetField(_controller, "_isAwaitingVoiceSpell"),
+                "Rejection must exit the voice spell phase so the player returns to the action menu and can retry.");
+
+            Object.DestroyImmediate(combust);
+        }
+
+        [Test]
+        public void IsTutorialSpellRestricted_TracksTheActiveGate()
+        {
+            Assert.IsFalse(_controller.IsTutorialSpellRestricted,
+                "No gate set — defaults to Unrestricted, so non-spell actions behave normally.");
+
+            _controller.SetTutorialSpellGate(new TutorialSpellGate(new[] { "freeze" }, "msg"));
+            Assert.IsTrue(_controller.IsTutorialSpellRestricted,
+                "A restricting gate must report restricted so BattleHUD keeps non-spell actions locked.");
+
+            _controller.SetTutorialSpellGate(TutorialSpellGate.Unrestricted);
+            Assert.IsFalse(_controller.IsTutorialSpellRestricted,
+                "Clearing the gate must restore normal non-spell action access.");
+
+            _controller.SetTutorialSpellGate(new TutorialSpellGate(new[] { "freeze" }, "msg"));
+            _controller.SetTutorialSpellGate(null);
+            Assert.IsFalse(_controller.IsTutorialSpellRestricted, "Null clears to Unrestricted.");
+        }
+
         // ── Reflection helpers ─────────────────────────────────────────────────────
 
         private static void SetField(object target, string name, object value)

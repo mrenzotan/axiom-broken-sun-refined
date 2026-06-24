@@ -110,10 +110,40 @@ namespace Axiom.Battle.Tests
             flow.OnPlayerAttackImmune();             // attack bounced
             BattleTutorialAction a = flow.OnPlayerTurnStarted(); // turn 2
             StringAssert.Contains("freeze", (a.PromptText ?? string.Empty).ToLowerInvariant());
-            Assert.IsTrue(a.AttackInteractable);
             Assert.IsTrue(a.SpellInteractable, "Spell button must unlock at turn 2.");
+            Assert.IsFalse(a.AttackInteractable, "Attack must be disabled so the player cannot deviate from casting Freeze.");
             Assert.IsFalse(a.ItemInteractable);
             Assert.IsFalse(a.FleeInteractable);
+        }
+
+        [Test]
+        public void SpellTutorial_PlayerTurn2_RestrictsCastingToFreezeOnly()
+        {
+            var flow = new BattleTutorialFlow(BattleTutorialMode.SpellTutorial, CombatStartState.Advantaged);
+            flow.OnInit();
+            flow.OnPlayerTurnStarted();
+            flow.OnPlayerAttackImmune();
+            BattleTutorialAction a = flow.OnPlayerTurnStarted(); // turn 2
+            Assert.IsNotNull(a.SpellGate, "Turn 2 must install a spell restriction.");
+            Assert.IsTrue(a.SpellGate.IsAllowed("freeze"));
+            Assert.IsFalse(a.SpellGate.IsAllowed("combust"), "Combust must be blocked on the Freeze turn.");
+            Assert.IsFalse(a.SpellGate.IsAllowed("neutralize"), "Neutralize must be blocked on the Freeze turn.");
+        }
+
+        [Test]
+        public void SpellTutorial_PlayerTurn3_ClearsSpellRestrictionAndRestoresAttack()
+        {
+            var flow = new BattleTutorialFlow(BattleTutorialMode.SpellTutorial, CombatStartState.Advantaged);
+            flow.OnInit();
+            flow.OnPlayerTurnStarted();
+            flow.OnPlayerAttackImmune();
+            flow.OnPlayerTurnStarted();          // turn 2
+            flow.OnSpellCast(spellName: "freeze");
+            flow.OnConditionsChanged();
+            BattleTutorialAction a = flow.OnPlayerTurnStarted(); // turn 3
+            Assert.IsNotNull(a.SpellGate, "Turn 3 must explicitly clear the restriction.");
+            Assert.IsTrue(a.SpellGate.IsAllowed("combust"), "Full spell access must be restored after the Freeze turn.");
+            Assert.IsTrue(a.AttackInteractable, "Attack must be re-enabled to 'Strike while it's Solid'.");
         }
 
         [Test]

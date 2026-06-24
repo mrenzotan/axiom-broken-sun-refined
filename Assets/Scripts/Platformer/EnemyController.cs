@@ -1,4 +1,5 @@
 using UnityEngine;
+using Axiom.Platformer;
 
 /// <summary>
 /// MonoBehaviour — Unity lifecycle and physics bridge only.
@@ -42,10 +43,25 @@ public class EnemyController : MonoBehaviour
     [SerializeField] private Transform visualTransform;
     [SerializeField] private Animator _animator;
 
+    [Header("Aggro Indicator")]
+    [SerializeField]
+    [Tooltip("When enabled, a floating \"!\" appears above this enemy the moment it newly detects the player.")]
+    private bool _showAggroIndicator = true;
+
+    [SerializeField]
+    [Tooltip("World-space floating-number spawner used to display the aggro \"!\". " +
+             "Assign the scene's PlatformerFloatingNumberSpawner.")]
+    private PlatformerFloatingNumberSpawner _floatingNumberSpawner;
+
+    [SerializeField]
+    [Tooltip("Height above the enemy origin at which the aggro \"!\" appears.")]
+    private float _aggroIndicatorHeight = 1.2f;
+
     private Rigidbody2D _rb;
     private EnemyPatrolBehavior _behavior;
     private float _visualOffsetX;
     private EnemyAnimator _enemyAnimator;
+    private AggroAlertGate _aggroGate;
 
     private void Awake()
     {
@@ -64,6 +80,8 @@ public class EnemyController : MonoBehaviour
             deaggroGracePeriod,
             waypointPauseDuration);
 
+        _aggroGate = new AggroAlertGate();
+
         if (_animator != null)
             _enemyAnimator = new EnemyAnimator(_animator);
     }
@@ -76,6 +94,12 @@ public class EnemyController : MonoBehaviour
 
         if (detected && IsLedgeAhead())
             detected = false;
+
+        if (_aggroGate.RegisterDetection(detected) && _showAggroIndicator && _floatingNumberSpawner != null)
+        {
+            Vector2 indicatorPosition = (Vector2)transform.position + Vector2.up * _aggroIndicatorHeight;
+            _floatingNumberSpawner.SpawnAggroAlert(indicatorPosition);
+        }
 
         float xVel = _behavior.Tick((Vector2)transform.position, detected, playerPos, Time.fixedDeltaTime);
         _rb.linearVelocity = new Vector2(xVel, _rb.linearVelocity.y);

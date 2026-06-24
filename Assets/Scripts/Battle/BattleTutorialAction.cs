@@ -5,6 +5,7 @@ namespace Axiom.Battle
     /// non-null fields are applied by BattleTutorialController to the UI.
     /// PromptText: null = leave panel as-is, "" = hide, otherwise = show with this text.
     /// MarkComplete = true tells the controller to flip the persisted PlayerState flag.
+    /// SpellGate: null = no change; an Unrestricted gate clears any active restriction.
     /// </summary>
     public readonly struct BattleTutorialAction
     {
@@ -14,6 +15,7 @@ namespace Axiom.Battle
         public bool? ItemInteractable   { get; }
         public bool? FleeInteractable   { get; }
         public bool MarkComplete        { get; }
+        public TutorialSpellGate SpellGate { get; }
 
         public BattleTutorialAction(
             string promptText = null,
@@ -21,7 +23,8 @@ namespace Axiom.Battle
             bool? spellInteractable = null,
             bool? itemInteractable = null,
             bool? fleeInteractable = null,
-            bool markComplete = false)
+            bool markComplete = false,
+            TutorialSpellGate spellGate = null)
         {
             PromptText = promptText;
             AttackInteractable = attackInteractable;
@@ -29,6 +32,7 @@ namespace Axiom.Battle
             ItemInteractable   = itemInteractable;
             FleeInteractable   = fleeInteractable;
             MarkComplete       = markComplete;
+            SpellGate          = spellGate;
         }
 
         public static readonly BattleTutorialAction NoChange = new BattleTutorialAction();
