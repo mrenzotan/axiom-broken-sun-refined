@@ -41,6 +41,21 @@ public class EnemyActionHandlerTests
         Assert.AreEqual(49, player.CurrentHP);
     }
 
+    [Test]
+    public void ExecuteAttack_HalvesDamage_WhenEnemyCrystallized()
+    {
+        // enemy ATK=10 → EffectiveATK=5 while Crystallized; player DEF=0 → 5 damage; 50 - 5 = 45 HP
+        // randomSource fixed above CritChance so no crit fires
+        var enemy  = MakeStats(maxHp: 60, atk: 10, def: 0);
+        var player = MakeStats(maxHp: 50, atk: 0,  def: 0);
+        enemy.ApplyStatusCondition(Axiom.Data.ChemicalCondition.Crystallized, baseDamage: 0);
+        var handler = new EnemyActionHandler(enemy, player, randomSource: () => 1f);
+
+        handler.ExecuteAttack();
+
+        Assert.AreEqual(45, player.CurrentHP);
+    }
+
     // ---- Attack: return value ----
 
     [Test]

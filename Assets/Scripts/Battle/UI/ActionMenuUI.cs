@@ -51,6 +51,19 @@ namespace Axiom.Battle
         /// </summary>
         public void SetInteractable(bool interactable)
         {
+            // While a message / tutorial-pause prompt is blocking, the menu must stay disabled and
+            // must not grab focus — the Continue button owns it (see IsMessageBlocked docs). Record
+            // the requested state into the snapshot so SetMessageBlocked(false) restores this latest
+            // intent when the block lifts, then bail without touching live buttons or focus.
+            // (e.g. SpellTutorial: BattleController enters PlayerTurn during its scene-ready init,
+            // firing SetInteractable(true) right after the prompt grabbed Continue focus.)
+            if (_isMessageBlocked)
+            {
+                for (int i = 0; i < _messageBlockSnapshot.Length; i++)
+                    _messageBlockSnapshot[i] = interactable;
+                return;
+            }
+
             _attackButton.interactable = interactable;
             _spellButton.interactable  = interactable;
             _itemButton.interactable   = interactable;

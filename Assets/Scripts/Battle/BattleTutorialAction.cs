@@ -17,6 +17,10 @@ namespace Axiom.Battle
         public bool MarkComplete        { get; }
         public TutorialSpellGate SpellGate { get; }
 
+        /// <summary>True when this action shows a prompt (PromptText is non-null and non-empty).
+        /// "" (hide) and null (no change) both return false.</summary>
+        public bool ShowsPrompt => !string.IsNullOrEmpty(PromptText);
+
         public BattleTutorialAction(
             string promptText = null,
             bool? attackInteractable = null,

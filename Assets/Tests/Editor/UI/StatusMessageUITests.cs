@@ -18,6 +18,7 @@ namespace Axiom.Tests.UI
         private Button _continueButton;
         private Component _text;
         private GameObject _eventSystemObject;
+        private EventSystem _eventSystem;
 
         [SetUp]
         public void SetUp()
@@ -26,7 +27,14 @@ namespace Axiom.Tests.UI
             _root.SetActive(false);
 
             _eventSystemObject = new GameObject("EventSystem");
-            _eventSystemObject.AddComponent<EventSystem>();
+            _eventSystem = _eventSystemObject.AddComponent<EventSystem>();
+            // EditMode never fires Unity lifecycle callbacks, so the EventSystem never runs its
+            // OnEnable and never registers itself as EventSystem.current — leaving the global null
+            // unless an earlier test happened to leak one (the source of this test's
+            // order-dependent NRE). Drive OnEnable explicitly (as we do for StatusMessageUI.Awake
+            // below) and pin it as current so EventSystem.current resolves deterministically.
+            InvokeLifecycle(_eventSystem, "OnEnable");
+            EventSystem.current = _eventSystem;
 
             _backgroundObject = new GameObject("MessageLogBG");
 
@@ -59,6 +67,11 @@ namespace Axiom.Tests.UI
 
             if (_backgroundObject != null)
                 Object.DestroyImmediate(_backgroundObject);
+
+            // Deregister from EventSystem.current (balances the manual OnEnable) so this test's
+            // EventSystem never leaks into a later test's static state.
+            if (_eventSystem != null)
+                InvokeLifecycle(_eventSystem, "OnDisable");
 
             if (_eventSystemObject != null)
                 Object.DestroyImmediate(_eventSystemObject);
@@ -133,11 +146,13 @@ namespace Axiom.Tests.UI
                 .SetValue(_ui, value);
         }
 
-        private void InvokeLifecycle(string methodName)
+        private void InvokeLifecycle(string methodName) => InvokeLifecycle(_ui, methodName);
+
+        private static void InvokeLifecycle(Component target, string methodName)
         {
-            typeof(StatusMessageUI)
+            target.GetType()
                 .GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic)
-                .Invoke(_ui, null);
+                .Invoke(target, null);
         }
 
         private string GetText()

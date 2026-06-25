@@ -20,6 +20,10 @@ namespace Axiom.Battle
         [SerializeField] private BattleController _battleController;
         [SerializeField] private ActionMenuUI _actionMenu;
         [SerializeField] private BattleTutorialPromptUI _promptUI;
+        [SerializeField]
+        [Tooltip("When true, every tutorial prompt this controller shows pauses the battle " +
+                 "(Time.timeScale = 0) and requires the player to press Continue before play resumes.")]
+        private bool _pauseOnPrompts;
 
         private BattleTutorialFlow _flow;
         private bool _isActive;
@@ -155,12 +159,38 @@ namespace Axiom.Battle
 
         private void Apply(BattleTutorialAction action)
         {
-            if (_promptUI != null)
+            if (_pauseOnPrompts && action.ShowsPrompt && _promptUI != null)
             {
-                if (action.PromptText == string.Empty)      _promptUI.Hide();
-                else if (action.PromptText != null)         _promptUI.Show(action.PromptText);
+                // Show + freeze. Disable the action menu so Enter resolves to the Continue
+                // button rather than the focused Attack/Spell button (SetMessageBlocked snapshots
+                // and restores the buttons). Defer the action's button/gate/completion effects
+                // until the player presses Continue.
+                if (_actionMenu != null) _actionMenu.SetMessageBlocked(true);
+                _promptUI.ShowAndPause(action.PromptText, () => OnPromptContinue(action));
+                return;
             }
 
+            ApplyPromptText(action);
+            ApplyActionEffects(action);
+        }
+
+        private void OnPromptContinue(BattleTutorialAction action)
+        {
+            // The panel has already restored Time.timeScale and hidden the prompt.
+            // Restore the action menu, then apply this action's intended button/gate states.
+            if (_actionMenu != null) _actionMenu.SetMessageBlocked(false);
+            ApplyActionEffects(action);
+        }
+
+        private void ApplyPromptText(BattleTutorialAction action)
+        {
+            if (_promptUI == null) return;
+            if (action.PromptText == string.Empty)      _promptUI.Hide();
+            else if (action.PromptText != null)         _promptUI.Show(action.PromptText);
+        }
+
+        private void ApplyActionEffects(BattleTutorialAction action)
+        {
             if (_actionMenu != null)
             {
                 bool buttonsChanged =
@@ -172,11 +202,10 @@ namespace Axiom.Battle
                 if (action.ItemInteractable.HasValue)   _actionMenu.SetItemInteractable(action.ItemInteractable.Value);
                 if (action.FleeInteractable.HasValue)   _actionMenu.SetFleeInteractable(action.FleeInteractable.Value);
 
-                // After locking a button, the EventSystem may still be on a now-disabled
-                // button (e.g. Attack), leaving the player no highlighted/keyboard target.
-                // Move focus to the first still-interactable button (Spell on the Freeze turn).
-                // Skip while a message is displaying — the MessageLog's Continue button owns
-                // focus then, and SetMessageBlocked re-focuses the menu once the message clears.
+                // After locking a button, the EventSystem may still be on a now-disabled button,
+                // leaving the player no highlighted/keyboard target. Move focus to the first
+                // still-interactable button. Skip while a message is displaying — the MessageLog's
+                // Continue button owns focus then.
                 if (buttonsChanged && _currentBattleState == BattleState.PlayerTurn &&
                     !_actionMenu.IsMessageBlocked)
                     _actionMenu.FocusFirstInteractable();

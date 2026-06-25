@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -8,12 +7,14 @@ using Axiom.Data;
 namespace Axiom.Battle
 {
     /// <summary>
-    /// Renders a wrapping flow of colored pill badges for a character's active
-    /// time-limited conditions (status conditions + temporary material transformations).
+    /// Renders a wrapping flow of colored pill badges for a character's conditions:
+    /// permanent innate material conditions (e.g. always-Liquid, shown with no counter)
+    /// followed by time-limited conditions (status conditions + temporary material
+    /// transformations, shown as "Name (turnsRemaining)").
     ///
-    /// Call Refresh() whenever the character's condition list may have changed.
-    /// Permanent innate material conditions (e.g. always-Liquid) are not shown —
-    /// only conditions with a turn countdown appear.
+    /// Call Refresh() whenever the character's condition list may have changed, passing the
+    /// innate conditions to display (the enemy's current-form innate list, or an empty list
+    /// for the player). Badge selection/dedup/ordering lives in ConditionBadgeLogic.
     ///
     /// Inspector setup required:
     ///   _badgePrefab — prefab root: Image + ContentSizeFitter (both axes) +
@@ -41,9 +42,11 @@ namespace Axiom.Battle
         /// <summary>
         /// Clears and rebuilds the badge row from the character's current condition state.
         /// Safe to call with a null stats argument (clears the row).
+        /// Pass innateConditions to render permanent innate badges (no counter); pass null or
+        /// an empty list to render time-limited badges only (e.g. the player panel).
         /// Reuses pooled badge GameObjects to avoid per-refresh allocation churn.
         /// </summary>
-        public void Refresh(CharacterStats stats)
+        public void Refresh(CharacterStats stats, IReadOnlyList<ChemicalCondition> innateConditions)
         {
             if (_container == null || _badgePrefab == null)
             {
@@ -60,23 +63,11 @@ namespace Axiom.Battle
 
             if (stats == null) return;
 
-            // Build a unified list of (condition, turns, appliedOrder) sorted chronologically.
-            var entries = new List<(ChemicalCondition condition, int turns, int order)>();
+            var badgeData = ConditionBadgeLogic.BuildBadges(stats, innateConditions);
 
-            foreach (var entry in stats.ActiveStatusConditions)
-                entries.Add((entry.Condition, entry.TurnsRemaining, entry.AppliedOrder));
-
-            foreach (var condition in stats.ActiveMaterialConditions)
-            {
-                int turns = stats.GetMaterialTransformTurns(condition);
-                if (turns > 0)
-                    entries.Add((condition, turns, stats.GetMaterialTransformOrder(condition)));
-            }
-
-            var badges = entries
-                .OrderBy(e => e.order)
-                .Select(e => AcquireBadge(e.condition, e.turns))
-                .ToList();
+            var badges = new List<RectTransform>(badgeData.Count);
+            foreach (var data in badgeData)
+                badges.Add(AcquireBadge(data));
 
             // Force each badge's ContentSizeFitter to compute its size before layout
             foreach (var badge in badges)
@@ -120,10 +111,10 @@ namespace Axiom.Battle
         }
 
         /// <summary>
-        /// Acquires an active badge for the given condition, either by reusing a pooled
+        /// Acquires an active badge for the given badge data, either by reusing a pooled
         /// inactive badge or instantiating a new one.
         /// </summary>
-        private RectTransform AcquireBadge(ChemicalCondition condition, int turnsRemaining)
+        private RectTransform AcquireBadge(ConditionBadge data)
         {
             // Search for an inactive pooled badge.
             for (int i = 0; i < _badgePool.Count; i++)
@@ -132,7 +123,7 @@ namespace Axiom.Battle
                 if (pooled != null && !pooled.activeSelf)
                 {
                     pooled.SetActive(true);
-                    UpdateBadge(pooled, condition, turnsRemaining);
+                    UpdateBadge(pooled, data);
                     return pooled.GetComponent<RectTransform>();
                 }
             }
@@ -140,22 +131,26 @@ namespace Axiom.Battle
             // No inactive badge available — instantiate a new one.
             GameObject badge = Instantiate(_badgePrefab, _container);
             _badgePool.Add(badge);
-            UpdateBadge(badge, condition, turnsRemaining);
+            UpdateBadge(badge, data);
             return badge.GetComponent<RectTransform>();
         }
 
-        private static void UpdateBadge(GameObject badge, ChemicalCondition condition, int turnsRemaining)
+        private static void UpdateBadge(GameObject badge, ConditionBadge data)
         {
             TMP_Text label = badge.GetComponentInChildren<TMP_Text>();
             if (label != null)
             {
-                label.text = $"{LabelFor(condition)} ({turnsRemaining})";
+                // Innate badges show the name with no turn counter; time-limited badges
+                // append the remaining turns, e.g. "Frozen (2)".
+                label.text = data.IsInnate
+                    ? LabelFor(data.Condition)
+                    : $"{LabelFor(data.Condition)} ({data.TurnsRemaining})";
                 label.ForceMeshUpdate(); // ensure TMP computes size before ForceRebuildLayoutImmediate
             }
 
             Image bg = badge.GetComponent<Image>();
             if (bg != null)
-                bg.color = ColorFor(condition);
+                bg.color = ColorFor(data.Condition);
         }
 
         private static string LabelFor(ChemicalCondition condition)

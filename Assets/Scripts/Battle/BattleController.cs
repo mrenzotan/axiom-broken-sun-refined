@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using Axiom.Core;
@@ -218,6 +219,24 @@ namespace Axiom.Battle
         /// BattleHUD subscribes to refresh ConditionBadgeUI for the matching character.
         /// </summary>
         public event Action<CharacterStats> OnConditionsChanged;
+
+        /// <summary>
+        /// The innate material conditions of the enemy's CURRENT visual form, for the HUD badge
+        /// row. The form is derived live from ActiveMaterialConditions (the same source the enemy
+        /// sprite's form follows), so a Liquid enemy frozen into Solid reports the Solid form's
+        /// innate set — which the badge UI then dedups against the active Solid transformation,
+        /// hiding the suppressed Liquid while frozen. Falls back to the stats' fixed innate list
+        /// when there is no EnemyData (standalone test setups).
+        /// </summary>
+        public IReadOnlyList<ChemicalCondition> CurrentEnemyFormInnateConditions
+        {
+            get
+            {
+                if (_enemyData == null) return _enemyStats.InnateConditions;
+                int form = _enemyData.GetFormIndexForConditions(_enemyStats.ActiveMaterialConditions);
+                return _enemyData.GetInnateConditionsForForm(form);
+            }
+        }
 
         /// <summary>
         /// Fires when a character's turn is skipped because they are Frozen.

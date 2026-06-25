@@ -1,4 +1,5 @@
 using System;
+using Axiom.Core;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -109,6 +110,13 @@ namespace Axiom.Battle
         private void SelectContinueButtonIfVisible()
         {
             if (!IsBusy || _isShowingSpellPrompt || EventSystem.current == null)
+                return;
+
+            // Don't grab focus while a tutorial-pause prompt (or the pause menu) is up — that
+            // overlay's own Continue button owns focus. Both set SuppressPauseToggle for their
+            // duration. Without this, a status message that becomes busy underneath a tutorial
+            // prompt steals focus from the prompt's Continue (DEV-133).
+            if (GameManager.Instance != null && GameManager.Instance.SuppressPauseToggle)
                 return;
 
             EventSystem.current.SetSelectedGameObject(_continueButton.gameObject);

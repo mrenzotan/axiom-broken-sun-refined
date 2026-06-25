@@ -43,7 +43,8 @@ namespace Axiom.Battle
         /// Executes the enemy's basic attack against the player.
         ///
         /// Resolution order:
-        ///   1. Compute and deal damage: max(1, ATK - playerDEF)
+        ///   1. Compute and deal damage: max(1, EffectiveATK - playerDEF)
+        ///      (EffectiveATK halves ATK while the enemy carries Crystallized)
         ///   2. Roll on-hit condition proc if conditions are met (enemy data present,
         ///      condition configured, player survived, roll passes, condition not already active)
         ///   3. Return AttackResult — IsCrit and IsImmune always false for enemy attacks;
@@ -53,7 +54,7 @@ namespace Axiom.Battle
         /// </summary>
         public AttackResult ExecuteAttack()
         {
-            int damage = Math.Max(1, _enemyStats.ATK - _playerStats.DEF);
+            int damage = Math.Max(1, _enemyStats.EffectiveATK - _playerStats.DEF);
             _playerStats.TakeDamage(damage);
 
             ChemicalCondition conditionApplied = ChemicalCondition.None;

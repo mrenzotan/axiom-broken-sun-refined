@@ -98,6 +98,11 @@ namespace Axiom.Battle
 
             // Buttons start disabled; HandleStateChanged enables them when PlayerTurn fires.
             _actionMenuUI.SetInteractable(false);
+
+            // Populate condition badges immediately so innate conditions are visible at battle
+            // start (no OnConditionsChanged fires during init).
+            _playerConditionBadges?.Refresh(playerStats, playerStats.InnateConditions);
+            _enemyConditionBadges?.Refresh(enemyStats, _battleController.CurrentEnemyFormInnateConditions);
         }
 
         private void OnDestroy() => Unsubscribe();
@@ -266,9 +271,9 @@ namespace Axiom.Battle
         private void HandleConditionsChanged(CharacterStats target)
         {
             if (target == _playerStats)
-                _playerConditionBadges?.Refresh(target);
+                _playerConditionBadges?.Refresh(target, target.InnateConditions);
             else if (target == _enemyStats)
-                _enemyConditionBadges?.Refresh(target);
+                _enemyConditionBadges?.Refresh(target, _battleController.CurrentEnemyFormInnateConditions);
         }
 
         private void HandleActionSkipped(CharacterStats character)
